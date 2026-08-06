@@ -48,14 +48,13 @@ def extract_lag_summary(
     max_lag: int
 ) -> np.ndarray:
     z = received_preamble * np.conj(reference_preamble)
-    lag_features = np.zeros((max_lag, 3), dtype=np.float32)
+    lag_features = np.zeros((max_lag, 2), dtype=np.float32)
 
     for lag_idx, lag in enumerate(range(1, max_lag + 1)):
         c = z[lag:] * np.conj(z[:-lag])
         c_mean = np.mean(c)
         lag_features[lag_idx, 0] = np.angle(c_mean)
         lag_features[lag_idx, 1] = np.abs(c_mean)
-        lag_features[lag_idx, 2] = lag / max_lag
 
     return lag_features
 
@@ -84,7 +83,7 @@ def training_dataset_generator(
     preamble_len: int = cfg.PREAMBLE_LENGTH,
     max_lag: int = cfg.NN_MAX_PHASE_DIFFERENCE
 ):
-    X = np.zeros((iterations, max_lag, 3), dtype=np.float32)
+    X = np.zeros((iterations, max_lag, 2), dtype=np.float32)
     y = np.zeros((iterations, 1), dtype=np.float32)
     snr_weights = np.zeros((iterations, 1), dtype=np.float32)
 
@@ -143,7 +142,7 @@ class OnTheFlyCFODataset(Dataset):
 class LightweightCFOEstimator(nn.Module):
     def __init__(self, max_lag: int, hidden_dim: int = 64):
         super().__init__()
-        input_features = max_lag * 3
+        input_features = max_lag * 2
         
         self.network = nn.Sequential(
             nn.Flatten(),
