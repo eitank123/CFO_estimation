@@ -53,19 +53,27 @@ def extract_lag_summary(
     reference_preamble: np.ndarray,
     max_lag: int
 ) -> np.ndarray:
+    
+    # Remove known preamble phase
     z = received_preamble * np.conj(reference_preamble)
-    lag_features = np.zeros((max_lag, 6), dtype=np.float32)
+
+    lag_features = np.zeros((max_lag, 3), dtype=np.float32)
 
     for lag_idx, lag in enumerate(range(1, max_lag + 1)):
+
+        # CFO correlation for this lag
         c = z[lag:] * np.conj(z[:-lag])
+
         c_mean = np.mean(c)
 
-        lag_features[lag_idx, 0] = np.real(c_mean)
-        lag_features[lag_idx, 1] = np.imag(c_mean)
-        lag_features[lag_idx, 2] = np.var(np.real(c), ddof=0)
-        lag_features[lag_idx, 3] = np.var(np.imag(c), ddof=0)
-        lag_features[lag_idx, 4] = lag / max_lag
-        lag_features[lag_idx, 5] = 1.0 / lag
+        # Feature 1: phase trajectory
+        lag_features[lag_idx, 0] = np.angle(c_mean)
+
+        # Feature 2: correlation strength
+        lag_features[lag_idx, 1] = np.abs(c_mean)
+
+        # Feature 3: normalized lag
+        lag_features[lag_idx, 2] = lag / max_lag
 
     return lag_features
 
@@ -96,7 +104,7 @@ def training_dataset_generator(
     preamble_len: int = cfg.PREAMBLE_LENGTH,
     max_lag: int = cfg.NN_MAX_PHASE_DIFFERENCE
 ):
-    X = np.zeros((iterations, max_lag, 6), dtype=np.float32)
+    X = np.zeros((iterations, max_lag, 3), dtype=np.float32)
     y = np.zeros((iterations, 1), dtype=np.float32)
 
     for i in range(iterations):
@@ -177,7 +185,7 @@ class LightweightCFOEstimator(nn.Module):
         
         # The input size directly scales with max_lag.
         # This gives the network more parameters to learn from when max_lag is higher.
-        input_features = max_lag * 6
+        input_features = max_lag * 3
         
         self.network = nn.Sequential(
             nn.Flatten(),
