@@ -14,11 +14,9 @@ def generate_qpsk_preamble(preamble_len: int) -> np.ndarray:
     bits = np.random.choice([-1.0, 1.0], size=(preamble_len, 2))
     return (bits[:, 0] + 1j * bits[:, 1]) / np.sqrt(2.0)
 
-
 def apply_cfo(symbols: np.ndarray, normalized_cfo: float) -> np.ndarray:
     n = np.arange(len(symbols))
     return symbols * np.exp(1j * 2.0 * np.pi * normalized_cfo * n)
-
 
 def apply_awgn(symbols: np.ndarray, snr_db: float) -> np.ndarray:
     sig_power = np.mean(np.abs(symbols) ** 2)
@@ -28,11 +26,9 @@ def apply_awgn(symbols: np.ndarray, snr_db: float) -> np.ndarray:
     noise = noise_std * (np.random.randn(len(symbols)) + 1j * np.random.randn(len(symbols)))
     return symbols + noise
 
-
 def sample_training_snr() -> float:
     u = np.random.beta(0.9, 2.0)
     return cfg.MIN_SNR + u * (cfg.MAX_SNR - cfg.MIN_SNR)
-
 
 def normalize_target(cfo):
     if np.isscalar(cfo):
@@ -43,40 +39,25 @@ def normalize_target(cfo):
         return float(normalized)
     return normalized
 
-
 def denormalize_target(normalized_cfo: float) -> float:
     return float(normalized_cfo) * cfg.MAX_CFO
-
 
 def extract_lag_summary(
     received_preamble: np.ndarray,
     reference_preamble: np.ndarray,
     max_lag: int
 ) -> np.ndarray:
-    
-    # Remove known preamble phase
     z = received_preamble * np.conj(reference_preamble)
-
     lag_features = np.zeros((max_lag, 3), dtype=np.float32)
 
     for lag_idx, lag in enumerate(range(1, max_lag + 1)):
-
-        # CFO correlation for this lag
         c = z[lag:] * np.conj(z[:-lag])
-
         c_mean = np.mean(c)
-
-        # Feature 1: phase trajectory
         lag_features[lag_idx, 0] = np.angle(c_mean)
-
-        # Feature 2: correlation strength
         lag_features[lag_idx, 1] = np.abs(c_mean)
-
-        # Feature 3: normalized lag
         lag_features[lag_idx, 2] = lag / max_lag
 
     return lag_features
-
 
 def preprocess_cfo_preamble(
     received_preamble: np.ndarray,
@@ -85,7 +66,6 @@ def preprocess_cfo_preamble(
 ) -> torch.Tensor:
     features = extract_lag_summary(received_preamble, reference_preamble, max_lag)
     return torch.from_numpy(features).unsqueeze(0)
-
 
 def estimate_cfo(model: nn.Module, received_preamble: np.ndarray, reference_preamble: np.ndarray) -> float:
     device = next(model.parameters()).device
@@ -106,6 +86,7 @@ def training_dataset_generator(
 ):
     X = np.zeros((iterations, max_lag, 3), dtype=np.float32)
     y = np.zeros((iterations, 1), dtype=np.float32)
+    snr_weights = np.zeros((iterations, 1), dtype=np.float32)
 
     for i in range(iterations):
         if i > 0 and i % 10000 == 0:
@@ -118,9 +99,9 @@ def training_dataset_generator(
 
         X[i] = extract_lag_summary(received_preamble, preamble, max_lag)
         y[i, 0] = float(normalized_cfo) / cfg.MAX_CFO
+        snr_weights[i, 0] = 10.0 ** (snr_db / 10.0)
 
-    return torch.from_numpy(X), torch.from_numpy(y)
-
+    return torch.from_numpy(X), torch.from_numpy(y), torch.from_numpy(snr_weights)
 
 class OnTheFlyCFODataset(Dataset):
     def __init__(
@@ -153,59 +134,27 @@ class OnTheFlyCFODataset(Dataset):
 
         X = extract_lag_summary(received_preamble, preamble, self.max_lag)
         y = float(normalized_cfo) / cfg.MAX_CFO
-        return torch.from_numpy(X), torch.tensor([y], dtype=torch.float32)
+        return torch.from_numpy(X), torch.tensor([y], dtype=torch.float32), torch.tensor([snr_linear], dtype=torch.float32)
 
 # =====================================================================
 # 2. Neural Network Architecture
 # =====================================================================
 
-class ResidualLagBlock(nn.Module):
-    def __init__(self, hidden_dim: int):
-        super().__init__()
-        self.fc1 = nn.Linear(hidden_dim, hidden_dim, bias=False)
-        self.ln1 = nn.LayerNorm(hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim, bias=False)
-        self.gn2 = nn.GroupNorm(4, hidden_dim)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        residual = x
-        x = self.fc1(x)
-        x = self.ln1(x)
-        x = F.gelu(x)
-        x = self.fc2(x)
-        x = x.permute(0, 2, 1)
-        x = self.gn2(x)
-        x = x.permute(0, 2, 1)
-        return F.gelu(x + residual)
-
-
 class LightweightCFOEstimator(nn.Module):
     def __init__(self, max_lag: int, hidden_dim: int = 64):
         super().__init__()
-        
-        # The input size directly scales with max_lag.
-        # This gives the network more parameters to learn from when max_lag is higher.
         input_features = max_lag * 3
         
         self.network = nn.Sequential(
             nn.Flatten(),
-            
-            # Layer 1: Globally mixes all lag features simultaneously.
-            # No pooling bottlenecks. It explicitly maps out the phase trajectory.
             nn.Linear(input_features, hidden_dim),
             nn.GELU(),
-            
-            # Layer 2: Distills the cross-lag dependencies.
             nn.Linear(hidden_dim, hidden_dim // 2),
             nn.GELU(),
-            
-            # Layer 3: Final CFO Regression.
             nn.Linear(hidden_dim // 2, 1)
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x shape entering: (Batch, max_lag, 6)
-        # Flatten makes it: (Batch, max_lag * 6)
         return self.network(x)
 
 # =====================================================================
@@ -234,9 +183,11 @@ def train_cfo_model(
     print(f"Training on device: {device}")
 
     model = LightweightCFOEstimator(max_lag=num_lags).to(device)
-    criterion = nn.MSELoss()
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=5e-7)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-7)
+    
+    # We use standard MSE for evaluating true physical performance
+    eval_criterion = nn.MSELoss()
 
     best_val_loss = float('inf')
     train_loss_history = []
@@ -246,29 +197,37 @@ def train_cfo_model(
         model.train()
         running_train_loss = 0.0
 
-        for X_batch, y_batch in train_loader:
+        # Unpack 3 elements now (X, y, SNR)
+        for X_batch, y_batch, snr_batch in train_loader:
             X_batch = X_batch.to(device)
             y_batch = y_batch.to(device)
+            snr_batch = snr_batch.to(device)
 
             optimizer.zero_grad()
             predictions = model(X_batch)
-            loss = criterion(predictions, y_batch)
+            
+            # SNR-Weighted Loss: forces the network to correct microscopic errors at high SNR
+            loss = torch.mean(snr_batch * (predictions - y_batch)**2)
+            
             loss.backward()
             optimizer.step()
 
-            running_train_loss += loss.item() * X_batch.size(0)
+            # Record standard unweighted MSE for physical logging
+            with torch.no_grad():
+                unweighted_mse = eval_criterion(predictions, y_batch)
+                running_train_loss += unweighted_mse.item() * X_batch.size(0)
 
         train_loss = running_train_loss / len(train_loader.dataset)
 
         model.eval()
         running_val_loss = 0.0
-    
+        
         with torch.no_grad():
-            for X_batch, y_batch in val_loader:
+            for X_batch, y_batch, _ in val_loader:
                 X_batch = X_batch.to(device)
                 y_batch = y_batch.to(device)
                 predictions = model(X_batch)
-                loss = criterion(predictions, y_batch)
+                loss = eval_criterion(predictions, y_batch) # Standard MSE
                 running_val_loss += loss.item() * X_batch.size(0)
 
         val_loss = running_val_loss / len(val_loader.dataset)
@@ -320,12 +279,13 @@ def train_model(
         max_lag=num_lags
     )
 
-    X_val, y_val = training_dataset_generator(
+    # Now unpacks 3 variables
+    X_val, y_val, snr_val = training_dataset_generator(
         iterations=val_samples,
         preamble_len=preamble_len,
         max_lag=num_lags
     )
-    val_dataset = TensorDataset(X_val, y_val)
+    val_dataset = TensorDataset(X_val, y_val, snr_val)
 
     trained_model, train_loss_history, val_loss_history = train_cfo_model(
         train_dataset=train_dataset,
