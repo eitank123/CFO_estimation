@@ -3,6 +3,7 @@ import numpy as np
 from plots import plot_mse, plot_cfo_sweep, plot_loss_curves
 from NN_model import LightweightCFOEstimator, train_model, extract_lag_summary
 import torch
+import channel
 
 #np.random.seed(10)
 
@@ -89,40 +90,50 @@ def generate_bit_array():
     return map_bits(bit_array)
 
 
-def apply_cfo(symbols, normalized_cfo):
-    """
-    Applies Carrier Frequency Offset to complex symbols.
-    
-    :param symbols: 1D numpy array of complex symbols
-    :param normalized_cfo: CFO normalized by symbol rate (f_offset / f_symbol)
-    :return: CFO-impaired complex symbols
-    """
-    n = np.arange(len(symbols))
-    cfo_phasor = np.exp(1j * 2 * np.pi * normalized_cfo * n)
-    return symbols * cfo_phasor
+def apply_cfo(signal, normalized_cfo):
+    n = np.arange(len(signal))
+    return signal * np.exp(
+        1j * 2*np.pi*normalized_cfo*n/cfg.SPS
+    )
 
-def apply_awgn(symbols, snr_db):
+def apply_awgn(signal, snr_db, sps=cfg.SPS):
     """
-    Applies Additive White Gaussian Noise to complex symbols.
-    
-    :param symbols: 1D numpy array of complex symbols
-    :param snr_db: Signal-to-Noise Ratio in dB
-    :return: Noisy complex symbols
+    Applies AWGN using symbol SNR (Es/N0).
+
+    Parameters
+    ----------
+    signal : 1D numpy array of complex samples
+        Upsampled and pulse-shaped signal.
+    snr_db : float
+        Symbol SNR in dB (Es/N0).
+    sps : int
+        Samples per symbol.
+
+    Returns
+    -------
+    noisy_signal : complex numpy array
+        Signal with AWGN added.
     """
-    # Calculate signal power: P_sig = E[|x|^2]
-    sig_power = np.mean(np.abs(symbols) ** 2)
 
-    # Convert SNR from dB to linear scale
-    snr_linear = 10 ** (snr_db / 10.0)
+    snr_linear = 10 ** (snr_db / 10)
 
-    # Calculate noise variance per dimension (Real and Imaginary share total variance)
-    noise_power = sig_power / snr_linear
-    noise_std = np.sqrt(noise_power / 2.0)
-    
-    # Generate complex Gaussian noise (Zero-mean, unit variance split between I and Q)
-    noise = noise_std * (np.random.randn(len(symbols)) + 1j * np.random.randn(len(symbols)))
-    
-    return symbols + noise
+    # Average power per sample after upsampling/filtering
+    sig_power = np.mean(np.abs(signal)**2)
+
+    # Convert Es/N0 to sample-domain noise power:
+    # Es = sig_power * sps
+    # N0 = Es / (Es/N0)
+    noise_power = sig_power * sps / snr_linear
+
+    # Complex Gaussian noise: half power in I and half in Q
+    noise_std = np.sqrt(noise_power / 2)
+
+    noise = noise_std * (
+        np.random.randn(len(signal)) +
+        1j * np.random.randn(len(signal))
+    )
+
+    return signal + noise
 
 def compute_cfo_crlb(snr_db_range, preamble_length):
     """
@@ -166,94 +177,108 @@ def compute_R_vector(z, N):
         R_vector[m] = sum_val / (L_0 - m)
     return R_vector
 
-def snr_sweep(normalized_cfo, preamble, weights):
-    errors_vs_max_lag = []  # Initialize error list for each max_lag
+def downsample(signal):
+    return signal[::cfg.SPS]
+
+def remove_filter_delay(signal):
+    delay = cfg.FILTER_SPAN*cfg.SPS
+    return signal[delay: delay + cfg.PREAMBLE_LENGTH*cfg.SPS]
+
+
+# -------------------------------------------------------------------
+# Helper to cleanly apply Channel Impairments and Rx Filter for all sweeps
+# -------------------------------------------------------------------
+def process_through_channel(transmitted_preamble, cfo, snr_db, rx_filter):
+    # 1. Apply CFO
+    preamble_cfo = apply_cfo(transmitted_preamble, cfo)
+    # 2. Apply AWGN
+    received_preamble = apply_awgn(preamble_cfo, snr_db)
+    # 3. Rx RRC Filter
+    received_preamble = np.convolve(received_preamble, rx_filter, mode='full')
+    # 4. Remove filter delay
+    received_preamble = remove_filter_delay(received_preamble)
+    # 5. Downsample back to symbol rate
+    return downsample(received_preamble)
+
+
+def snr_sweep(normalized_cfo, transmitted_preamble, preamble, weights):
+    errors_vs_max_lag = []
+    rx_filter = channel.rrc_design(cfg.BETA, cfg.SPS, cfg.FILTER_SPAN)
+    
     for i, lag in enumerate(cfg.MAX_LAG):
-        errors = []  # Initialize error list for each SNR
+        errors = []
         w = weights[i]
         for snr_db in cfg.SNR:
-            # 3. Apply channel impairments (CFO is applied first in the transmission channel, then AWGN)
-            preamble_cfo = apply_cfo(preamble, normalized_cfo)
-            received_preamble = apply_awgn(preamble_cfo, snr_db)
-
+            received_preamble = process_through_channel(transmitted_preamble, normalized_cfo, snr_db, rx_filter)
+            
             # Remove phase modulation due to CFO (for correlation)
             z = received_preamble * np.conj(preamble)
         
-            # 4. Estimate CFO using Mengali & Morelli method
+            # Estimate CFO using Mengali & Morelli method
             R = compute_R_vector(z, lag)
-            f_hat, fT_hat = mengali_moreli_frequency_estimator(R=R, w=w)
+            _, fT_hat = mengali_moreli_frequency_estimator(R=R, w=w)
         
-            # 5. Calculate estimation error
-            error = np.abs(fT_hat - (normalized_cfo * 1.0))  # Assuming symbol rate T=1 for simplicity
-            errors.append(error ** 2)  # Accumulate squared error for MSE calculation
+            # Calculate estimation error
+            error = np.abs(fT_hat - (normalized_cfo * 1.0))
+            errors.append(error ** 2) 
         errors_vs_max_lag.append(errors)
+        
     return errors_vs_max_lag
 
-def CFO_sweep(preamble, weights):
-    """
-    Performs a sweep over the SNR range to evaluate the CFO estimation performance.
-
-    :param normalized_cfo: Normalized CFO value (f_offset / f_symbol)
-    :param preamble: 1D numpy array of complex preamble symbols
-    :param weights: List of weights for the estimator (from smoothing function)
-    :return: List of lists containing squared errors for each SNR
-    """
-    
+def CFO_sweep(transmitted_preamble, preamble, weights):
     results_vs_lag = []
+    rx_filter = channel.rrc_design(cfg.BETA, cfg.SPS, cfg.FILTER_SPAN)
+    
     for i, lag in enumerate(cfg.MAX_LAG):
-        results = []  # Initialize list for each CFO
+        results = []
         w = weights[i]
         for cfo in cfg.CFO:
-            # Apply channel impairments (CFO and AWGN)
-            preamble_cfo = apply_cfo(preamble, cfo)
-            received_preamble = apply_awgn(preamble_cfo, cfg.TARGET_SNR)
+            received_preamble = process_through_channel(transmitted_preamble, cfo, cfg.TARGET_SNR, rx_filter)
 
             # Remove phase modulation due to CFO (for correlation)
             z = received_preamble * np.conj(preamble)
         
             # Estimate CFO using Mengali & Morelli method
-            
             R = compute_R_vector(z, lag)
-            f_hat, fT_hat = mengali_moreli_frequency_estimator(R=R, w=w)
+            _, fT_hat = mengali_moreli_frequency_estimator(R=R, w=w)
         
-            # Calculate estimation error
-            result = fT_hat  # Assuming symbol rate T=1 for simplicity
-            results.append(result)  # Accumulate squared error for MSE calculation
+            results.append(fT_hat)
         results_vs_lag.append(results)
     
     return results_vs_lag
 
-def snr_sweep_nn(normalized_cfo, preamble, model, max_lag):
+def snr_sweep_nn(normalized_cfo, transmitted_preamble, preamble, model, max_lag):
     model.eval()
     device = next(model.parameters()).device
+    rx_filter = channel.rrc_design(cfg.BETA, cfg.SPS, cfg.FILTER_SPAN)
 
     with torch.no_grad():
         base_errors = []
 
         for snr_db in cfg.SNR:
-            preamble_cfo = apply_cfo(preamble, normalized_cfo)
-            received_preamble = apply_awgn(preamble_cfo, snr_db)
+            received_preamble = process_through_channel(transmitted_preamble, normalized_cfo, snr_db, rx_filter)
 
             features = extract_lag_summary(received_preamble, preamble, max_lag)
             tensor_in = torch.from_numpy(features.astype(np.float32)).unsqueeze(0).to(device)
 
             fT_hat = model(tensor_in).item()
             fT_hat *= cfg.MAX_CFO
+            
             error = np.abs(fT_hat - normalized_cfo)
             base_errors.append(error ** 2)
 
     return base_errors
 
-def cfo_sweep_nn(preamble, model, max_lag):
+def cfo_sweep_nn(transmitted_preamble, preamble, model, max_lag):
     model.eval()
     device = next(model.parameters()).device
+    rx_filter = channel.rrc_design(cfg.BETA, cfg.SPS, cfg.FILTER_SPAN)
 
     with torch.no_grad():
         results = []
 
         for normalized_cfo in cfg.CFO:
-            preamble_cfo = apply_cfo(preamble, normalized_cfo)
-            received_preamble = apply_awgn(preamble_cfo, cfg.TARGET_SNR)
+            received_preamble = process_through_channel(transmitted_preamble, normalized_cfo, cfg.TARGET_SNR, rx_filter)
 
             features = extract_lag_summary(received_preamble, preamble, max_lag)
             tensor_in = torch.from_numpy(features.astype(np.float32)).unsqueeze(0).to(device)
@@ -265,6 +290,14 @@ def cfo_sweep_nn(preamble, model, max_lag):
 
     return results
 
+def upscale_array(signal, sps):
+    # This function is retained for fallback, but the main chain now upsamples 
+    # the unified preamble + payload sequence directly in MAIN.
+    upsampled = np.zeros(len(signal) * sps, dtype=complex)
+    upsampled[::sps] = signal
+    return upsampled
+
+
 if __name__ == "__main__":
     snr_sweep_error_sum = [[0 for i in range(len(cfg.SNR))] for _ in range(len(cfg.MAX_LAG))]  # Initialize error sum for each SNR
     cfo_sweep_error_sum = [[0 for i in range(len(cfg.CFO))] for _ in range(len(cfg.MAX_LAG))]  # Initialize error sum for each CFO
@@ -273,55 +306,58 @@ if __name__ == "__main__":
     training_dataset = []
     weights = []
     
-
     for lag in cfg.MAX_LAG:
         m = np.arange(1, lag + 1)
         w = smoothing_function(correlation_lag=m, max_lag=lag, window_size=cfg.PREAMBLE_LENGTH)
         weights.append(w)
+        
     if not cfg.TRAIN_NN:
         for iter in range(cfg.ITERATIONS):
             if iter % 100 == 0:
                 print(f"Iteration {iter}/{cfg.ITERATIONS}")
-            # 1. Generate QPSK preamble (convert list to numpy array of complex numbers)
+                
+            # 1. Generate QPSK preamble
             raw_preamble = generate_bit_array()
-
             preamble = np.array(raw_preamble, dtype=np.complex128)
+            
+            # 2. Tx Upsample & RRC Filter
+            transmitted_preamble = upscale_array(preamble, cfg.SPS)
+            transmitted_preamble = np.convolve(transmitted_preamble, channel.rrc_design(cfg.BETA, cfg.SPS, cfg.FILTER_SPAN), mode='full')
 
-            # 2. Define channel impairment parameters
+            # --- RUN SWEEPS ---
 
             if cfg.SNR_SWEEP:
-                errors_vs_max_lag = snr_sweep(cfg.NORMALIZED_CFO, preamble, weights)  # Run the SNR sweep and plot results
-                snr_sweep_error_sum = [[snr_sweep_error_sum[i][j] + errors_vs_max_lag[i][j] for j in range(len(cfg.SNR))] for i in range(len(cfg.MAX_LAG))]  # Accumulate errors across iterations
+                errors_vs_max_lag = snr_sweep(cfg.NORMALIZED_CFO, transmitted_preamble, preamble, weights)
+                snr_sweep_error_sum = [[snr_sweep_error_sum[i][j] + errors_vs_max_lag[i][j] for j in range(len(cfg.SNR))] for i in range(len(cfg.MAX_LAG))] 
 
             if cfg.CFO_SWEEP:
-                results = CFO_sweep(preamble, weights)  # Run the CFO sweep and plot results
-                cfo_sweep_error_sum = [[cfo_sweep_error_sum[i][j] + results[i][j] for j in range(len(cfg.CFO))] for i in range(len(cfg.MAX_LAG))]  # Accumulate errors across iterations
+                results = CFO_sweep(transmitted_preamble, preamble, weights)
+                cfo_sweep_error_sum = [[cfo_sweep_error_sum[i][j] + results[i][j] for j in range(len(cfg.CFO))] for i in range(len(cfg.MAX_LAG))] 
+
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
             if cfg.EVALUATE_NN:
-                # 1. Instantiate the model architecture
-                # 2. Load the saved weights into the model
                 for i, save_path in enumerate(cfg.NN_models):
                     max_lag = cfg.MAX_PHASES[i]
                     model = LightweightCFOEstimator(max_lag=max_lag)
-                    model.load_state_dict(torch.load(save_path))
+                    model.load_state_dict(torch.load(save_path, map_location=device))
                     model.eval()
                     
-                    nn_errors_vs_max_lag = snr_sweep_nn(cfg.NORMALIZED_CFO, preamble, model, max_lag) 
+                    nn_errors_vs_max_lag = snr_sweep_nn(cfg.NORMALIZED_CFO, transmitted_preamble, preamble, model, max_lag) 
                     
-                    # Accumulate correctly into the specific model's array
                     nn_snr_sweep_error_sum[i] = [
                         nn_snr_sweep_error_sum[i][k] + nn_errors_vs_max_lag[k] 
                         for k in range(len(cfg.SNR))
                     ]
+                    
             if cfg.EVALUATE_NN_CFO:
                 for i, save_path in enumerate(cfg.NN_models):
                     max_lag = cfg.MAX_PHASES[i]
-
                     model = LightweightCFOEstimator(max_lag=max_lag)
-                    model.load_state_dict(torch.load(save_path))
+                    model.load_state_dict(torch.load(save_path, map_location=device))
                     model.eval()
 
-                    nn_results_vs_cfo = cfo_sweep_nn(preamble, model, max_lag)
+                    nn_results_vs_cfo = cfo_sweep_nn(transmitted_preamble, preamble, model, max_lag)
 
                     nn_cfo_sweep_sum[i] = [
                         nn_cfo_sweep_sum[i][k] + nn_results_vs_cfo[k]
@@ -335,17 +371,14 @@ if __name__ == "__main__":
     CRB = compute_cfo_crlb(cfg.SNR, cfg.PREAMBLE_LENGTH)
 
     if cfg.SNR_SWEEP:
-        # Calculate MSE for each SNR
         mse_results = [[snr_sweep_error_sum[i][j] / cfg.ITERATIONS for j in range(len(cfg.SNR))] for i in range(len(cfg.MAX_LAG))]
-        plot_mse(mse_results, CRB)  # Plot MSE vs SNR
+        plot_mse(mse_results, CRB)
 
     if cfg.CFO_SWEEP:
-        # Calculate MSE for each CFO
         cfo_mean_results = [[cfo_sweep_error_sum[i][j] / cfg.ITERATIONS for j in range(len(cfg.CFO))] for i in range(len(cfg.MAX_LAG))]
-        plot_cfo_sweep(cfo_results=cfo_mean_results)  # Plot MSE vs CFO
+        plot_cfo_sweep(cfo_results=cfo_mean_results)
 
     if cfg.EVALUATE_NN:
-        # Calculate MSE for each SNR using the correctly accumulated sums
         nn_mse = [
             [nn_snr_sweep_error_sum[j][k] / cfg.ITERATIONS for k in range(len(cfg.SNR))] 
             for j in range(len(cfg.NN_models))
@@ -359,11 +392,5 @@ if __name__ == "__main__":
              for k in range(len(cfg.CFO))]
             for j in range(len(cfg.NN_models))
         ]
-
         nn_results = cfo_mean_results + nn_results
-
         plot_cfo_sweep(nn_results)
-
-
-    
-
