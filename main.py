@@ -223,12 +223,9 @@ def CFO_sweep(preamble, weights):
     
     return results_vs_lag
 
-def snr_sweep_nn(normalized_cfo, preamble, model):
-    errors_vs_max_lag = []
-
+def snr_sweep_nn(normalized_cfo, preamble, model, max_lag):
     model.eval()
     device = next(model.parameters()).device
-    max_lag = cfg.NN_MAX_PHASE_DIFFERENCE
 
     with torch.no_grad():
         base_errors = []
@@ -245,17 +242,37 @@ def snr_sweep_nn(normalized_cfo, preamble, model):
             error = np.abs(fT_hat - normalized_cfo)
             base_errors.append(error ** 2)
 
-        for _ in cfg.MAX_LAG:
-            errors_vs_max_lag.append(base_errors.copy())
+    return base_errors
 
-    return errors_vs_max_lag
+def cfo_sweep_nn(preamble, model, max_lag):
+    model.eval()
+    device = next(model.parameters()).device
+
+    with torch.no_grad():
+        results = []
+
+        for normalized_cfo in cfg.CFO:
+            preamble_cfo = apply_cfo(preamble, normalized_cfo)
+            received_preamble = apply_awgn(preamble_cfo, cfg.TARGET_SNR)
+
+            features = extract_lag_summary(received_preamble, preamble, max_lag)
+            tensor_in = torch.from_numpy(features.astype(np.float32)).unsqueeze(0).to(device)
+
+            fT_hat = model(tensor_in).item()
+            fT_hat *= cfg.MAX_CFO
+
+            results.append(fT_hat)
+
+    return results
 
 if __name__ == "__main__":
     snr_sweep_error_sum = [[0 for i in range(len(cfg.SNR))] for _ in range(len(cfg.MAX_LAG))]  # Initialize error sum for each SNR
     cfo_sweep_error_sum = [[0 for i in range(len(cfg.CFO))] for _ in range(len(cfg.MAX_LAG))]  # Initialize error sum for each CFO
-    nn_snr_sweep_error_sum = [[0 for i in range(len(cfg.SNR))] for _ in range(len(cfg.MAX_LAG))]  # Initialize error sum for NN SNR sweep
+    nn_snr_sweep_error_sum = [[0 for _ in range(len(cfg.SNR))] for _ in range(len(cfg.NN_models))]
+    nn_cfo_sweep_sum = [[0 for _ in range(len(cfg.CFO))] for _ in range(len(cfg.NN_models))]
     training_dataset = []
     weights = []
+    
 
     for lag in cfg.MAX_LAG:
         m = np.arange(1, lag + 1)
@@ -282,16 +299,34 @@ if __name__ == "__main__":
 
             if cfg.EVALUATE_NN:
                 # 1. Instantiate the model architecture
-                model = LightweightCFOEstimator(max_lag=cfg.NN_MAX_PHASE_DIFFERENCE)
-
                 # 2. Load the saved weights into the model
-                save_path = cfg.NN_SAVE_PATH  # Replace with your actual path/filename if different
-                model.load_state_dict(torch.load(save_path))
+                for i, save_path in enumerate(cfg.NN_models):
+                    max_lag = cfg.MAX_PHASES[i]
+                    model = LightweightCFOEstimator(max_lag=max_lag)
+                    model.load_state_dict(torch.load(save_path))
+                    model.eval()
+                    
+                    nn_errors_vs_max_lag = snr_sweep_nn(cfg.NORMALIZED_CFO, preamble, model, max_lag) 
+                    
+                    # Accumulate correctly into the specific model's array
+                    nn_snr_sweep_error_sum[i] = [
+                        nn_snr_sweep_error_sum[i][k] + nn_errors_vs_max_lag[k] 
+                        for k in range(len(cfg.SNR))
+                    ]
+            if cfg.EVALUATE_NN_CFO:
+                for i, save_path in enumerate(cfg.NN_models):
+                    max_lag = cfg.MAX_PHASES[i]
 
-                # 3. Set the model to evaluation mode
-                model.eval()
-                nn_errors_vs_max_lag = snr_sweep_nn(cfg.NORMALIZED_CFO, preamble, model)  # Run the NN SNR sweep
-                nn_snr_sweep_error_sum = [[nn_snr_sweep_error_sum[i][j] + nn_errors_vs_max_lag[i][j] for j in range(len(cfg.SNR))] for i in range(len(cfg.MAX_LAG))]  # Accumulate errors across iterations
+                    model = LightweightCFOEstimator(max_lag=max_lag)
+                    model.load_state_dict(torch.load(save_path))
+                    model.eval()
+
+                    nn_results_vs_cfo = cfo_sweep_nn(preamble, model, max_lag)
+
+                    nn_cfo_sweep_sum[i] = [
+                        nn_cfo_sweep_sum[i][k] + nn_results_vs_cfo[k]
+                        for k in range(len(cfg.CFO))
+                    ]
 
     else:
         model, train_loss_history, val_loss_history = train_model()
@@ -310,9 +345,24 @@ if __name__ == "__main__":
         plot_cfo_sweep(cfo_results=cfo_mean_results)  # Plot MSE vs CFO
 
     if cfg.EVALUATE_NN:
-        # Calculate MSE for each SNR using the trained NN
-        nn_mse_results = mse_results+[[nn_snr_sweep_error_sum[i][j] / cfg.ITERATIONS for j in range(len(cfg.SNR))] for i in range(len(cfg.MAX_LAG))]
-        plot_mse(nn_mse_results, CRB)  # Plot MSE vs SNR for NN
+        # Calculate MSE for each SNR using the correctly accumulated sums
+        nn_mse = [
+            [nn_snr_sweep_error_sum[j][k] / cfg.ITERATIONS for k in range(len(cfg.SNR))] 
+            for j in range(len(cfg.NN_models))
+        ]
+        nn_mse_results = mse_results + nn_mse
+        plot_mse(nn_mse_results, CRB)
+        
+    if cfg.EVALUATE_NN_CFO:
+        nn_results = [
+            [nn_cfo_sweep_sum[j][k] / cfg.ITERATIONS
+             for k in range(len(cfg.CFO))]
+            for j in range(len(cfg.NN_models))
+        ]
+
+        nn_results = cfo_mean_results + nn_results
+
+        plot_cfo_sweep(nn_results)
 
 
     

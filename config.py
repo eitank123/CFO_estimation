@@ -5,7 +5,7 @@ MAX_LAG = [8, 16, 32, 64]
 CFO = [0.02 * i for i in range(-10, 11)]
 TARGET_SNR = -6  # Target SNR for single-point testing
 
-ITERATIONS = 500
+ITERATIONS = 3000
 
 qpsk_normalized = 1 / np.sqrt(2)
 BIT_MAPPING_QPSK = {
@@ -23,13 +23,18 @@ MIN_SNR = -5
 
 NN_MAX_PHASE_DIFFERENCE = 32
 
-NN_SAVE_PATH = f"cfo_estimator_N={NN_MAX_PHASE_DIFFERENCE}.pth"  # Path to save the trained neural network model
-lr = 1.5e-3
-EPOCHS = 300
-BATCH_SIZE = 256
+NN_SAVE_PATH = f"cfo_estimator_N={NN_MAX_PHASE_DIFFERENCE}_2FEATURES_removePLATEAU.pth"  # Path to save the trained neural network model
+lr = 1e-3
+EPOCHS = 400
+BATCH_SIZE = 512
 MSE_MULTIPLIER = 1500
+SNR_WEIGHT_FACTOR = 1.01
+
+MAX_PHASES = [8, 16, 32]
+NN_models = [f"cfo_estimator_N={i}_2FEATURES_removePLATEAU.pth" for i in MAX_PHASES]
 
 SNR_SWEEP = True
 CFO_SWEEP = False
 TRAIN_NN = False
 EVALUATE_NN = True
+EVALUATE_NN_CFO = False

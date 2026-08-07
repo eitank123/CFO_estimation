@@ -22,7 +22,7 @@ def plot_mse(mse_results, crb_results):
         try:
             lag_label = f'Estimator MSE (N={cfg.MAX_LAG[i]})'
         except IndexError:
-            lag_label = f'NN estimator'
+            lag_label = f'NN estimator (N={cfg.MAX_PHASES[i-len(cfg.MAX_LAG)]})'
         marker = markers[i % len(markers)]
         
         plt.semilogy(
@@ -75,11 +75,11 @@ def plot_cfo_sweep(cfo_results, true_cfo_values=cfg.CFO):
 
     # Plot estimated CFO for each lag N (or single curve if 1D)
     for i, cfo_row in enumerate(results_matrix):
-        label = (
-            f'Estimated CFO (N={cfg.MAX_LAG[i]})' 
-            if hasattr(cfg, 'MAX_LAG') and i < len(cfg.MAX_LAG) 
-            else f'Estimated CFO (SNR = {cfg.TARGET_SNR} dB)'
-        )
+        try:
+            label = f'Estimated CFO (N={cfg.MAX_LAG[i]})'
+        except IndexError:
+            label = f'NN estimator (N={cfg.MAX_PHASES[i-len(cfg.MAX_LAG)]})'
+            
         marker = markers[i % len(markers)]
 
         plt.plot(

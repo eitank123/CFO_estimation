@@ -183,7 +183,7 @@ def train_cfo_model(
 
     model = LightweightCFOEstimator(max_lag=num_lags).to(device)
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-7)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=5e-8)
     
     # We use standard MSE for evaluating true physical performance
     eval_criterion = nn.MSELoss()
@@ -206,7 +206,7 @@ def train_cfo_model(
             predictions = model(X_batch)
             
             # SNR-Weighted Loss: forces the network to correct microscopic errors at high SNR
-            loss = torch.mean(snr_batch * (predictions - y_batch)**2)
+            loss = torch.mean((snr_batch**cfg.SNR_WEIGHT_FACTOR) * (predictions - y_batch)**2)
             
             loss.backward()
             optimizer.step()
