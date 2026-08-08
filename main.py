@@ -1,7 +1,7 @@
 import config as cfg
 import numpy as np
-from plots import plot_mse, plot_cfo_sweep, plot_loss_curves
-from NN_model import LightweightCFOEstimator, train_model, extract_lag_summary
+from plots import plot_mse, plot_cfo_sweep, plot_loss_curves, plot_mse_comparison
+from NN_model import LightweightCFOEstimator, train_cfo_model, extract_lag_summary
 import torch
 import channel
 
@@ -88,7 +88,6 @@ def map_bits(bit_array):
 def generate_bit_array():
     bit_array = [tuple(np.random.randint(0, 2, 2)) for _ in range(cfg.PREAMBLE_LENGTH)]
     return map_bits(bit_array)
-
 
 def apply_cfo(signal, normalized_cfo):
     n = np.arange(len(signal))
@@ -339,7 +338,7 @@ if __name__ == "__main__":
             if cfg.EVALUATE_NN:
                 for i, save_path in enumerate(cfg.NN_models):
                     max_lag = cfg.MAX_PHASES[i]
-                    model = LightweightCFOEstimator(max_lag=max_lag)
+                    model = LightweightCFOEstimator()
                     model.load_state_dict(torch.load(save_path, map_location=device))
                     model.eval()
                     
@@ -365,7 +364,7 @@ if __name__ == "__main__":
                     ]
 
     else:
-        model, train_loss_history, val_loss_history = train_model()
+        model, train_loss_history, val_loss_history = train_cfo_model()
         plot_loss_curves(train_loss_history, val_loss_history, title="Training & Validation Loss (MAX_PHASE_DIFFERENCE = {})".format(cfg.NN_MAX_PHASE_DIFFERENCE))
         
     CRB = compute_cfo_crlb(cfg.SNR, cfg.PREAMBLE_LENGTH)
@@ -385,6 +384,12 @@ if __name__ == "__main__":
         ]
         nn_mse_results = mse_results + nn_mse
         plot_mse(nn_mse_results, CRB)
+        target_snr_index = cfg.SNR.index(cfg.TARGET_SNR)
+        plot_mse_comparison(
+            nn_mse,
+            mse_results,
+            snr_values=cfg.HISTOGRAM_TARGET_SNR
+        )
         
     if cfg.EVALUATE_NN_CFO:
         nn_results = [

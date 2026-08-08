@@ -45,7 +45,7 @@ def plot_mse(mse_results, crb_results):
         label='CRB'
     )
     
-    plt.title('CFO Estimation Performance vs. Cramér-Rao Bound')
+    plt.title(f'CFO Estimation Performance vs. Cramér-Rao Bound (beta = {cfg.BETA})')
     plt.xlabel('SNR (dB)')
     plt.ylabel('Normalized CFO Variance / MSE')
     plt.grid(True, which='both', linestyle=':', alpha=0.6)
@@ -144,3 +144,76 @@ def plot_loss_curves(train_loss: list, val_loss: list, title: str = "Training & 
     
     plt.savefig("loss_performance.png", dpi=300, bbox_inches="tight")
     plt.close()
+
+
+def plot_mse_comparison(nn_mse, mm_mse, snr_values=None):
+    """
+    Plot a comparison of NN and M&M MSE values for one or more selected SNR points.
+
+    :param nn_mse: 1D or 2D array-like of NN MSE values. If 2D, the selected SNR
+                   columns are used.
+    :param mm_mse: 1D or 2D array-like of M&M MSE values. If 2D, the selected SNR
+                   columns are used.
+    :param snr_values: Optional SNR values to plot. Each value produces a separate figure.
+    """
+    nn_vals = np.asarray(nn_mse, dtype=float)
+    mm_vals = np.asarray(mm_mse, dtype=float)
+
+    if nn_vals.ndim > 2 or mm_vals.ndim > 2:
+        raise ValueError("nn_mse and mm_mse must be 1D or 2D arrays")
+
+    if snr_values is None:
+        snr_values = [cfg.TARGET_SNR]
+    elif np.isscalar(snr_values):
+        snr_values = [snr_values]
+    else:
+        snr_values = list(snr_values)
+
+    for snr_db in snr_values:
+        if nn_vals.ndim == 2:
+            try:
+                snr_index = cfg.SNR.index(snr_db)
+            except ValueError as exc:
+                raise ValueError(f"SNR {snr_db} not found in cfg.SNR") from exc
+            nn_plot_vals = np.ravel(nn_vals[:, snr_index])
+        else:
+            nn_plot_vals = np.ravel(nn_vals)
+
+        if mm_vals.ndim == 2:
+            try:
+                snr_index = cfg.SNR.index(snr_db)
+            except ValueError as exc:
+                raise ValueError(f"SNR {snr_db} not found in cfg.SNR") from exc
+            mm_plot_vals = np.ravel(mm_vals[:, snr_index])
+        else:
+            mm_plot_vals = np.ravel(mm_vals)
+
+        if nn_plot_vals.size == 0 or mm_plot_vals.size == 0:
+            raise ValueError("nn_mse and mm_mse must not be empty")
+
+        n_pairs = min(nn_plot_vals.size, mm_plot_vals.size)
+        nn_plot_vals = nn_plot_vals[:n_pairs]
+        mm_plot_vals = mm_plot_vals[:n_pairs]
+
+        plt.figure(figsize=(10, 6))
+        width = 0.35
+        positions = np.arange(n_pairs)
+
+        plt.bar(positions - width / 2, nn_plot_vals, width=width, label='NN', color='#1f77b4')
+        plt.bar(positions + width / 2, mm_plot_vals, width=width, label='M&M', color='#ff7f0e')
+
+        labels = [f'N={cfg.MAX_PHASES[i]}' for i in range(n_pairs)]
+        plt.xticks(np.arange(len(labels)), labels, rotation=25, ha='right')
+        plt.xlim(-0.5, len(labels) - 0.5)
+        plt.xlabel('Model / Lag')
+        plt.ylabel('MSE')
+        plt.title(f'MSE of NN VS M&M (SNR = {snr_db} dB)')
+        plt.grid(True, axis='y', linestyle=':', alpha=0.6)
+        plt.legend(handles=[
+            plt.Rectangle((0, 0), 1, 1, color='#1f77b4', label='NN'),
+            plt.Rectangle((0, 0), 1, 1, color='#ff7f0e', label='M&M')
+        ])
+        plt.tight_layout()
+
+        plt.savefig(f"mse_comparison_SNR={snr_db}.png", dpi=300, bbox_inches="tight")
+        plt.close()
