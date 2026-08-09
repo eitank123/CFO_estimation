@@ -5,12 +5,13 @@ BETA = 0.25
 FILTER_SPAN = 10
 
 PREAMBLE_LENGTH = 128
-MAX_LAG = [2, 4, 8, 16, 32]
+MAX_LAG = [8, 16, 32, 64]
 CFO = [0.02 * i for i in range(-10, 11)]
 TARGET_SNR = -6  # Target SNR for single-point testing
-HISTOGRAM_TARGET_SNR = [-10, -6, -2]  # SNR values to plot in the comparison histogram
+HISTOGRAM_TARGET_SNR = [2]  # SNR values to plot in the comparison histogram
+IS_BPSK = True
 
-ITERATIONS = 10000
+ITERATIONS = 25000
 qpsk_normalized = 1 / np.sqrt(2)
 BIT_MAPPING_QPSK = {
     (0, 0): qpsk_normalized * (1 + 1j),
@@ -37,11 +38,11 @@ BATCH_SIZE = 128
 MSE_MULTIPLIER = 1500
 SNR_WEIGHT_FACTOR = 0.5
 
-MAX_PHASES = [2, 4, 8, 16, 32]
+MAX_PHASES = [8, 16, 32, 64]
 NN_models = [f"best_low_snr_L{i}.pth" for i in MAX_PHASES]
 
 SNR_SWEEP = True
 CFO_SWEEP = False
 TRAIN_NN = False
-EVALUATE_NN = True
+EVALUATE_NN = False
 EVALUATE_NN_CFO = False

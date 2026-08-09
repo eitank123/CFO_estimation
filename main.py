@@ -83,10 +83,15 @@ def mengali_moreli_frequency_estimator(R, T=1.0, w=None):
 
 
 def map_bits(bit_array):
+    if cfg.IS_BPSK:
+        return [1 if b == 1 else -1 for b in bit_array]
     return [cfg.BIT_MAPPING_QPSK[b] for b in bit_array]
 
 def generate_bit_array():
-    bit_array = [tuple(np.random.randint(0, 2, 2)) for _ in range(cfg.PREAMBLE_LENGTH)]
+    if cfg.IS_BPSK:
+        bit_array = [int(np.random.randint(0, 2)) for _ in range(cfg.PREAMBLE_LENGTH)]
+    else:
+        bit_array = [tuple(np.random.randint(0, 2, 2)) for _ in range(cfg.PREAMBLE_LENGTH)]
     return map_bits(bit_array)
 
 def apply_cfo(signal, normalized_cfo):
@@ -224,15 +229,16 @@ def snr_sweep(normalized_cfo, transmitted_preamble, preamble, weights):
         
     return errors_vs_max_lag
 
-def CFO_sweep(transmitted_preamble, preamble, weights):
+def CFO_sweep(transmitted_preamble, preamble, weights, snr_db=None):
     results_vs_lag = []
     rx_filter = channel.rrc_design(cfg.BETA, cfg.SPS, cfg.FILTER_SPAN)
+    snr_db = cfg.TARGET_SNR if snr_db is None else snr_db
     
     for i, lag in enumerate(cfg.MAX_LAG):
         results = []
         w = weights[i]
         for cfo in cfg.CFO:
-            received_preamble = process_through_channel(transmitted_preamble, cfo, cfg.TARGET_SNR, rx_filter)
+            received_preamble = process_through_channel(transmitted_preamble, cfo, snr_db, rx_filter)
 
             # Remove phase modulation due to CFO (for correlation)
             z = received_preamble * np.conj(preamble)
@@ -268,16 +274,17 @@ def snr_sweep_nn(normalized_cfo, transmitted_preamble, preamble, model, max_lag)
 
     return base_errors
 
-def cfo_sweep_nn(transmitted_preamble, preamble, model, max_lag):
+def cfo_sweep_nn(transmitted_preamble, preamble, model, max_lag, snr_db=None):
     model.eval()
     device = next(model.parameters()).device
     rx_filter = channel.rrc_design(cfg.BETA, cfg.SPS, cfg.FILTER_SPAN)
+    snr_db = cfg.TARGET_SNR if snr_db is None else snr_db
 
     with torch.no_grad():
         results = []
 
         for normalized_cfo in cfg.CFO:
-            received_preamble = process_through_channel(transmitted_preamble, normalized_cfo, cfg.TARGET_SNR, rx_filter)
+            received_preamble = process_through_channel(transmitted_preamble, normalized_cfo, snr_db, rx_filter)
 
             features = extract_lag_summary(received_preamble, preamble, max_lag)
             tensor_in = torch.from_numpy(features.astype(np.float32)).unsqueeze(0).to(device)
@@ -326,11 +333,13 @@ if __name__ == "__main__":
             # --- RUN SWEEPS ---
 
             if cfg.SNR_SWEEP:
-                errors_vs_max_lag = snr_sweep(cfg.NORMALIZED_CFO, transmitted_preamble, preamble, weights)
+                random_cfo = np.random.uniform(-cfg.MAX_CFO, cfg.MAX_CFO)
+                errors_vs_max_lag = snr_sweep(random_cfo, transmitted_preamble, preamble, weights)
                 snr_sweep_error_sum = [[snr_sweep_error_sum[i][j] + errors_vs_max_lag[i][j] for j in range(len(cfg.SNR))] for i in range(len(cfg.MAX_LAG))] 
 
             if cfg.CFO_SWEEP:
-                results = CFO_sweep(transmitted_preamble, preamble, weights)
+                random_snr = np.random.uniform(cfg.MIN_SNR, cfg.MAX_SNR)
+                results = CFO_sweep(transmitted_preamble, preamble, weights, random_snr)
                 cfo_sweep_error_sum = [[cfo_sweep_error_sum[i][j] + results[i][j] for j in range(len(cfg.CFO))] for i in range(len(cfg.MAX_LAG))] 
 
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -342,7 +351,8 @@ if __name__ == "__main__":
                     model.load_state_dict(torch.load(save_path, map_location=device))
                     model.eval()
                     
-                    nn_errors_vs_max_lag = snr_sweep_nn(cfg.NORMALIZED_CFO, transmitted_preamble, preamble, model, max_lag) 
+                    random_cfo = np.random.uniform(-cfg.MAX_CFO, cfg.MAX_CFO)
+                    nn_errors_vs_max_lag = snr_sweep_nn(random_cfo, transmitted_preamble, preamble, model, max_lag) 
                     
                     nn_snr_sweep_error_sum[i] = [
                         nn_snr_sweep_error_sum[i][k] + nn_errors_vs_max_lag[k] 
@@ -356,7 +366,8 @@ if __name__ == "__main__":
                     model.load_state_dict(torch.load(save_path, map_location=device))
                     model.eval()
 
-                    nn_results_vs_cfo = cfo_sweep_nn(transmitted_preamble, preamble, model, max_lag)
+                    random_snr = np.random.uniform(cfg.MIN_SNR, cfg.MAX_SNR)
+                    nn_results_vs_cfo = cfo_sweep_nn(transmitted_preamble, preamble, model, max_lag, random_snr)
 
                     nn_cfo_sweep_sum[i] = [
                         nn_cfo_sweep_sum[i][k] + nn_results_vs_cfo[k]
