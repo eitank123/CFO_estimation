@@ -16,13 +16,17 @@ def plot_mse(mse_results, crb_results):
     # Define a set of markers/colors for distinct visual styling per lag
     markers = ['o', 's', '^', 'd', 'v', 'p', '*', 'x']
     colors = plt.cm.viridis(np.linspace(0, 0.85, len(mse_results)))
-
+    counter = 0
     # Plot empirical MSE for each lag N
     for i, mse_row in enumerate(mse_results):
         try:
             lag_label = f'Estimator MSE (N={cfg.MAX_LAG[i]})'
         except IndexError:
-            lag_label = f'NN estimator (N={cfg.MAX_PHASES[i-len(cfg.MAX_LAG)]})'
+            if counter == 0:
+                lag_label = f'Hybrid NN estimator'
+                counter += 1
+            else:
+                lag_label = f'Pure NN model'
         marker = markers[i % len(markers)]
         
         plt.semilogy(
