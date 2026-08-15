@@ -11,7 +11,7 @@ TARGET_SNR = -6  # Target SNR for single-point testing
 HISTOGRAM_TARGET_SNR = [2]  # SNR values to plot in the comparison histogram
 IS_BPSK = False
 
-ITERATIONS = 3000
+ITERATIONS = 500
 qpsk_normalized = 1 / np.sqrt(2)
 BIT_MAPPING_QPSK = {
     (0, 0): qpsk_normalized * (1 + 1j),
@@ -41,7 +41,7 @@ MSE_MULTIPLIER = 1500
 SNR_WEIGHT_FACTOR = 0.5
 
 MAX_PHASES = [64]
-NN_models = [f"best_cfo_model_L{i}.pth" for i in MAX_PHASES]
+NN_models = [f"unified_hybrid_cfo_model.pth"]
 
 SNR_SWEEP = True
 CFO_SWEEP = False

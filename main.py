@@ -402,7 +402,7 @@ if __name__ == "__main__":
                     
                     nn_errors_vs_max_lag = snr_sweep_nn(random_cfo, transmitted_preamble, preamble, model, max_lag) 
                     
-                    nn_snr_sweep_error_sum[i+1] += [
+                    nn_snr_sweep_error_sum[i+1] = [
                         nn_snr_sweep_error_sum[i+1][k] + nn_errors_vs_max_lag[k] 
                         for k in range(len(cfg.SNR))
                     ]
