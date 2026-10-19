@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import paths
 import config as cfg
 import numpy as np
 
@@ -56,7 +57,7 @@ def plot_mse(mse_results, crb_results):
     plt.legend()
     plt.tight_layout()
     
-    plt.savefig("mse.png", dpi=300, bbox_inches="tight")
+    plt.savefig(paths.plot("mse.png"), dpi=300, bbox_inches="tight")
     plt.close()
 
 def plot_cfo_sweep(cfo_results, true_cfo_values=cfg.CFO):
@@ -76,14 +77,18 @@ def plot_cfo_sweep(cfo_results, true_cfo_values=cfg.CFO):
     # Define a set of markers/colors for distinct visual styling per lag
     markers = ['o', 's', '^', 'd', 'v', 'p', '*', 'x']
     colors = plt.cm.viridis(np.linspace(0, 0.85, len(results_matrix)))
-
+    counter = 0
     # Plot estimated CFO for each lag N (or single curve if 1D)
     for i, cfo_row in enumerate(results_matrix):
         try:
-            label = f'Estimated CFO (N={cfg.MAX_LAG[i]})'
+            label = f'M&M estimate (N={cfg.MAX_LAG[i]})'
         except IndexError:
-            label = f'NN estimator (N={cfg.MAX_PHASES[i-len(cfg.MAX_LAG)]})'
-            
+            if counter == 0:
+                label = f'Hybrid NN estimator'
+                counter += 1
+            else:
+                label = f'Pure NN model'
+
         marker = markers[i % len(markers)]
 
         plt.plot(
@@ -105,14 +110,15 @@ def plot_cfo_sweep(cfo_results, true_cfo_values=cfg.CFO):
         label='Ideal (f_hat = f_true)'
     )
 
-    plt.title('CFO Estimation Performance vs. Normalized CFO (SNR = {} dB)'.format(cfg.TARGET_SNR))
+    # main.py draws a new SNR ~ U[MIN_SNR, MAX_SNR] for every iteration of the CFO sweep
+    plt.title('Mean CFO estimate vs. normalized CFO (SNR ~ U[{}, {}] dB)'.format(cfg.MIN_SNR, cfg.MAX_SNR))
     plt.xlabel('Normalized CFO (f_off / f_s)')
     plt.ylabel('Estimated Normalized CFO (f_hat)')
     plt.grid(True, linestyle=':', alpha=0.6)
     plt.legend()
     plt.tight_layout()
     
-    plt.savefig("cfo_performance.png", dpi=300, bbox_inches="tight")
+    plt.savefig(paths.plot("cfo_performance.png"), dpi=300, bbox_inches="tight")
     plt.close()
 
 def plot_loss_curves(train_loss: list, val_loss: list, title: str = "Training & Validation Loss"):
@@ -146,7 +152,7 @@ def plot_loss_curves(train_loss: list, val_loss: list, title: str = "Training & 
     plt.legend(fontsize=11, loc='upper right')
     plt.tight_layout()
     
-    plt.savefig("loss_performance.png", dpi=300, bbox_inches="tight")
+    plt.savefig(paths.plot("loss_performance.png"), dpi=300, bbox_inches="tight")
     plt.close()
 
 
@@ -219,5 +225,71 @@ def plot_mse_comparison(nn_mse, mm_mse, snr_values=None):
         ])
         plt.tight_layout()
 
-        plt.savefig(f"mse_comparison_SNR={snr_db}.png", dpi=300, bbox_inches="tight")
+        plt.savefig(paths.plot(f"mse_comparison_SNR={snr_db}.png"), dpi=300, bbox_inches="tight")
         plt.close()
+
+def plot_error_histogram(error_samples, model_names, true_cfo, snr_db, max_error=None, num_bins=300):
+    """
+    Plot the probability distribution of CFO estimation error with 
+    symmetric bins centered around zero and outlier cutoff.
+
+    Parameters
+    ----------
+    error_samples : list of array-like
+        Each element contains the CFO errors (signed or absolute) for one model.
+    model_names : list of str
+        Names corresponding to each model.
+    true_cfo : float
+        True CFO used in the experiment.
+    snr_db : float
+        SNR used in the experiment.
+    max_error : float, optional
+        Threshold to trim severe outliers. If None, it defaults to the 99th percentile 
+        across all models to automatically prevent huge outliers from squishing the plot.
+    num_bins : int, optional
+        Total number of bins (default: 60, giving 30 negative and 30 positive bins).
+    """
+
+    # 1. Determine outlier cutoff threshold if not explicitly provided
+    if max_error is None:
+        all_errors = np.concatenate([np.abs(np.asarray(e, dtype=float)) for e in error_samples])
+        max_error = np.percentile(all_errors, 99)  # Cut off top 1% outliers dynamically
+
+    # 2. Define explicit, symmetric bins centered around 0
+    # For num_bins=60, this creates exactly 30 bins < 0 and 30 bins > 0
+    bins = np.linspace(-max_error, max_error, num_bins + 1)
+
+    plt.figure(figsize=(10, 6))
+
+    for errors, name in zip(error_samples, model_names):
+        errors = np.asarray(errors, dtype=float)
+
+        # 3. Filter out values beyond the max_error threshold
+        filtered_errors = errors[np.abs(errors) <= max_error]
+
+        plt.hist(
+            filtered_errors,
+            bins=bins,
+            density=True,
+            alpha=0.5,
+            label=name
+        )
+
+    plt.xlabel(r'CFO Error $(\hat{f}-f)$')
+    plt.ylabel('Probability Density')
+    plt.title(
+        f'CFO Error Distribution '
+        f'(CFO = {true_cfo}, SNR = {snr_db} dB)'
+    )
+    plt.xlim(-max_error, max_error)
+    plt.grid(True, axis='y', linestyle=':', alpha=0.6)
+    plt.legend()
+    plt.tight_layout()
+
+    plt.savefig(
+        paths.plot(f"error_histogram_CFO={true_cfo}_SNR={snr_db}.png"),
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+    plt.close()

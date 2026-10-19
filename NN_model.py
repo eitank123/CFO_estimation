@@ -1,4 +1,5 @@
 import numpy as np
+import paths
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -775,8 +776,8 @@ def train_cfo_model(
     best_full_range_mses = {str(lag): float("inf") for lag in num_lags_list}
     best_low_snr_mses = {str(lag): float("inf") for lag in num_lags_list}
 
-    full_model_paths = {str(lag): f"best_cfo_model_L{lag}.pth" for lag in num_lags_list}
-    low_model_paths = {str(lag): f"best_cfo_model_low_L{lag}.pth" for lag in num_lags_list}
+    full_model_paths = {str(lag): paths.model(f"best_cfo_model_L{lag}.pth") for lag in num_lags_list}
+    low_model_paths = {str(lag): paths.model(f"best_cfo_model_low_L{lag}.pth") for lag in num_lags_list}
 
     # -------------------------------------------------------------
     # Curriculum Execution
@@ -1042,7 +1043,7 @@ def train_cfo_model(
     # Save Final Stage Weights
     # =================================================================
 
-    final_model_paths = {str(lag): f"final_cfo_model_L{lag}.pth" for lag in num_lags_list}
+    final_model_paths = {str(lag): paths.model(f"final_cfo_model_L{lag}.pth") for lag in num_lags_list}
 
     for str_l, model in models.items():
         torch.save(model.state_dict(), final_model_paths[str_l])

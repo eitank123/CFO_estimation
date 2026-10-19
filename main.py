@@ -1,12 +1,21 @@
 import config as cfg
+import paths
 import numpy as np
-from plots import plot_mse, plot_cfo_sweep, plot_loss_curves, plot_mse_comparison
+from plots import (
+    plot_mse,
+    plot_cfo_sweep,
+    plot_loss_curves,
+    plot_mse_comparison,
+    plot_error_histogram
+)
 from NN_model import DenseCFOEstimator, train_cfo_model, extract_lag_summary
 import torch
 import channel
 from Hybrid import UnifiedHybridCFOEstimator
 
 #np.random.seed(10)
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def add_frequency_offset(self, signal, freq_offset, sample_rate=8):
     if freq_offset == 0:
@@ -122,13 +131,15 @@ def apply_awgn(signal, snr_db, sps=cfg.SPS):
 
     snr_linear = 10 ** (snr_db / 10)
 
-    # Average power per sample after upsampling/filtering
-    sig_power = np.mean(np.abs(signal)**2)
+    # Energy per symbol. The full-convolution output carries K symbols in
+    # K*sps + FILTER_SPAN*sps samples; averaging power over all samples
+    # (including the filter tails) would under-estimate Es and make the
+    # effective SNR higher than requested (+0.32 dB for a 128-symbol preamble).
+    n_symbols = (len(signal) - cfg.FILTER_SPAN * sps) / sps
+    es = np.sum(np.abs(signal)**2) / n_symbols
 
-    # Convert Es/N0 to sample-domain noise power:
-    # Es = sig_power * sps
-    # N0 = Es / (Es/N0)
-    noise_power = sig_power * sps / snr_linear
+    # Sample-domain noise power: N0 = Es / (Es/N0)
+    noise_power = es / snr_linear
 
     # Complex Gaussian noise: half power in I and half in Q
     noise_std = np.sqrt(noise_power / 2)
@@ -285,8 +296,6 @@ def cfo_sweep_hybrid(transmitted_preamble, preamble, estimator, snr_db=None):
     return results
 
 def snr_sweep_nn(normalized_cfo, transmitted_preamble, preamble, model, max_lag):
-    model.eval()
-    device = next(model.parameters()).device
     rx_filter = channel.rrc_design(cfg.BETA, cfg.SPS, cfg.FILTER_SPAN)
 
     with torch.no_grad():
@@ -307,8 +316,6 @@ def snr_sweep_nn(normalized_cfo, transmitted_preamble, preamble, model, max_lag)
     return base_errors
 
 def cfo_sweep_nn(transmitted_preamble, preamble, model, max_lag, snr_db=None):
-    model.eval()
-    device = next(model.parameters()).device
     rx_filter = channel.rrc_design(cfg.BETA, cfg.SPS, cfg.FILTER_SPAN)
     snr_db = cfg.TARGET_SNR if snr_db is None else snr_db
 
@@ -340,16 +347,38 @@ if __name__ == "__main__":
     snr_sweep_error_sum = [[0 for i in range(len(cfg.SNR))] for _ in range(len(cfg.MAX_LAG))]  # Initialize error sum for each SNR
     cfo_sweep_error_sum = [[0 for i in range(len(cfg.CFO))] for _ in range(len(cfg.MAX_LAG))]  # Initialize error sum for each CFO
     nn_snr_sweep_error_sum = [[0 for _ in range(len(cfg.SNR))] for _ in range(len(cfg.NN_models)+1)]
-    nn_cfo_sweep_sum = [[0 for _ in range(len(cfg.CFO))] for _ in range(len(cfg.NN_models))]
+    nn_cfo_sweep_sum = [[0 for _ in range(len(cfg.CFO))] for _ in range(len(cfg.NN_models)+1)]
     training_dataset = []
     weights = []
-    
+
+    HIST_CFO = 0.14
+    HIST_SNR = -4
+
+    mm_hist_errors = []
+    nn_hist_errors = [
+        [] for _ in range(len(cfg.NN_models))
+    ]
+    hybrid_hist_errors = []
+
+    training_dataset = []
+    weights = []
     for lag in cfg.MAX_LAG:
         m = np.arange(1, lag + 1)
         w = smoothing_function(correlation_lag=m, max_lag=lag, window_size=cfg.PREAMBLE_LENGTH)
         weights.append(w)
         
     if not cfg.TRAIN_NN:
+        # Load the estimators once (they were re-loaded from disk on every iteration)
+        estimator = None
+        nn_models = []
+        if cfg.EVALUATE_NN or cfg.EVALUATE_NN_CFO:
+            estimator = UnifiedHybridCFOEstimator(checkpoint_path=paths.model("unified_hybrid_cfo_model.pth"))
+            for i, save_path in enumerate(cfg.NN_models):
+                model = DenseCFOEstimator(max_lag=cfg.MAX_PHASES[i]).to(device)
+                model.load_state_dict(torch.load(save_path, map_location=device))
+                model.eval()
+                nn_models.append(model)
+
         for iter in range(cfg.ITERATIONS):
             if iter % 100 == 0:
                 print(f"Iteration {iter}/{cfg.ITERATIONS}")
@@ -373,18 +402,29 @@ if __name__ == "__main__":
                 random_snr = np.random.uniform(cfg.MIN_SNR, cfg.MAX_SNR)
                 results = CFO_sweep(transmitted_preamble, preamble, weights, random_snr)
                 cfo_sweep_error_sum = [[cfo_sweep_error_sum[i][j] + results[i][j] for j in range(len(cfg.CFO))] for i in range(len(cfg.MAX_LAG))] 
+                # ------------------------------------------------------------
+                # Histogram experiment: M&M at CFO=0.02, SNR=-4 dB
+                # ------------------------------------------------------------
 
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                mm_results_hist = CFO_sweep(
+                    transmitted_preamble,
+                    preamble,
+                    weights,
+                    HIST_SNR
+                )
+
+                cfo_index = cfg.CFO.index(HIST_CFO)
+
+                # Use the last M&M lag, same convention as your previous plot
+                mm_estimate = mm_results_hist[-1][cfo_index]
+
+                mm_error = HIST_CFO - mm_estimate
+
+                mm_hist_errors.append(mm_error)
 
             if cfg.EVALUATE_NN:
-                for i, save_path in enumerate(cfg.NN_models):
+                for i, model in enumerate(nn_models):
                     max_lag = cfg.MAX_PHASES[i]
-
-                    # 1. Load the unified estimator wrapper
-                    estimator = UnifiedHybridCFOEstimator(
-                        checkpoint_path="unified_hybrid_cfo_model.pth", 
-                        setup_name="A"
-                    )
 
                     random_cfo = np.random.uniform(-cfg.MAX_CFO, cfg.MAX_CFO)
 
@@ -395,11 +435,7 @@ if __name__ == "__main__":
                         nn_snr_sweep_error_sum[i][k] + nn_errors_vs_max_lag[k] 
                         for k in range(len(cfg.SNR))
                     ]
-                    
-                    model = DenseCFOEstimator(max_lag=max_lag)
-                    model.load_state_dict(torch.load(save_path, map_location=device))
-                    model.eval()
-                    
+
                     nn_errors_vs_max_lag = snr_sweep_nn(random_cfo, transmitted_preamble, preamble, model, max_lag) 
                     
                     nn_snr_sweep_error_sum[i+1] = [
@@ -408,14 +444,8 @@ if __name__ == "__main__":
                     ]
                     
             if cfg.EVALUATE_NN_CFO:
-                for i, save_path in enumerate(cfg.NN_models):
+                for i, model in enumerate(nn_models):
                     max_lag = cfg.MAX_PHASES[i]
-
-                    # 1. Load the unified estimator wrapper
-                    estimator = UnifiedHybridCFOEstimator(
-                        checkpoint_path="unified_hybrid_cfo_model.pth", 
-                        setup_name="A"
-                    )
 
                     random_snr = np.random.uniform(cfg.MIN_SNR, cfg.MAX_SNR)
 
@@ -426,6 +456,25 @@ if __name__ == "__main__":
                         nn_cfo_sweep_sum[i][k] + nn_results_vs_cfo[k]
                         for k in range(len(cfg.CFO))
                     ]
+
+                    nn_errors_vs_max_lag = cfo_sweep_nn(transmitted_preamble, preamble, model, max_lag, random_snr) 
+                                        
+                    nn_cfo_sweep_sum[i+1] = [nn_cfo_sweep_sum[i+1][k] + nn_errors_vs_max_lag[k] for k in range(len(cfg.CFO))]
+
+                    hist_cfo_index = cfg.CFO.index(HIST_CFO)
+
+                    hybrid_hist_estimate = cfo_sweep_hybrid(
+                        transmitted_preamble,
+                        preamble,
+                        estimator,
+                        HIST_SNR
+                    )
+
+                    hybrid_estimate = hybrid_hist_estimate[hist_cfo_index]
+
+                    hybrid_error = HIST_CFO - hybrid_estimate
+
+                    hybrid_hist_errors.append(hybrid_error)
 
     else:
         model, train_loss_history, val_loss_history = train_cfo_model(
@@ -468,3 +517,20 @@ if __name__ == "__main__":
         ]
         nn_results = cfo_mean_results + nn_results
         plot_cfo_sweep(nn_results)
+
+        error_samples = [
+        mm_hist_errors,
+        hybrid_hist_errors
+        ]
+
+        model_names = [
+            f'M&M N={cfg.MAX_LAG[-1]}',
+            'Hybrid'
+        ]
+
+        plot_error_histogram(
+            error_samples,
+            model_names,
+            HIST_CFO,
+            HIST_SNR
+        )
