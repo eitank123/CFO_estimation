@@ -4,11 +4,10 @@ __pycache__/
 progress.txt
 *.progress
 
-# Simulation outputs stay out of git (models are kept: models/, <study>/models/, multipath/results_*/*.pth)
+# Simulation outputs stay out of git; models (*.pth) and plots (*.png) are kept
 *.out
 *.npy
 *.npz
-*.png
 logs/
 */logs/
 docs/
