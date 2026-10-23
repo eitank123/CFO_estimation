@@ -64,13 +64,17 @@ def push(paths):
 
 
 def submit(job, cmd, cpu, mem, study=""):
-    logs = f"{study}/logs" if study else "logs"                # a study keeps its job output too (paths.py)
-    script = (f"#!/bin/bash\n# Submitted by multipath/cluster.py\ncd {REMOTE}\n"
-              f"export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MPLBACKEND=Agg\n"
-              + (f"export CFO_STUDY={study}\n" if study else "") +
-              f"{PYTHON} -u {cmd} > {logs}/run_{job}.out 2>&1\n")
-    sh = f"{REMOTE}/jobs/run_{job}.sh"
-    ssh(f"mkdir -p {REMOTE}/jobs {REMOTE}/{logs} && cat > {sh} && chmod +x {sh}", data=script.encode())
+    if cmd.startswith("@"):                  # "@jobs/chain_x.sh": a bash script already pushed to the project
+        sh = f"{REMOTE}/{cmd[1:]}"
+        ssh(f"test -f {sh} && chmod +x {sh}")
+    else:
+        logs = f"{study}/logs" if study else "logs"                # a study keeps its job output too (paths.py)
+        script = (f"#!/bin/bash\n# Submitted by multipath/cluster.py\ncd {REMOTE}\n"
+                  f"export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MPLBACKEND=Agg\n"
+                  + (f"export CFO_STUDY={study}\n" if study else "") +
+                  f"{PYTHON} -u {cmd} > {logs}/run_{job}.out 2>&1\n")
+        sh = f"{REMOTE}/jobs/run_{job}.sh"
+        ssh(f"mkdir -p {REMOTE}/jobs {REMOTE}/{logs} && cat > {sh} && chmod +x {sh}", data=script.encode())
     if status(job) != "not found":
         raise RuntimeError(f"a Run:ai job named {job} already exists; use a new name")
     out = ssh(f'runai-bgu submit python -n {job} -c {cpu} -m {mem} -- "bash {sh}" 2>&1')

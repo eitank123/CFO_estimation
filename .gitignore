@@ -8,6 +8,21 @@ progress.txt
 *.out
 *.npy
 *.npz
-logs/
+logs/*
 */logs/
 docs/
+
+# ... except the merged results (small) and the JSON summaries; per-job part files and job logs stay out
+!logs/*.json
+!polar_results_ebn0.npy
+!polar_results_error.npy
+!polar_results_ebn0_chain.npy
+!polar_results_error_chain.npy
+!polar_results_ebn0_chain_L128.npy
+!polar_results_ebn0_chain_L256.npy
+!polar_results_error_chain_L256.npy
+!polar_results_ebn0_chain_L1024.npy
+!polar_results_error_chain_L1024_err1024.npy
+!cfo_results.npy
+!cfo_v2_results.npy
+!coarse_eval.npy

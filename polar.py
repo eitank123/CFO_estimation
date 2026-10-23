@@ -88,9 +88,10 @@ class PolarCode:
         # Trace every surviving path back through the parent pointers
         info = np.empty((B, Ls, self.K), dtype=np.uint8)
         path = np.broadcast_to(np.arange(Ls), (B, Ls))
+        rows = np.arange(B)[:, None]
         for k in range(self.K - 1, -1, -1):
-            info[:, :, k] = np.take_along_axis(self._bits[k], path, axis=1)
-            path = np.take_along_axis(self._parents[k], path, axis=1)
+            info[:, :, k] = self._bits[k][rows, path]
+            path = self._parents[k][rows, path]
         data, crc = info[..., :self.A], info[..., self.A:]
         ok = np.all(self.crc(data.reshape(-1, self.A)).reshape(B, Ls, self.C) == crc, axis=2)
         score = np.where(ok, self._pm, np.inf)
@@ -117,7 +118,7 @@ class PolarCode:
         beta_r, p2 = self._rec(b + np.where(beta_l, -a, a), mid, hi)             # g
         if p2 is not None:
             beta_l = _gather(beta_l, p2)
-        perm = p1 if p2 is None else (p2 if p1 is None else np.take_along_axis(p1, p2, axis=1))
+        perm = p1 if p2 is None else (p2 if p1 is None else _gather(p1, p2))
         return np.concatenate([beta_l ^ beta_r, beta_r], axis=2), perm
 
     def _leaf(self, llr, i):
@@ -130,7 +131,7 @@ class PolarCode:
                                self._pm + np.logaddexp(zero, llr)], 1)  # u_i = 1
         keep = np.argpartition(cand, Ls - 1, axis=1)[:, :Ls]
         parent, bit = keep % Ls, (keep // Ls).astype(np.uint8)
-        self._pm = np.take_along_axis(cand, keep, axis=1)
+        self._pm = cand[np.arange(len(cand))[:, None], keep]
         self._bits.append(bit)
         self._parents.append(parent)
         return bit[..., None], parent
@@ -149,5 +150,6 @@ def polar_transform(u):
 
 
 def _gather(arr, perm):
-    """arr (B, Ls, ...) re-ordered along the path axis by perm (B, Ls)."""
-    return np.take_along_axis(arr, perm.reshape(perm.shape + (1,) * (arr.ndim - 2)), axis=1)
+    """arr (B, Ls, ...) re-ordered along the path axis by perm (B, Ls). Plain fancy indexing: the same values as
+    np.take_along_axis, with less overhead."""
+    return arr[np.arange(perm.shape[0])[:, None], perm]

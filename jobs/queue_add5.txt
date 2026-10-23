@@ -1,0 +1,8 @@
+add5-a|-|@jobs/add5-a.sh
+add5-b|-|@jobs/add5-b.sh
+add5-c|-|@jobs/add5-c.sh
+add5-d|-|@jobs/add5-d.sh
+add5-e|-|@jobs/add5-e.sh
+add5-f|-|@jobs/add5-f.sh
+add5-g|-|@jobs/add5-g.sh
+add5-h|-|@jobs/add5-h.sh

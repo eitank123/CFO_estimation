@@ -94,7 +94,205 @@ for _st in ("est256", "packet256"):    # 256-symbol studies: own folders <study>
                                             _lg(f"polar_ebn0{_sfx}_{_st}-eb-{_r}-{_s}.progress")))
         JOBS[f"{_st}_err_{_r}"] = (f"{_st}: CFO error {_r}", "polar",
                                    ("error", _lg(f"run_{_st}-err-{_r}.out"), _lg(f"polar_error{_sfx}_{_st}-err-{_r}.progress")))
+for _r in ("r0025", "r005", "r0075", "r01", "r015", "r02", "r033", "r075"):   # low-rate study (CFO_STUDY=lowrate)
+    for _s in ("genie", "nn", "mm"):
+        JOBS[f"lr_{_r}_{_s}"] = (f"lowrate: BLER vs SNR {_r} {_s}", "polar",
+                                 ("ebn0", os.path.join("lowrate", "logs", f"run_lr-{_r}-{_s}.out"),
+                                  os.path.join("lowrate", "logs", f"polar_ebn0_lr-{_r}-{_s}.progress")))
+for _r in ("r0025", "r005", "r0075", "r01", "r015", "r02", "r025", "r033", "r05", "r075"):   # lowrate: CRB + CRC search
+    for _s in ("crb", "srch"):
+        JOBS[f"lr2_{_r}_{_s}"] = (f"lowrate: {_r} {'CRB bound' if _s == 'crb' else 'NN + CRC search'}", "polar",
+                                  ("ebn0", os.path.join("lowrate", "logs", f"run_lr2-{_r}-{_s}.out"),
+                                   os.path.join("lowrate", "logs", f"polar_ebn0_lr2-{_r}-{_s}.progress")))
+for _n, _sfx in (   # lowrate: CRC length and packet length (polar_ber_experiment.py --tag <name>)
+    ("lr3-p512-r0025-c11-srch", ""),
+    ("lr3-p512-r005-c11-srch", ""),
+    ("lr3-p512-r0075-c11-srch", ""),
+    ("lr3-p512-r01-c11-srch", ""),
+    ("lr3-p512-r0025-c16-srch", ""),
+    ("lr3-p512-r0025-c16-genie", ""),
+    ("lr3-p512-r005-c16-srch", ""),
+    ("lr3-p512-r005-c16-genie", ""),
+    ("lr3-p512-r0075-c16-srch", ""),
+    ("lr3-p512-r0075-c16-genie", ""),
+    ("lr3-p512-r01-c16-srch", ""),
+    ("lr3-p512-r01-c16-genie", ""),
+    ("lr3-p512-r0025-c24-srch", ""),
+    ("lr3-p512-r0025-c24-genie", ""),
+    ("lr3-p512-r005-c24-srch", ""),
+    ("lr3-p512-r005-c24-genie", ""),
+    ("lr3-p512-r0075-c24-srch", ""),
+    ("lr3-p512-r0075-c24-genie", ""),
+    ("lr3-p512-r01-c24-srch", ""),
+    ("lr3-p512-r01-c24-genie", ""),
+    ("lr7-p1024-nnsrch-m5", "_L1024"),
+    ("lr7-p1024-nnsrch-m4", "_L1024"),
+    ("lr7-p1024-nnsrch-m3", "_L1024"),
+    ("lr7-p1024-nnsrch-m2", "_L1024"),
+    ("lr7-p1024-nnsrch-m1", "_L1024"),
+    ("lr7-p1024-nnsrch-p0", "_L1024"),
+    ("lr7-p1024-mmsrch-m5", "_L1024"),
+    ("lr7-p1024-mmsrch-m4", "_L1024"),
+    ("lr7-p1024-mmsrch-m3", "_L1024"),
+    ("lr7-p1024-mmsrch-m2", "_L1024"),
+    ("lr7-p1024-mmsrch-m1", "_L1024"),
+    ("lr7-p1024-mmsrch-p0", "_L1024"),
+    ("lr7-p1024-mm-m5", "_L1024"),
+    ("lr7-p1024-mm-m2", "_L1024"),
+    ("add1-r005-mm-m2-m1", ""),
+    ("add1-r005-nns-m5-m4", ""),
+    ("add1-r005-nns-m3p5-m2p5", ""),
+    ("add1-r005-nns-m2-m1", ""),
+    ("add1-r01-mms-m3p5-m2p75", ""),
+    ("add1-r01-mms-m2p5-m1p75", ""),
+    ("add1-r01-mms-m1p5-m0p75", ""),
+    ("add1-r01-mms-m0p5-0", ""),
+    ("add1-r01-nns-m3-m2p25", ""),
+    ("add1-r01-nns-m2-m1p25", ""),
+    ("add1-r01-nns-m1-m0p5", ""),
+    ("add1-r01-nns-m0p25-0", ""),
+    ("add1-p1024-nns-m4p5-m4p5", "_L1024"),
+    ("add1-p1024-nns-m4-m4", "_L1024"),
+    ("add1-p1024-nns-m3p5-m3p5", "_L1024"),
+    ("add1-p1024-nns-m3-m3", "_L1024"),
+    ("add1-p1024-nns-m2p5-m2p5", "_L1024"),
+    ("add1-p1024-nns-m2-m2", "_L1024"),
+    ("add1-p1024-nns-m1p5-m1p5", "_L1024"),
+    ("add1-p1024-nns-m1-m1", "_L1024"),
+    ("add1-p1024-nns-m0p5-m0p5", "_L1024"),
+    ("add1-p1024-nns-0-0", "_L1024"),
+    ("lr11-p1024-r02-a", "_L1024"),
+    ("lr11-p1024-r02-b", "_L1024"),
+    ("lr11-p1024-r025-a", "_L1024"),
+    ("lr11-p1024-r025-b", "_L1024"),
+    ("lr11-p1024-r033-a", "_L1024"),
+    ("lr11-p1024-r033-b", "_L1024"),
+    ("lr11-p1024-r05-a", "_L1024"),
+    ("lr11-p1024-r05-b", "_L1024"),
+    ("lr11-p1024-r075-a", "_L1024"),
+    ("lr11-p1024-r075-b", "_L1024"),
+    ("add2-r01-mms-m1p75-m1p5", ""),
+    ("add2-r01-mms-m1p25-m1", ""),
+    ("add2-r01-mms-m0p75-m0p5", ""),
+    ("add2-r01-mms-m0p25-0", ""),
+    ("add2-r01-nns-m2-m1p75", ""),
+    ("add2-r01-nns-m1p5-m1p25", ""),
+    ("add2-r01-nns-m1-m0p75", ""),
+    ("add2-r01-nns-m0p5-m0p25", ""),
+    ("add2-r01-nns-0", ""),
+    ("add2-p1024-nns-m4", "_L1024"),
+    ("add2-p1024-nns-m3p5", "_L1024"),
+    ("add2-p1024-nns-m3", "_L1024"),
+    ("add2-p1024-nns-m2p5", "_L1024"),
+    ("add2-p1024-nns-m2", "_L1024"),
+    ("add2-p1024-nns-m1p5", "_L1024"),
+    ("add2-p1024-nns-m1", "_L1024"),
+    ("add2-p1024-nns-m0p5", "_L1024"),
+    ("add2-p1024-nns-0", "_L1024"),
+    ("add2-p1024-mms-m2p5", "_L1024"),
+    ("add2-p1024-mms-m2", "_L1024"),
+    ("add2-p1024-mms-m1p5", "_L1024"),
+    ("add2-p1024-mms-m1", "_L1024"),
+    ("add2-p1024-mms-m0p5", "_L1024"),
+    ("add2-p1024-mms-0", "_L1024"),
+    ("lr12-r01c16-mm-a", ""),
+    ("lr12-r01c16-mm-b", ""),
+    ("lr12-r01c16-mms-a", ""),
+    ("lr12-r01c16-mms-b", ""),
+    ("lr12-r01c16-mms-c", ""),
+    ("add2-r01c16-nns-m4", ""),
+    ("add2-r01c16-nns-m3p5", ""),
+    ("add2-r01c16-nns-m3", ""),
+    ("add2-r01c16-nns-m2p5", ""),
+    ("add2-r01c16-nns-m2", ""),
+    ("add2-r01c16-nns-m1p5-m1", ""),
+    ("add2-r01c16-nns-m0p5-0", ""),
+    ("lr3-p1024-r0025-c11-srch", "_L1024"),
+    ("lr3-p1024-r0025-c11-genie", "_L1024"),
+    ("lr3-p1024-r0025-c11-nn", "_L1024"),
+    ("lr3-p1024-r0025-c16-srch", "_L1024"),
+    ("lr3-p1024-r0025-c16-genie", "_L1024"),
+    ("lr3-p1024-r0025-c24-srch", "_L1024"),
+    ("lr3-p1024-r0025-c24-genie", "_L1024"),
+    ("lr3-p1024-r005-c11-srch", "_L1024"),
+    ("lr3-p1024-r005-c11-genie", "_L1024"),
+    ("lr3-p1024-r005-c11-nn", "_L1024"),
+    ("lr3-p1024-r005-c16-srch", "_L1024"),
+    ("lr3-p1024-r005-c16-genie", "_L1024"),
+    ("lr3-p1024-r005-c24-srch", "_L1024"),
+    ("lr3-p1024-r005-c24-genie", "_L1024"),
+    ("lr3-p1024-r0075-c11-srch", "_L1024"),
+    ("lr3-p1024-r0075-c11-genie", "_L1024"),
+    ("lr3-p1024-r0075-c11-nn", "_L1024"),
+    ("lr3-p1024-r0075-c16-srch", "_L1024"),
+    ("lr3-p1024-r0075-c16-genie", "_L1024"),
+    ("lr3-p1024-r0075-c24-srch", "_L1024"),
+    ("lr3-p1024-r0075-c24-genie", "_L1024"),
+    ("lr3-p1024-r01-c11-srch", "_L1024"),
+    ("lr3-p1024-r01-c11-genie", "_L1024"),
+    ("lr3-p1024-r01-c11-nn", "_L1024"),
+    ("lr3-p1024-r01-c16-srch", "_L1024"),
+    ("lr3-p1024-r01-c16-genie", "_L1024"),
+    ("lr3-p1024-r01-c24-srch", "_L1024"),
+    ("lr3-p1024-r01-c24-genie", "_L1024"),
+    ("lr3-p1024-r015-c11-srch", "_L1024"),
+    ("lr3-p1024-r015-c11-genie", "_L1024"),
+    ("lr3-p1024-r015-c11-nn", "_L1024"),
+    ("lr3-p1024-r015-c16-srch", "_L1024"),
+    ("lr3-p1024-r015-c16-genie", "_L1024"),
+    ("lr3-p1024-r015-c24-srch", "_L1024"),
+    ("lr3-p1024-r015-c24-genie", "_L1024"),
+):
+    JOBS[_n.replace("-", "_")] = (f"lowrate: {_n[4:]}", "polar", ("ebn0", os.path.join("lowrate", "logs", f"run_{_n}.out"), os.path.join("lowrate", "logs", f"polar_ebn0{_sfx}_{_n}.progress")))
+for _n in ("lr4-r01-mmsrch", "lr4-r015-mmsrch", "lr5-r01-first", "lr5-r01-half",
+           "lr10-r015-fine", "lr10-r02-fine", "lr10-r033-fine", "lr10-r075-fine",
+           "lr9-r01-mmsrch-m5", "lr9-r01-mmsrch-m375", "lr9-r01-mmsrch-m25", "lr9-r01-mmsrch-m125",
+           "lr8-r005-mmsrch-m5", "lr8-r005-mmsrch-m3", "lr8-r005-nnsrch-m5", "lr8-r005-nnsrch-m3", "lr8-r005-mm-m5", "lr8-r005-mm-m3", "lr8-r005-genie-m5", "lr8-r005-genie-m3",
+           "lr6-full-m5", "lr6-full-m375", "lr6-full-m25", "lr6-full-m125", "lr6-first-m5", "lr6-first-m375", "lr6-first-m25", "lr6-first-m125", "lr6-half-m5", "lr6-half-m375", "lr6-half-m25", "lr6-half-m125", "lr6-mm-m5", "lr6-mm-m25", "lr6-genie-m5", "lr6-genie-m25"):   # lowrate: search variants
+    JOBS[_n.replace("-", "_")] = (f"lowrate: {_n[4:]}", "polar", ("ebn0", os.path.join("lowrate", "logs", f"run_{_n}.out"), os.path.join("lowrate", "logs", f"polar_ebn0_{_n}.progress")))
+for _n, _sfx in (("fp-p512c11-v2", ""), ("fp-p512c11-mm", ""), ("fp-p512c16-v2", ""), ("fp-p512c16-nn", ""),
+                 ("fp-p512c16-mm", ""), ("fp-p1024c16-v2", "_L1024"), ("fp-p1024c16-nn", "_L1024"),
+                 ("fp-p1024c16-mm", "_L1024")):   # lowrate: first-pass CRC search, NN v2 vs previous NN vs M&M
+    JOBS[_n.replace("-", "_")] = (f"lowrate: {_n[3:]} first pass", "polar", ("ebn0", os.path.join("lowrate", "logs", f"run_{_n}.out"), os.path.join("lowrate", "logs", f"polar_ebn0{_sfx}_{_n}.progress")))
+for _j in "abcdefgh":   # lowrate: extra frames for jittery BLER points (jobs/add3-<j>.sh, 16 lanes each)
+    JOBS[f"add3_{_j}"] = (f"Add-trials job {_j} (16 lanes)", "count", (f"run_add3-{_j}.out", f"add3-{_j}.progress"))
+for _j in "abcdefg":   # lowrate: NN v2 + CRC search (full search) BLER points (jobs/add4-<j>.sh, 16 lanes each)
+    JOBS[f"add4_{_j}"] = (f"NN v2 full search, job {_j} (16 lanes)", "count", (f"run_add4-{_j}.out", f"add4-{_j}.progress"))
+for _n, _sfx in (("sp1-p512c11", ""), ("sp1-p512c16", ""), ("sp1-p1024c16", "_L1024")):   # lowrate: split pilots, quick
+    JOBS[_n.replace("-", "_")] = (f"lowrate: split pilots {_n[4:]} (quick)", "polar", ("ebn0", os.path.join("lowrate", "logs", f"run_{_n}.out"), os.path.join("lowrate", "logs", f"polar_ebn0{_sfx}_{_n}.progress")))
+for _j in "abcdefgh":   # lowrate: split pilots (quarter) full search / first pass, NN v2 full search (jobs/add5-<j>.sh)
+    JOBS[f"add5_{_j}"] = (f"Split full / first + NN v2 full, job {_j}", "count", (f"run_add5-{_j}.out", f"add5-{_j}.progress"))
+for _j in "abcd":
+    JOBS[f"add8_{_j}"] = (f"Split-pilot NN full search, job {_j}", "count", (f"run_add8-{_j}.out", f"add8-{_j}.progress"))
+for _j in "abcde":
+    JOBS[f"add9_{_j}"] = (f"R=1/4 CRC-16, M&M / split NN, 0..10 dB, job {_j}", "count", (f"run_add9-{_j}.out", f"add9-{_j}.progress"))
+for _j in "abcdefgh":
+    JOBS[f"add10_{_j}"] = (f"R=1/4 CRC-16 top-up, job {_j}", "count", (f"run_add10-{_j}.out", f"add10-{_j}.progress"))
+for _j in "abcdefgh":
+    JOBS[f"add11_{_j}"] = (f"R=1/3 CRC-16, M&M / split NN, 0..10 dB, job {_j}", "count", (f"run_add11-{_j}.out", f"add11-{_j}.progress"))
+for _j in "abcdefgh":
+    JOBS[f"add12_{_j}"] = (f"R=1/2 CRC-16, M&M / split NN, 2..10 dB, job {_j}", "count", (f"run_add12-{_j}.out", f"add12-{_j}.progress"))
+for _j in "abc":
+    JOBS[f"outs_{_j}"] = (f"CFO outage, split NN vs M&M, part {_j}", "count", (f"run_outs-{_j}.out", f"cfo_outage_split_{_j}.progress"))
+JOBS["add7_a"] =("Split-pilot NN BLER, 1024 CRC-16 (16 lanes)", "count", ("run_add7-a.out", "add7-a.progress"))
+JOBS["err1024"] =("BLER vs CFO error, 1024 symbols, CRC-16", "polar", ("error", os.path.join("lowrate", "logs", "run_err1024.out"), os.path.join("lowrate", "logs", "polar_error_L1024_err1024.progress")))
+for _j in "ab":
+    JOBS[f"add6_{_j}"] =(f"Genie top-up, job {_j} (16 lanes)", "count", (f"run_add6-{_j}.out", f"add6-{_j}.progress"))
+for _L in (512, 1024):
+    for _i in ("dft", "rand"):
+        JOBS[f"snn_{_L}_{_i}"] = (f"Split-pilot NN L={_L} {_i} (train + test)", "train", (f"run_snn-{_L}-{_i}.out",))
+for _t in ("wide", "conv", "convlobe", "mlplobe", "convlobe-long"):
+    JOBS["snn2_" + _t.replace("-", "_")] = (f"Split-pilot NN L=1024 {_t}", "train", (f"run_snn2-{_t}.out",))
+JOBS["cfo_split_mse"] =("CFO MSE of the split pilots (512 / 1024)", "train", ("run_cfo-split-mse.out",))
 JOBS["cfo_outage"] =("CFO outage, SNR-aware NN vs M&M", "count", ("run_cfo-outage.out", "cfo_outage.progress"))
+JOBS["nn2_lag128"] = ("CFO NN v2 lag128 (train + test)", "train", ("run_nn2-lag128.out",))
+JOBS["nn2_lag64"] = ("CFO NN v2 lag64 (train + test)", "train", ("run_nn2-lag64.out",))
+JOBS["nn2_light64"] = ("CFO NN v2 light64 (train + test)", "train", ("run_nn2-light64.out",))
+JOBS["nn2_light32"] = ("CFO NN v2 light32 (train + test)", "train", ("run_nn2-light32.out",))
+JOBS["nn2_light16"] = ("CFO NN v2 light16 (train + test)", "train", ("run_nn2-light16.out",))
+JOBS["chain_a"] = ("Chain A on the cluster (12 x 1024-symbol points + CRC-16 M&M search)", "count", ("run_chain-a.out", "chain-a.progress"))
+JOBS["chain_b"] = ("Chain B on the cluster (CRC-16 NN-search extra frames)", "count", ("run_chain-b.out", "chain-b.progress"))
+JOBS["chain_c"] = ("Chain C on the cluster (NN v2 light64/32/16 training)", "count", ("run_chain-c.out", "chain-c.progress"))
 JOBS["snr_chain"] =("SNR-aware NN retraining (full chain)", "train", ("run_snr-chain.out",))
 JOBS["mp_v2_eval"] =("MP-NN evaluation", "train", (os.path.join("multipath", "results_multipath", "run_v2_eval.log"),))
 for _i in range(8):   # Stage 1 split over up to 8 Run:ai jobs (zero_overhead_rx.py --parts N --part i)

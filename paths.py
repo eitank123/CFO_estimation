@@ -26,6 +26,9 @@ JOBS, DOCS = os.path.join(ROOT, "jobs"), os.path.join(ROOT, "docs")
 
 # first match wins: (folder, substrings of the file name)
 PLOT_KINDS = [
+    ("adaptive_rate", ("adaptive",)),
+    ("operating_points", ("operating_points",)),
+    ("complexity", ("complexity",)),
     ("bler", ("bler",)),
     ("outage", ("outage",)),
     ("training", ("training", "loss_")),

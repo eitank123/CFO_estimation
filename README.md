@@ -30,6 +30,10 @@ Part A, so the switch back is instant. Those AWGN runs are reported in Part A an
 * **Multipath (Part B).** Data-aided estimators that ignore the channel lose a lot; the joint CFO + taps
   ML (MP-ML) restores them at 3× the cost of ML, and an NN adds nothing over it. The blind
   zero-overhead receiver hits a **BLER floor of ≈ 0.45**, because the 4th-power estimate fails under ISI.
+* **Low rates, SNR axis (A.9, study `lowrate/`).** With the CFO estimated on 128 known symbols, NN and M&M cannot
+  reach BLER 1e-2 below −3.7 dB at any rate: the 128-symbol CRB itself is too large there. An **NN + CRC search**
+  (re-decode on a CFO grid around the NN estimate when the CRC fails) reaches the known-CFO curve at every rate: BLER
+  < 1e-2 with R = 0.1 from −5 dB, 1/4 from −1.1 dB, 1/2 from 2.8 dB.
 * **Stage 3 neural coarse estimator (8 SPS).** It learns the CFO cell, which is impossible at symbol rate.
   But as the first block of the receiver it is **worse than the classical 4th power + CRC in both channels**:
   +1.2 dB at BLER 1e-2 in AWGN and a higher floor in multipath, at ≈ 500× the MACs of the 4th-power stage
@@ -54,11 +58,16 @@ and the scripts write there automatically (`paths.py`):
 | `plots/mse/` | CFO MSE and MSE/CRB plots |
 | `plots/outage/` | CFO outage probability |
 | `plots/training/` | training curves |
+| `plots/operating_points/` | highest code rate with BLER < 1e-2 vs SNR |
+| `tests/` | `python -m pytest tests -q` (run as a Run:ai job): low-rate study tests |
+| `lowrate/` | study A.9 (`CFO_STUDY=lowrate`): `results/`, `logs/`, `plots/bler/`, `plots/operating_points/`, `verification.txt` |
+| `est256/`, `packet256/` | the 256-symbol studies (same layout) |
 | `multipath/` | Part B, with its own `results_*` folders (unchanged) |
 
 | File | What it does |
 |---|---|
 | `paths.py` | Folder of every file type; `paths.plot(name)` picks the plot sub-folder from the file name |
+| `verify_lowrate.py` | Consistency / theory checks of the low-rate study → `lowrate/verification.txt` |
 | `config.py` | Global parameters (SPS = 8, RRC β = 0.25 / span 10, preamble L = 128, `MAX_CFO` = 0.2, SNR grid, run flags) |
 | `channel.py` | Root-raised-cosine filter design |
 | `main.py`, `plots.py` | Original Tx/Rx chain (upsample → RRC → CFO → AWGN → matched filter → downsample), MSE-vs-SNR / CFO-sweep / histogram experiments |
@@ -70,10 +79,16 @@ and the scripts write there automatically (`paths.py`):
 | `train_fft_nn.py` | FFT-aided MLP (residual on the FFT bin), the ML estimator, complexity table (`fft_nn_residual_cfo_model_L64.pth`) |
 | `plot_mse_crb_awgn.py` | MSE/CRB or MSE vs Es/N0 of selected estimators on the full chain (`--est`, `--metric`, `--beta`) |
 | `train_fft_nn_long.py` | FFT-aided MLP, M&M and ML on a 512-symbol known sequence (`fft_nn_residual_cfo_model_seq512.pth`) |
+| `train_cfo_v2.py` | NN v2: ML estimate + light correction MLP (A.10, `cfo_v2_light32.pth`) |
+| `train_cfo_v3.py` | Split pilots: positions, split CRB, lobe spacing, split-pilot ML estimator, `make_z` (A.13) |
+| `cfo_split_mse.py` | CFO MSE of the split-pilot ML, 512 / 1024 symbols, and the CFO MSE vs SNR figure (A.13) |
+| `train_cfo_split_nn.py` | Split-pilot NN without an ML front end: architectures, training, paired evaluation (A.15, A.15.1; `cfo_split_nn_L{512,1024}.pth`) |
+| `plot_search_step.py` | BLER vs CFO error at 512 / 1024 symbols: why the CRC-search step is 1.5e-4 · 512/N (A.9) |
+| `adaptive_rate.py` | Adaptive-rate switch points (A.12) |
 | `ber_experiment.py` | Uncoded BER: 128-symbol preamble + payload through the full RRC chain |
 | `polar.py` | Polar encoder + CRC-aided SCL decoder (batched NumPy, `decode(..., return_info=True)` also returns CRC flag and path metric) |
 | `polar_ber_experiment.py` | Coded BER/BLER of a 512-symbol polar packet through the full chain: per estimator (Genie, SNR-aware NN, M&M) vs Eb/N0, and vs fixed CFO error |
-| `job_progress.py` | Progress bars of every run (local or Run:ai) → `progress.txt` |
+| `job_progress.py` | Progress bars of every run (local or Run:ai) → `progress.txt` (replaces the removed `watch_jobs.py`) |
 | **`multipath/`** | **Everything in Part B and the zero-overhead receiver (Stages 1–3)** |
 | `multipath/multipath_cfo.py` | Data-aided M&M / ML / FFT-NN under multipath, L = 128 and 512 (`--channel awgn` / `multipath`) |
 | `multipath/mp_cfo_v2.py` | Channel-aware estimators: MP-ML (joint CFO + taps) and MP-NN |
@@ -489,7 +504,727 @@ Hypothesis decodes per packet: NN 5.8 (top-2 cells inside the prior × 4 phases)
 cell × 4 phases), both + 3 code-aided decodes. The classical numbers reproduce Stage 1 (3.56 vs 3.62 dB at
 1e-2 for R = 1/2), which confirms the 8-SPS front end.
 
+## A.9 Low code rates, SNR axis and operating points (study `lowrate/`)
+
+**Question.** Which code rate keeps the BLER below 1e-2 at each SNR from −5 dB up, and can the NN-based receiver
+decode at −5 dB? Same chain and packet as A.5 (512 QPSK symbols, N = 1024, CRC-11, CA-SCL L = 8, CFO estimated on
+the first 128 symbols, treated as known). Every result is in `lowrate/` (`CFO_STUDY=lowrate`); the x axis of every
+BLER plot is the **SNR = Es/N0**.
+
+- **Rates:** R = A/1024 = 0.025, 0.05, 0.075, 0.1, 0.15, 0.2, 1/4, 1/3, 1/2, 3/4 (A = 26 … 768 data bits). The
+  R = 1/4 and 1/2 points are those of A.5; R = 0.1 was extended below −5 dB.
+- **Receivers:** Genie (known CFO), M&M, SNR-aware NN, plus two new ones (`polar_ber_experiment.py --sources`):
+  - **CRB (ideal 128-symbol estimator):** f̂ = f + N(0, CRB), with CRB = 3 / (2π² · SNR · L(L²−1)) for L = 128. It is
+    what any unbiased estimator on the 128 known symbols could do at best.
+  - **SNR-aware NN + CRC search:** decode with the NN estimate; if the CRC fails, decode again on a CFO grid
+    f̂ + k · 1.5e-4 (|k| ≤ 4 · 1.3 · √CRB / 1.5e-4) and keep the hypothesis that passes the CRC with the best path
+    metric. The code checks the CFO on all 512 symbols, so the 128-symbol CRB no longer limits the receiver.
+- **Runs:** 44 Run:ai jobs (16 cores), 300 frame errors or 30 000 frames per point, 0.5 dB steps. Figures:
+  `lowrate/plots/bler/polar_bler_vs_snr_<receiver>.png`, `polar_bler_vs_snr_3rates.png`,
+  `polar_bler_operating_points.png`.
+
+**How the NN + CRC search works** (`simulate_point`, source `SEARCH`):
+1. The SNR-aware NN estimates f̂ from the 128 known symbols, exactly as before. The packet is de-rotated by f̂ and
+   decoded with CA-SCL (L = 8). If a list path passes the CRC-11, that decode is delivered: no extra cost.
+2. If no path passes, the receiver tries the hypotheses f̂ + k·Δ, Δ = 1.5e-4 cycles/symbol, k = ±1 … ±M with
+   M = ⌈4 · 1.3 · √CRB(SNR) / Δ⌉ (±4 standard deviations of the NN error; M = 17 at −5 dB, 14 at −3 dB, 3 at 10 dB).
+   Each hypothesis is a de-rotation of the stored samples plus one CA-SCL decode.
+   **Why Δ = 1.5e-4** (`plot_search_step.py` → `lowrate/plots/bler/polar_bler_vs_cfo_error_search_step.png`, from
+   the BLER-vs-CFO-error runs, 512 symbols, CRC-11): the true CFO is at most Δ/2 = 7.5e-5 from the nearest
+   hypothesis, and a CFO error of 7.5e-5 raises the BLER by only ≈ 11 % (−5 dB) / 8 % (−4 dB) over no CFO error.
+   A finer step barely helps (Δ = 1e-4: +4 %) but needs 46 % more hypotheses (51 vs 35 at −5 dB); a coarser one
+   loses quickly (Δ = 2e-4: +19 %; 3e-4: +48–64 %; 4e-4: ×1.9–2.4), because the BLER rises steeply above an error of
+   ≈ 1e-4. The tolerance scales with 1 / packet length (the phase drift 2π·e·n grows along the packet), so the step
+   is 1.5e-4 · 512/N. **Measured at 1024 symbols** (CRC-16, −5 / −4.5 dB, 450–500 errors per point,
+   `lowrate/plots/bler/polar_bler_vs_cfo_error_search_step_L1024.png`): with Δ = 7.5e-5 the worst residual 3.75e-5
+   costs +12 / +15 %; keeping the 512-symbol step 1.5e-4 would cost +52 / +71 %, so halving it was right.
+3. Among the hypotheses whose decode passes the CRC, the one with the best (lowest) path metric is delivered. If
+   none passes, the first decode stays (a block error).
+
+**Why it "beats the CRB" (it does not really).** The CRB line is the bound for an estimator that sees only the
+**128 known symbols**: √CRB = 4.8e-4 at −5 dB. The search uses the decoder as a test on **all 512 symbols**: a
+hypothesis passes the CRC only if its residual CFO is within the code's tolerance (≈ 2e-4 at −5 dB). This is a
+code-aided (decision-directed) estimate, and its bound is the CRB of 512 symbols, √CRB₅₁₂ = 6.0e-5 at −5 dB,
+8× smaller in standard deviation (the CRB scales with 1/L³). The search does not aim at that bound either: it
+only needs to land within the code's tolerance, with a grid residual of at most Δ/2 = 7.5e-5. Measured at −5 dB
+(R = 1/10, 3000 frames): CFO RMSE of the NN 7.1e-4 → 4.5e-4 after the search. The overall RMSE stays large because
+frames where no hypothesis passes keep the NN estimate; what matters is that the decoded frames are correct.
+
+**Compute cost:**
+
+| | Decodes per packet | Other |
+|---|---|---|
+| NN alone | 1 CA-SCL (O(L·N log N) ≈ 8 · 1024 · 10 ≈ 8·10⁴ list-node operations) | NN: 64 lag features + a small MLP |
+| NN + CRC search, CRC passes | 1 | same |
+| NN + CRC search, CRC fails | 1 + 2M (35 at −5 dB, 29 at −3 dB) | 2M de-rotations (O(N) each) |
+| Average, measured | 1 + 10.0 (R=1/10, −5 dB), 1 + 4.2 (−4 dB), 1 + 1.6 (−3 dB); ≈ 1 at the operating points of R ≥ 1/4 | |
+
+The average cost is 1 + 2M · BLER(NN alone): high only where the NN alone fails often. The worst-case latency is
+2M + 1 decodes, so a hardware receiver must budget for 35 decodes per failing packet, or stop at the first CRC
+pass (cheaper, but more undetected errors, see below).
+
+**Undetected errors (wrong data with a passing CRC).** Every extra hypothesis is another chance for a wrong
+decode to pass the 11-bit CRC. Measured at −5 dB, R = 1/10, on the same 3000 frames: Genie 0, NN alone 1.3e-3,
+**NN + CRC search 2.3e-3** (of its BLER of 1.1e-2). The search therefore adds about 1e-3 undetected errors per
+packet at the lowest SNR. A longer CRC (CRC-16/24) or a path-metric acceptance threshold would reduce that; CRC-16
+and CRC-24 were simulated later (A.11).
+
+**Verification.** `py verify_lowrate.py` → `lowrate/verification.txt`: **6 PASS, 0 WARN, 0 FAIL**:
+- the search's BLER is never above the NN's on the same frames (243 points);
+- the CRB source matches the BLER predicted from the BLER-vs-CFO-error curve: 0.212 vs 0.199 at −5 dB, 0.086 vs
+  0.081 at −4 dB;
+- every curve falls with SNR, and the 429 points copied from the main results are unchanged;
+- required SNRs are ordered Genie ≤ CRB bound ≤ NN, M&M, with the search within 0.2 dB of the Genie.
+
+Tests: `python -m pytest tests -q` as a Run:ai job, **6 passed** (`tests/test_lowrate.py`). They cover:
+- the code grid and the CRB formula;
+- the decoder's CRC flag and path metric;
+- that the search beats the NN on common frames at −4 dB;
+- the CRB source's error spread;
+- the required-SNR interpolation.
+
+**Why the NN alone cannot decode at −5 dB.** At −5 dB the R = 1/10 code tolerates a residual CFO of about 2e-4
+(BLER 1.6e-2 at |e| = 1.84e-4, 4.3e-2 at 3.3e-4, 0.35 at 5.9e-4, A.5 sweep), but the CRB of 128 known symbols is
+√CRB = 4.8e-4. Even the ideal estimator therefore gives BLER 0.21 there, and the NN (≈ 1.2× the CRB in RMSE) gives
+0.30. Retraining the NN cannot close that gap; more symbols must enter the estimate, which is what the CRC search
+does.
+
+**BLER at SNR = −5 / −4 / −3 dB:**
+
+| R | Genie | M&M | SNR-aware NN | CRB bound | **NN + CRC search** (extra decodes / frame) |
+|---|---|---|---|---|---|
+| 0.025 | 0 / 0 / 0 | 6.3e-2 / 1.7e-2 / 3.1e-3 | 4.6e-2 / 1.7e-2 / 4.6e-3 | 1.3e-2 / 2.9e-3 / 6.3e-4 | **1.1e-3 / 1.0e-4 / 1.0e-4** (1.7 / 0.5 / 0.1) |
+| 0.05 | 0 / 0 / 0 | 9.1e-2 / 3.3e-2 / 8.6e-3 | 9.3e-2 / 3.6e-2 / 1.3e-2 | 4.3e-2 / 1.3e-2 / 3.1e-3 | **1.4e-3 / 3.0e-4 / 3.3e-5** (3.5 / 1.1 / 0.4) |
+| 0.075 | 2.3e-4 / 0 / 0 | 0.16 / 6.2e-2 / 1.9e-2 | 0.18 / 7.3e-2 / 2.9e-2 | 0.11 / 3.5e-2 / 1.2e-2 | **2.3e-3 / 6.0e-4 / 1.3e-4** (6.0 / 2.3 / 0.8) |
+| 0.1 | 9.4e-3 / 2.0e-4 / 0 | 0.27 / 0.12 / 4.5e-2 | 0.30 / 0.14 / 5.6e-2 | 0.21 / 8.6e-2 / 2.5e-2 | **9.4e-3 / 1.0e-3 / 3.0e-4** (10 / 4.2 / 1.6) |
+| 0.15 | 0.45 / 8.8e-2 / 4.1e-3 | 0.75 / 0.40 / 0.15 | 0.76 / 0.41 / 0.17 | 0.76 / 0.35 / 0.14 | **0.41 / 6.8e-2 / 3.4e-3** (25 / 13 / 5.0) |
+| 0.2 | 0.98 / 0.70 / 0.18 | 0.99 / 0.86 / 0.47 | 0.99 / 0.87 / 0.49 | 1.0 / 0.88 / 0.47 | **0.98 / 0.67 / 0.16** (34 / 26 / 14) |
+
+(0 = no error in 30 000 frames, i.e. < 1e-4 at 95 %.)
+
+**Required SNR for BLER < 1e-2** [dB] (the operating points; "≤ −5" = already below 1e-2 at −5 dB):
+
+| R | Genie | **NN + CRC search** | CRB bound | M&M | SNR-aware NN |
+|---|---|---|---|---|---|
+| 0.025 | ≤ −5 | **≤ −5** | −4.88 | −3.68 | −3.62 |
+| 0.05 | ≤ −5 | **≤ −5** | −3.82 | −3.10 | −2.82 |
+| 0.075 | ≤ −5 | **≤ −5** | −2.89 | −2.45 | −2.22 |
+| 0.1 | ≤ −5 | **≤ −5** | −2.34 | −1.85 | −1.53 |
+| 0.15 | −3.28 | **−3.35** | −1.16 | −0.65 | −0.55 |
+| 0.2 | −1.98 | **−2.07** | −0.18 | 0.14 | 0.21 |
+| 1/4 | −0.98 | **−1.06** | 0.59 | 0.93 | 1.02 |
+| 1/3 | 0.46 | **0.39** | 1.81 | 2.07 | 2.12 |
+| 1/2 | 2.86 | **2.80** | 3.82 | 4.06 | 4.09 |
+| 3/4 | 6.19 | **6.18** | 6.81 | 6.96 | 6.99 |
+
+So, at BLER < 1e-2 with the NN + CRC search: R = 0.1 from −5 dB, 0.15 from −3.4 dB, 0.2 from −2.1 dB,
+1/4 from −1.1 dB, 1/3 from 0.4 dB, 1/2 from 2.8 dB, 3/4 from 6.2 dB.
+
+**Interpretation:**
+- **The 128-symbol estimate is the bottleneck, not the estimator.** Without the search neither NN nor M&M gets
+  below 1e-2 under −3.7 dB at any rate, and even the CRB-limited estimator only reaches −4.9 dB at R = 0.025. NN and
+  M&M are 0.15–1.3 dB behind the CRB bound (most at the lowest rates) and close to each other (M&M 0.03–0.3 dB
+  better).
+- **The CRC search reaches the Genie at every rate** (within 0.1 dB, on the operating-point plot the curves
+  coincide). At −5 dB it makes R = 0.1 work (BLER 9.4e-3, same as the Genie), against 0.30 for the NN alone. From
+  R = 0.15 up it is even 0.01–0.09 dB *better* than the Genie: the extra decodes at nearby CFO values act as
+  additional decoding attempts. An undetected wrong pass still counts as an error, so that gain is real.
+- **Cost:** the search runs only when the first decode fails, so the extra decodes per frame scale with the BLER of
+  the NN alone: 10 at R = 0.1 and −5 dB, below 2 once that BLER is under ~5 %, and ≈ 0 at the operating points of the
+  higher rates.
+- **Choice of rate:** below −3.4 dB only R ≤ 0.1 works; the step from R = 0.1 to 0.15 costs 1.7 dB, and the
+  rate doubles roughly every 2–3 dB above that.
+
+## A.10 NN v2: an ML estimator with a learned correction (`train_cfo_v2.py`, checkpoint `cfo_v2_light32.pth`)
+
+**Why a new NN.** The SNR-aware NN of A.3.2 was 4× the CRB at −5 dB, and 2–4 % *worse* than M&M from −2 dB up. Both
+problems have the same root: its only inputs are the 64 lag correlations R(m) = Σ z[n] z*[n−m] — the same
+information M&M uses. Every R(m) multiplies two noisy samples *before* anything is averaged, so at low SNR the
+noise × noise terms dominate, the phases of R(m) wrap, and that information is gone; a network on top cannot get it
+back (threshold effect: 3e-3 of the frames outside the CRC-search window at −5 dB). And because it learns the whole
+frequency mapping from scratch, it ends up slightly worse than the closed-form M&M at high SNR.
+
+**The idea: start from the right estimator, learn only what it misses.** For one tone in white noise —
+z[n] = r[n]·s*[n] = e^{j(2πfn+φ)} + noise once the known symbols are stripped — the maximum-likelihood estimator is
+the peak of the periodogram |Σ z[n] e^{−j2πfn}|². The FFT adds all 128 samples *coherently* (≈ 21 dB of gain)
+before the single nonlinearity (the peak search), so its threshold sits far below that of the lag products: plain
+ML is already 1.8× the CRB at −5 dB with 2e-5 outliers. What ML does not capture are small effects of the real
+chain (matched-filter loss and ISI at a large CFO, the finite number of Newton steps), which show up at high SNR,
+where M&M is slightly better (1.12 vs 1.17 × CRB at 10 dB). So NN v2 is ML plus a small learned correction:
+
+    f̂ = f_ML + BIN · MLP(x),        BIN = one FFT-256 bin = 1/256 cycles/symbol
+
+- **f_ML:** FFT-256 of the 128 de-modulated pilots, peak within ±0.2 cycles/symbol, 2 Newton steps on the
+  periodogram (`train_fft_nn.ml_estimate`).
+- **Inputs x (11):** the SNR (as the SNR-aware NN; needed because the right correction depends on the noise level);
+  (f_ML − f_FFT)/BIN, how far Newton moved from the FFT bin; **(f_M&M − f_ML)/BIN**, which lets the network lean on
+  M&M where M&M is the better estimator (high SNR); and the 8 FFT-peak features of A.3.1 (coarse frequency, peak and
+  neighbour magnitudes, neighbour/peak ratios), which describe how well-defined the peak is.
+- **MLP:** 11 → 32 → 16 → 1, GELU; **929 parameters, 880 MACs**. The last layer is initialised to zero, so an
+  untrained NN v2 *is* the ML estimator: training can only move it away from ML where that lowers the loss.
+- **Loss:** squared error / CRB(SNR), so every SNR counts equally (as A.3.2). Training on the full chain: Es/N0 ~
+  U[−6, 11] dB, CFO ~ U[−0.2, 0.2], 80 epochs × 500 steps × 1024 frames (41M frames), AdamW 1e-3, cosine decay.
+
+**Architecture at a glance** (per packet; z[n] = r[n]·s*[n], n = 0..127, the 128 de-modulated pilots):
+
+```
+ z[0..127] ──► FFT-256, peak in ±0.2 ──► f_FFT ──► 2 Newton steps on |Σ z[n]e^{-j2πfn}|² ──► f_ML ───────────┐
+     │                    │                                                                     │             │
+     │                    └─► 8 peak features (coarse f, |peak|, |neighbours|, ratios) ─┐       │             │
+     └─► M&M (lag correlations R(m), m = 1..64) ──► f_M&M                           │       │             │
+                                                                                    ▼       ▼             │
+   input x (11) = [ SNR, (f_ML − f_FFT)/BIN, (f_M&M − f_ML)/BIN, 8 peak features ]                        │
+                                                                                                          │
+   Linear 11→32 + GELU ──► Linear 32→16 + GELU ──► Linear 16→1 (zero-init) ──► Δ  (in FFT bins)           │
+                                                                                                          ▼
+                                                                         f̂ = f_ML + BIN · Δ,  BIN = 1/256
+```
+
+| Part | Size | Parameters | Real ops / estimate |
+|---|---|---|---|
+| FFT-256 of the 128 pilots + peak search | — | 0 | ≈ 10,000 |
+| 2 Newton steps (1st/2nd derivative of the periodogram) | — | 0 | ≈ 4,000 |
+| M&M (lag correlations, shared with the M&M estimate) | — | 0 | 24,704 |
+| Layer 1 | 11 → 32, GELU | 384 | 352 |
+| Layer 2 | 32 → 16, GELU | 528 | 512 |
+| Layer 3 (output, zero-initialised) | 16 → 1 | 17 | 16 |
+| **Total** | | **929** | **≈ 40,000** (MLP 880) |
+
+The same NN v2 (contiguous 128 pilots at the start of the packet) is the "NN v2 + CRC search" receiver in every
+BLER figure; the CRC search around f̂ is the contiguous grid (step 1.5e-4 · 512/N, nearest hypothesis first).
+
+**Model size.** Five sizes were trained, from 209 parameters (one hidden layer of 16) to 44,673 (with the 256 lag
+features as extra inputs): all five came within **0.01 × CRB** of each other at every SNR. The correction ML needs
+is small and simple; the lag features add nothing once ML is the starting point. The second-smallest (929
+parameters) was chosen: the smallest (209) is 0.01 worse than M&M at 10 dB.
+
+**Result** (full chain, 1e6 frames per SNR at ≤ −3 dB, 1e5 above; `logs/cfo_v2_light32_test.json`,
+`plots/mse/cfo_v2_vs_current_nn_mse_over_crb.png`):
+
+| MSE / CRB | −5 dB | −4 | −3 | −2 | −1 | 0 | 2 | 5 | 10 |
+|---|---|---|---|---|---|---|---|---|---|
+| **NN v2** | **1.80** | **1.15** | **1.14** | **1.14** | **1.13** | **1.14** | **1.12** | **1.13** | **1.12** |
+| SNR-aware NN (A.3.2) | 3.90 | 1.58 | 1.39 | 1.28 | 1.24 | 1.22 | 1.18 | 1.16 | 1.16 |
+| M&M | 108 | 16.6 | 2.71 | 1.28 | 1.17 | 1.16 | 1.14 | 1.13 | 1.12 |
+| ML alone | 1.80 | 1.16 | 1.15 | 1.14 | 1.14 | 1.14 | 1.13 | 1.14 | 1.17 |
+| Outliers (outside the CRC-search window), NN v2 / SNR-aware NN | 2e-5 / 3e-3 | 1e-5 / 8e-4 | 7e-6 / 3e-4 | 0 / 5e-5 | | | | | |
+
+NN v2 is equal to or better than M&M at every SNR and 2.2× better than the old NN at −5 dB, with 150× fewer
+outliers. **Most of the gain comes from the ML front end, not from the network**: up to 5 dB NN v2 and plain ML are
+the same; the network's contribution is to bring ML down to M&M at high SNR. The ≈ 1.13 × CRB floor is the full
+chain (matched-filter loss / ISI at a large CFO), which every estimator pays. Cost: ≈ 40,000 real operations per
+estimate (M&M's lag correlations, as an input, 24.7k; FFT-256 ≈ 10k; Newton ≈ 4k; MLP 0.9k), against 67.6k for the
+old NN, and below one CA-SCL decode (82k at 512 symbols).
+
+## A.11 CRC search: first pass vs full search, CRC length and packet length (study `lowrate/`)
+
+**The two search variants** (both start only when the first decode fails its CRC; grid f̂ + k·Δ as in A.9):
+- **Full search:** decode every hypothesis and deliver the CRC pass with the best path metric. Worst case
+  1 + 2M decodes per packet.
+- **First pass:** try the hypotheses nearest-first (±1, ±2, …) and deliver the first one that passes the CRC.
+  Much cheaper on average, but a wrong codeword that passes the CRC is delivered as soon as it is met, so it has more
+  undetected errors (wrong data with a passing CRC). With a 11-bit CRC and list size 8 a wrong decode passes with
+  probability ≈ 8 · 2⁻¹¹ ≈ 4e-3, with CRC-16 ≈ 1.2e-4.
+- **M/2** (half the grid width) was also tested and dropped: it loses BLER without saving much over first pass.
+
+**Receivers and configurations.** Standard set: R = 1/10, 512-symbol packet with CRC-11 and CRC-16, 1024-symbol
+packet with CRC-16 (same data rate: A = 102 / 205 data bits). The CRC bits are carried by the polar code (K = A + C),
+so a longer CRC makes the code itself slightly weaker. Each point has ≥ 30–100 frame errors (except where noted).
+
+| BLER (decodes / packet) | M&M + CRC, first pass | NN v2 + CRC, first pass | NN v2 + CRC, full search |
+|---|---|---|---|
+| 512, CRC-11, −5 dB | 5.7e-2 (3.7) | 9.3e-3 (2.2) | 7.9e-3 (9.3) |
+| 512, CRC-11, −3 dB | 1.4e-3 (1.1) | 4.6e-4 (1.1) | 1.5e-4 (2.1) |
+| 512, CRC-11, −1 dB | 2.5e-5 (1.0) | 2.1e-5 (1.0) | 8.7e-6 (1.1) |
+| 512, CRC-16, −5 dB | 4.4e-2 (3.6) | 1.5e-2 (2.7) | 1.3e-2 (10.1) |
+| 512, CRC-16, −3 dB | 8.8e-4 (1.2) | 2.3e-5 (1.1) | 9.2e-6 (2.2) |
+| 512, CRC-16, −1 dB | 2.6e-6 (1.0) | 8.3e-7 (1.0) | 4.8e-7 (1.1) |
+| 1024, CRC-16, −5 dB | 3.5e-2 (8.7) | 3.3e-3 (6.2) | 2.7e-3 (38.4) |
+| 1024, CRC-16, −3 dB | 1.0e-3 (3.0) | 2.6e-4 (2.8) | 5.3e-5 (16.7) |
+| 1024, CRC-16, −1 dB | 1.0e-4 (1.6) | 1.0e-4 (1.5) | 1.6e-5 (6.0) |
+
+**What this shows:**
+- **The CRC search is the big gain.** At −4 dB (512, CRC-11): M&M alone 0.12 → M&M + CRC 8.1e-3; NN v2 alone 0.11 →
+  NN v2 + CRC 1.6e-3. At −5 dB the NN receivers are at the known-CFO BLER (9.3e-3 vs 9.8e-3): the code, not the CFO,
+  limits them there.
+- **Above ≈ −4 dB almost all remaining errors are undetected** (85–100 % of the BLER with first pass). The first
+  decode fails because the 128-pilot estimate misses the code's CFO tolerance; each extra hypothesis is another
+  chance for a wrong codeword to pass the CRC. Full search removes part of them by keeping the best path metric:
+  2–3× lower BLER from −3.5 dB up at 512, 3–6× at 1024, at 2–9× the decodes (1024: 17 decodes at −3 dB).
+- **For M&M, full and first pass give the same BLER with CRC-16** (curves coincide in
+  `polar_bler_vs_snr_full_vs_first_pass_R0p1_C16.png`): with a 16-bit CRC there is rarely more than one pass to
+  choose from, so full search only adds decodes (11.7 vs 3.6 at −5 dB).
+- **CRC-16 vs CRC-11 (512).** CRC-16 is worse at −5 dB even with a known CFO (2.0e-2 vs 9.8e-3: 5 more bits under
+  the same codeword, ≈ 0.2 dB) and better from ≈ −4 dB up, where CRC-11's false passes dominate (NN v2 first pass
+  at −3 dB: 2.3e-5 vs 4.6e-4). CRC-24 (previous NN, full search, fewer frames) had **0 undetected errors** in every
+  run but costs another ≈ 0.3 dB at −5 dB (3.5e-2 vs 1.7e-2 at 512); it wins only from ≈ −3 dB (512) / −4 dB (1024).
+- **1024 vs 512 symbols.** At −5 dB the 1024-symbol packet is 3–5× better (known CFO: 4.5e-3 vs 2.0e-2 with CRC-16):
+  a 2048-bit polar code polarises better (fewer partly-polarised bit channels), and the CRC is a smaller share of K.
+  At high SNR it is worse (first pass floors at ≈ 1e-4 … 4e-5): the CFO tolerance halves (the residual phase drifts
+  over twice as many symbols) while the 128-pilot estimate does not improve, so the first decode fails more often
+  (57 % vs 26 % at −5 dB) and the grid is twice as wide (M = 34 vs 17) — hence 6.2 vs 2.7 decodes per packet.
+
+Figures (`lowrate/plots/bler/`): `polar_bler_vs_snr_R0p1.png`, `polar_bler_vs_snr_R0p1_C16.png`,
+`polar_bler_vs_snr_best_option_L1024.png` (first pass), `polar_bler_vs_snr_full_vs_first_pass_*.png` (512: BLER and
+decodes per packet, full vs first pass, for NN v2, M&M and the split pilots of A.13; 1024 (`_L1024`): decodes per
+packet only, full vs first pass, for M&M and the split-pilot NN of A.15.1, whose BLERs are in the split-pilot
+figure); compute vs SNR in
+`lowrate/plots/complexity/`.
+
+## A.12 Adaptive rate (`adaptive_rate.py`, `lowrate/plots/adaptive_rate/`)
+
+Highest rate with measured BLER < 1e-2 at each 0.5 dB point from −5 to 10 dB (switching only on measured points,
+no interpolation); throughput = A·(1 − BLER) / N_sym bits per symbol. Receiver: SNR-aware NN + CRC search (full
+search). Since 1 − BLER > 0.99 at every chosen point and consecutive rates differ by ≥ 1.33×, the highest rate under
+the target is always the best throughput.
+
+| Rate | 1/10 | 0.15 | 0.2 | 1/4 | 1/3 | 1/2 | 3/4 |
+|---|---|---|---|---|---|---|---|
+| Switch at (512 symbols, CRC-11) | −5 | −3 | −2 | −1 | 0.5 | 3 | 6.5 dB |
+| Switch at (1024 symbols, CRC-16) | −5 | **−3.5** | −2 | −1 | 0.5 | 3 | 6.5 dB |
+
+Switching to R = 0.15 already at −3.5 dB breaks the target at 512 (BLER 1.55e-2) but works at 1024 (7.7e-3): +0.1
+b/symbol there. Elsewhere both packet lengths give the same throughput (within 0.003 b/symbol), the 1024-symbol one
+at 4–8× the decodes.
+
+## A.13 Split pilots: why the "quarter" layout (`train_cfo_v3.py`, study `lowrate/`)
+
+**Idea.** Keep the same 128 known symbols, but place them as **two 64-symbol blocks** instead of one block at the
+start of the packet. Two layouts were tested:
+
+| Layout | Blocks | Block distance D | Wrong-lobe rate (512 / 1024 symbols) | CFO std vs. contiguous 128 (512 / 1024) |
+|---|---|---|---|---|
+| Ends | 0..63 and N−64..N−1 | N − 64 | 27 % → 5.2 % (−5 → 0 dB) / 61 % → 35 % | 6.1× / 13× smaller |
+| **Quarter** | centred at N/4 and 3N/4 | N/2 | **6.5 % → 0.08 %** / 34 % → 9.2 % | 3.5× / 6.9× smaller |
+
+**Why spreading the pilots helps.** The CFO CRB is 1 / (8π² · SNR · Σ(n − n̄)²): it falls with the *spread* of the
+known positions in time, not only with their number. A residual CFO e rotates the phase by 2π·e·Δn, so two blocks
+far apart measure that rotation over a long baseline. With the same 128 symbols, Σ(n − n̄)² grows 12× (quarter, 512)
+to 169× (ends, 1024) compared with one contiguous block.
+
+**Why the widest spread is not the best: lobe ambiguity.** Two separated blocks only measure the phase difference
+between them, which is known modulo 2π. Every CFO f + j/D (j = ±1, ±2, …) fits the pilots almost equally well: the
+likelihood has near-equal lobes spaced 1/D apart (the adjacent lobe is 97 % (ends, 512) to 99 % (ends, 1024) of
+the main one). Which lobe is right can only be decided *inside* each 64-symbol block, whose own CFO precision is
+fixed (σ₆₄ ≈ 1.4e-3 cycles/symbol at −5 dB). The wrong-lobe probability therefore depends on σ₆₄ relative to the
+lobe spacing 1/D:
+- **ends:** 1/D = 2.2e-3 (512) or 1.0e-3 (1024), comparable to σ₆₄ → the lobe is often wrong (27 % at −5 dB, 512;
+  still 35 % at 0 dB, 1024);
+- **quarter:** 1/D = 3.9e-3 (512), about 3σ₆₄ → wrong lobes are rare (6.5 % at −5 dB, 0.08 % at 0 dB).
+
+A wrong lobe is a CFO error of a full 1/D, far beyond what the code tolerates, so that first decode fails. The CRC
+search must then try the neighbouring lobes, and every extra decode is another chance for a wrong codeword to pass
+the CRC (an undetected error). **The ends layout trades more precision on the right lobe for many more wrong
+lobes; the quarter layout gives up some precision (3.5× instead of 6×) to make wrong lobes rare.** On the right lobe
+both are equally good relative to their own CRB (fine RMSE 1.05–1.08 × √CRB).
+
+**Estimator** (split-pilot ML, no NN): coarse CFO from both blocks combined non-coherently (peak of
+|FFT₂₅₆(block 1)|² + |FFT₂₅₆(block 2)|², 2 Newton steps); the lobe nearest to it from the phase difference of the two
+blocks; the lobe with the highest likelihood among the nearest ±2 (the joint ML lobe); 2 Newton steps on the full
+likelihood. A light correction MLP on top was not trained: on the right lobe the ML is already at 1.06× the CRB,
+and picking the most likely lobe is already the optimal choice.
+
+**CRC search for split pilots** (a tighter, finer grid than the contiguous one, because the estimate is 3.5–7×
+more precise): ±J lobes (J = 1 for quarter/512, 2 for quarter/1024) × a fine grid of step 1.0e-4 · 512/N (2/3 of the
+contiguous step), half-width 4 · 1.06 · √CRB_split around each lobe. The hypotheses are tried **in order of the
+pilot likelihood** |Σ z[n] e^{−j2πfn}|² (computed for every hypothesis from the 128 pilots, cheap next to a decode),
+so a wrong-lobe frame usually reaches the right lobe at the second or third decode. First pass stops at the first
+CRC pass; full search decodes every hypothesis and keeps the best path metric.
+
+**Result** (R = 1/10; ≥ 30–50 errors per point, except where marked; ends layout from the quick round only):
+
+| BLER (decodes / packet) | 512, CRC-11, −4 dB | 512, CRC-16, −3 dB | 1024, CRC-16, −3 dB |
+|---|---|---|---|
+| NN v2, no CRC search | 0.11 | 4.6e-2 | 0.26 |
+| Quarter, no CRC search | 3.5e-2 | 1.7e-2 | 0.24 |
+| NN v2 + CRC search, first pass | 1.6e-3 (1.4) | 2.3e-5 (1.1) | 2.6e-4 (2.8) |
+| Ends + CRC search, first pass | 3.2e-3 (1.5) | 2.8e-5 (1.4) | 2.1e-4 (2.2) |
+| **Quarter + CRC search, first pass** | **5.8e-4 (1.2)** | **8.5e-6 (1.1)** | **8.7e-5 (1.8)** |
+| NN v2 + CRC search, full search | 4.4e-4 (4.1) | 9.2e-6 (2.2) | 5.3e-5 (16.7) |
+| **Quarter + CRC search, full search** | **2.7e-4 (2.4)** | **3.2e-6 (1.6)**, 17 errors | **3.5e-5 (13.4)**, 18 errors |
+
+- **Without the CRC search** the quarter layout is 2–3× better than NN v2 at low SNR (−5 to −3 dB), but slightly
+  worse from ≈ −1 dB at 512 (wrong-lobe frames, 0.3 % at −1 dB, are lost without a search). Split pilots therefore
+  pay off together with the lobe search.
+- **With the CRC search** the quarter layout is the best receiver up to ≈ −2 dB in every configuration, for both
+  search variants, with fewer decodes than NN v2: first pass 1.5–3× lower BLER; full search the lowest BLER (or tied
+  with NN v2's full search within the statistics, e.g. 512 / CRC-16 at −4 dB), at 25–60 % fewer decodes than NN
+  v2's full search at 512 (1024: 13–23 decodes per packet at −5 to −3 dB, so first pass is the efficient choice
+  there).
+- **Above ≈ −1 dB at 512 / CRC-11** the CRC-11 false-pass floor dominates every receiver (≈ 100 % undetected
+  errors), and the quarter layout is no better (0 dB: 7.8e-6 first pass vs 2.5e-6 for NN v2).
+
+Figures: `lowrate/plots/bler/polar_bler_vs_snr_split_pilots_*.png` (the genie = one CA-SCL decode with the true CFO and
+phase; M&M with / without the CRC search, NN v1 (the SNR-aware NN of A.3.2) and NN v2 (A.10) + CRC search (first
+pass); the 1024 figure instead shows only the genie, M&M with / without the search and the split-pilot NN of
+A.15.1 (no search, first pass, full search), whose curves are statistically the same as the split ML's against the quarter layout without the search, first pass and full search), `polar_bler_vs_snr_full_vs_first_pass_*.png`, and
+the quarter curve in `polar_bler_vs_snr_R0p1*.png` / `polar_bler_vs_snr_best_option_L1024.png`.
+
+**Why the CRC-search receivers can be below the genie.** The genie decodes each packet *once*, with the exact CFO.
+A CRC-search receiver whose first decode fails decodes the same packet again under other CFO hypotheses. A
+hypothesis a little off the true CFO perturbs the LLRs slightly, and the CA-SCL list of the perturbed packet is
+different, so a packet the exact-CFO decode loses can still be recovered (the effect behind "perturbation" /
+re-decoding schemes for SCL). The genie is therefore the bound for a *single* decode, not for a receiver that is
+allowed several. The price is more decodes and more chances for a false CRC pass (undetected errors). This only
+pays at the lowest SNRs: with more genie frames (jobs `add6-a/b`, 10–518 errors per point; the last points 2–16) the
+genie waterfall is much steeper than the search receivers' curves. At 512 / CRC-16 it is below the first-pass
+receivers from −3 dB (genie 4.0e-6 vs 8.5e-6 for split pilots + first pass) and below the full search from −2.5 dB
+(1.3e-7 vs 1.5e-6; at −3 dB the two are level, 4.0e-6 vs 3.2e-6 on 10 genie errors), where the search receivers
+flatten out on their undetected-error floor.
+
+**CFO MSE** (`cfo_split_mse.py` → `logs/cfo_split_mse.json`, `plots/mse/cfo_mse_vs_snr_split_pilots.png`; full
+chain, 1e6 frames per SNR at ≤ −3 dB, 1e5 above; NN v2 and M&M from `logs/cfo_v2_light32_test.json`):
+
+| SNR | −5 dB | −3 | −1 | 0 | 2 | 5 | 10 |
+|---|---|---|---|---|---|---|---|
+| M&M, MSE | 2.5e-5 | 4.0e-7 | 1.1e-7 | 8.5e-8 | 5.2e-8 | 2.6e-8 | 8.2e-9 |
+| NN v2, MSE | 4.1e-7 | 1.7e-7 | 1.0e-7 | 8.3e-8 | 5.1e-8 | 2.6e-8 | 8.2e-9 |
+| Split 512, MSE (all frames) | 1.3e-6 | 2.9e-7 | 5.6e-8 | 2.2e-8 | 5.0e-9 | 2.1e-9 | 6.5e-10 |
+| Split 512, wrong-lobe rate | 6.4 % | 1.9 % | 0.33 % | 0.11 % | 6e-5 | 0 | 0 |
+| Split 1024, MSE (all frames) | 1.5e-6 | 8.8e-7 | 4.9e-7 | 3.4e-7 | 1.3e-7 | 1.1e-8 | 1.7e-10 |
+| Split 1024, wrong-lobe rate | 34 % | 23 % | 13 % | 8.9 % | 3.4 % | 0.27 % | 0 |
+
+On the right lobe the split-pilot ML is at **1.11–1.14 × its own CRB** at every SNR and both packet lengths
+(the same full-chain floor as NN v2's 1.12–1.15 × the contiguous CRB), i.e. 12× (512) / 48× (1024) lower MSE than
+NN v2. The MSE over *all* frames is dominated by the wrong-lobe frames (each a full lobe spacing off): it is
+**worse than NN v2 up to ≈ −2 dB (512) / ≈ 4 dB (1024)** and much better above, approaching the split CRB once
+wrong lobes vanish (512 from ≈ 2 dB, 1024 at 10 dB). This is why the split pilots need the lobe search: the MSE
+alone understates them at low SNR — the wrong lobe is almost always a *neighbouring* lobe, which the CRC search
+recovers in one or two extra decodes, whereas NN v2's error is spread continuously.
+
+## A.14 Simulation speed (same results, less time)
+
+Profile of one BLER point: the CA-SCL decoder is 55 % (512 symbols) / 72 % (1024) of the time, the full Tx/Rx chain
+38 % / 24 %. Two changes give **exactly the same results** (checked bit for bit), so new runs pool with old ones:
+- **Decoder** (`polar.py`): the list paths are re-ordered at every information bit; `np.take_along_axis` was
+  replaced by plain fancy indexing (same values, less overhead): **1.3× faster decoding, 1.25–1.3× per point**
+  (512: 652 → 816 frames/s; 1024: 202 → 264 frames/s, one core).
+- **Shared frames** (`polar_ber_experiment.py --shared-frames`): every receiver of a point already uses the same
+  seed, i.e. the same data, CFO, phase and noise. All receivers of a point now run in one task on one Tx/Rx chain
+  per batch: **1.3–1.6× faster with 5 receivers**, results identical to separate runs.
+
+Not adopted: computing only the needed samples of the pulse shaping / matched filter (identical output, but 2.5×
+slower than the FFT convolution; the chain's time is the noise and CFO rotation at 8 samples per symbol, which the
+full chain requires). Larger batches gain < 10 %. Possible next step: a compiled (numba) decoder, ≈ 2× more overall,
+statistically identical but not bit-identical (float sums in a different order).
+
 ---
+
+## A.15 Split pilots with a pure NN estimator (`train_cfo_split_nn.py`, `models/cfo_split_nn_L{512,1024}.pth`)
+
+**Question.** Can a network that does *not* start from ML (no FFT peak search, no Newton steps, no likelihood lobe
+choice) match the split-pilot ML of A.13? Same pilots (quarter layout, 2 × 64 symbols centred at N/4 and 3N/4), full
+Tx/Rx chain, AWGN, one model per packet length.
+
+**Why try it without ML.** NN v2 (A.10) showed that almost all of its gain came from the ML front end. This
+experiment asks the opposite question: whether the expensive, hand-designed parts (FFT, Newton, lobe search) can
+be learned, and if so what they cost. Only the lobe step is kept analytic: given a coarse CFO, the phase difference
+of the two blocks determines the lobe exactly, and the smoke test showed that this step, fed the true coarse CFO,
+is already at 1.10–1.15 × CRB_split. So the whole question is whether a learned coarse stage can be accurate
+enough to pick the right lobe.
+
+**Architecture** (z[n] = r[n]·s*[n] at the 128 pilot positions; D = N/2 = distance of the block centres):
+
+```
+ block 1: z[0..63] ──► [Re, Im] (128) ──► bank: Linear 128→256, no bias ──► |·|² of 128 complex filters ─┐
+ block 2: z[64..127] ─► [Re, Im] (128) ──► same bank ──────────────────────► |·|² ─────────────────────── + ─┐
+                                                                (non-coherent sum of the 2 blocks)            │
+        log(E) − log(mean E)  (128)  +  SNR  ──► MLP 129→256→128→1 (GELU) ──► f_c = 0.2·tanh(·)   COARSE  │
+                                                                                                    │
+        de-rotate both blocks by f_c ──► b1 = Σ block 1, b2 = Σ block 2                            LOBE (analytic)
+        φ = angle(b2·b1*) / 2π,   f_lobe = f_c + φ / D                                              │
+                                                                                                    │
+        [SNR, frac(f_c·D), cos 2πφ, sin 2πφ, log(1 + |b2·b1*|/64)] ──► MLP 5→32→1 (GELU,           FINE
+                                                                        last layer zero-init) ──► Δ │
+                                                                                                    ▼
+                                                                              f̂ = f_lobe + Δ / D
+```
+
+- **Filter bank** initialised either with DFT rows (128 frequencies evenly over ±0.21 cycles/symbol, i.e. a zoomed
+  DFT of each block) or randomly. Both were trained; **DFT initialisation was better at both lengths** and is the
+  saved 512 model. (At 1024 a better architecture replaced it, A.15.1.)
+- **Loss** = ((f_c − f)·D)² + min((f̂ − f)², (1/2D)²) / CRB_split. f_c is detached in the lobe and fine stages,
+  so the first term trains the coarse branch and the second only the fine MLP. A wrong lobe is clipped at half a
+  lobe, as in A.13, because the CRC search handles it, not the regression.
+- **Training:** Es/N0 ~ U[−6, 11] dB, CFO ~ U[−0.2, 0.2], 80 epochs × 500 steps × 1024 frames (41M frames, as NN
+  v2), AdamW 1e-3, cosine decay; best epoch by validation loss.
+- **Size / cost:** 99,298 parameters; **132,932 real MACs per estimate** (filter bank 65,536, energies 512, coarse
+  MLP 65,920, de-rotation and sums 772, fine MLP 192). The split ML costs ≈ 35,000 and NN v2 ≈ 40,000.
+
+**Result** (full chain, 1e6 frames per SNR at ≤ −3 dB, 1e5 above; the split ML evaluated *on the same frames*;
+`logs/cfo_split_nn_L{512,1024}.json`, `plots/mse/cfo_mse_vs_snr_split_pilots_nn.png`):
+
+| Wrong-lobe rate | −5 dB | −4 | −3 | −2 | −1 | 0 | 2 | 5 | 10 |
+|---|---|---|---|---|---|---|---|---|---|
+| 512, split ML | **6.4 %** | **3.7 %** | **1.9 %** | **0.86 %** | **0.34 %** | **0.12 %** | **7e-5** | 0 | 0 |
+| 512, split NN (DFT init) | 11.9 % | 7.2 % | 4.0 % | 2.1 % | 0.90 % | 0.34 % | 2.5e-4 | 0 | 7e-5 |
+| 512, split NN (random init) | 19.4 % | 12.7 % | 7.7 % | 4.2 % | 2.1 % | 0.97 % | 1.3e-3 | 1e-5 | 5e-5 |
+| 1024, split ML | **34 %** | **29 %** | **23 %** | **18 %** | **13 %** | **9.0 %** | **3.3 %** | **0.28 %** | 0 |
+| 1024, split NN (DFT init) | 41 % | 35 % | 28 % | 23 % | 17 % | 12 % | 5.4 % | 0.83 % | 0.09 % |
+| 1024, split NN (random init) | 49 % | 42 % | 35 % | 29 % | 22 % | 17 % | 8.2 % | 1.8 % | 0.26 % |
+
+| Right-lobe MSE / CRB_split | −5 dB | −3 | 0 | 2 | 10 |
+|---|---|---|---|---|---|
+| 512, split ML / split NN | 1.14 / 1.16 | 1.13 / 1.15 | 1.12 / 1.13 | 1.12 / 1.13 | 1.12 / 1.14 |
+| 1024, split ML / split NN | 1.13 / 1.13 | 1.13 / 1.13 | 1.13 / 1.13 | 1.12 / 1.12 | 1.11 / 1.12 |
+
+- **On the right lobe the NN matches the ML** (within 0–2 %): the analytic lobe step does the precise work, and the
+  fine MLP has nothing left to correct.
+- **The NN picks the wrong lobe 1.9–2.9× (512) and 1.2–3× (1024) as often as the ML**, and still a few frames in 1e5 at
+  10 dB, where the ML never errs. Every wrong-lobe error comes from the coarse stage (the coarse-only wrong-lobe
+  rate is the same to within 2 %). The coarse MLP has to place the peak of 128 filter energies to ≈ 1/400 of the
+  ±0.2 range, i.e. a learned arg-max with interpolation; the ML gets this from 2 Newton steps on the exact
+  likelihood, and then picks the lobe by the full likelihood. The NN's coarse MSE stays 2.4–3× above the bound of a
+  non-coherent two-block estimate (512: 2.8e-6 vs 9.2e-7 at −5 dB, 6.9e-8 vs 2.9e-8 at 10 dB): the learned arg-max
+  loses a constant factor of precision, and the wrong-lobe rate is very sensitive to it.
+- **MSE over all frames** (dominated by the wrong lobes): the NN is 1.0–2.7× worse than the ML at 512 and 1.25–24×
+  worse at 1024 (the largest gap at high SNR, where the ML has no wrong lobes left).
+- **Cost:** 3.8× the split ML and 3.3× NN v2 per estimate.
+- **Against NN v2** (contiguous pilots): the split NN is better than NN v2 only where the split ML is too, but by
+  less (512: from 0 dB instead of ≈ −2 dB; 1024: only at 10 dB).
+
+**Conclusion of the first design.** This MLP-coarse NN is not competitive with the split-pilot ML: twice the wrong
+lobes at 512, more at 1024, and 3.8× the cost. The bottleneck is the learned coarse arg-max. **No BLER runs were
+made for it** (BLER was planned only if the NN was competitive). It appears in the complexity figure's footer only
+(estimator cost), because the plotted curves need the decode counts of a BLER run.
+
+### A.15.1 Architecture search at 1024 symbols: a pure NN that matches the split ML
+
+Five more 1024-symbol models (same pilots, chain, frames per epoch, fine stage and evaluation frames), aimed at the
+two weaknesses found above: the coarse arg-max and the lobe choice.
+
+| Tag | Coarse stage | Lobe choice | Epochs | Params | MACs |
+|---|---|---|---|---|---|
+| `wide` | MLP 257 → 512 → 256 → 1 on 256 filters (2× wider) | analytic (nearest lobe) | 120 | 329k | 396k |
+| `conv` | **1-D conv over the filter energies + soft-argmax** | analytic | 80 | 34k | 153k |
+| `mlplobe` | the original MLP | **learned lobe classifier** | 80 | 105k | 143k |
+| `convlobe` | conv + soft-argmax | learned lobe classifier | 80 | 40k | 163k |
+| **`convlobe-long`** | conv + soft-argmax | learned lobe classifier | **160** | **40k** | **163k** |
+
+- **Conv soft-argmax coarse stage.** The log energies of the 128 DFT-initialised filters (one value per frequency)
+  go through three 1-D convolutions along frequency (2 → 8 → 8 → 2 channels, kernel 7; the SNR is the second input
+  channel). Output channel 1 is a logit per filter, channel 2 an offset within the filter spacing; f_c = Σ softmax
+  · (f_k + offset_k). Because a convolution does the same thing at every frequency, the network learns *one* peak
+  finder instead of a separate mapping for each of the 128 positions (the MLP's problem). Trained with an extra
+  cross-entropy on the filter nearest the true CFO.
+- **Learned lobe classifier.** For the 7 candidate lobes f_lobe + j/D (|j| ≤ 3) around the analytic lobe, the
+  inputs are the coherent pilot likelihood |B₁ + B₂|², the per-block energy |B₁|² + |B₂|² (both as log ratios to
+  the best candidate) and the distance to f_c in lobes, plus the SNR (22 values) → MLP 22 → 64 → 64 → 7, trained
+  with cross-entropy on the true lobe. It replaces the ML's "best of the ±2 lobes by likelihood" with a learned
+  decision that can also use the coarse estimate. (It uses the pilot likelihood at 7 candidates as *features*; there
+  is still no FFT peak search and no Newton step.)
+
+```
+ z (2 × 64) ─► DFT-init bank ─► log energies (128) ─► conv1d ×3 ─► softmax + offsets ─► f_c          COARSE
+                                     (+ SNR channel)
+ f_c ─► de-rotate, b1, b2 ─► φ ─► f_lobe = f_c + φ/D                                                  LOBE
+ 7 candidates f_lobe + j/D ─► [log|B1+B2|², log(|B1|²+|B2|²), (cand − f_c)·D, SNR] ─► MLP 22→64→64→7 ─► j*
+ f̂ = f_lobe + j*/D + (1/D)·MLP 5→32→1                                                                FINE
+```
+
+Block diagram: [`plots/split_nn_architecture.png`](plots/split_nn_architecture.png) (`py plot_split_nn_arch.py`).
+
+**Result** (1024 symbols, the same 1e6 / 1e5 frames per SNR as the split ML):
+
+| Wrong-lobe rate | −5 dB | −4 | −3 | −2 | −1 | 0 | 2 | 5 | 10 |
+|---|---|---|---|---|---|---|---|---|---|
+| Split ML | 34.28 % | 28.59 % | 23.00 % | 17.63 % | 13.06 % | 8.98 % | 3.26 % | 0.28 % | 0 |
+| **`convlobe-long`** | **34.18 %** | **28.48 %** | **22.93 %** | **17.61 %** | **13.00 %** | **8.96 %** | **3.23 %** | **0.28 %** | **0** |
+| `convlobe` | 34.32 % | 28.61 % | 23.02 % | 17.64 % | 13.06 % | 9.02 % | 3.28 % | 0.29 % | 0 |
+| `mlplobe` | 34.45 % | 28.66 % | 23.05 % | 17.61 % | 13.08 % | 9.04 % | 3.27 % | 0.28 % | 0 |
+| `conv` | 34.80 % | 29.08 % | 23.44 % | 18.08 % | 13.37 % | 9.19 % | 3.35 % | 0.31 % | 0 |
+| `wide` | 38.83 % | 32.59 % | 26.65 % | 20.99 % | 15.76 % | 11.47 % | 4.90 % | 0.73 % | 0.01 % |
+| first design (A.15) | 41.26 % | 34.59 % | 28.30 % | 22.53 % | 16.92 % | 12.39 % | 5.35 % | 0.83 % | 0.09 % |
+
+| | −5 dB | −3 | 0 | 2 | 5 | 10 |
+|---|---|---|---|---|---|---|
+| MSE, split ML | 1.96e-6 | 8.79e-7 | 3.41e-7 | 1.24e-7 | 1.10e-8 | 1.67e-10 |
+| MSE, **`convlobe-long`** | **1.63e-6** | **8.77e-7** | **3.41e-7** | **1.23e-7** | **1.10e-8** | **1.67e-10** |
+| Right-lobe MSE / CRB_split, split ML / `convlobe-long` | 1.132 / 1.137 | 1.126 / 1.131 | 1.125 / 1.129 | 1.117 / 1.120 | 1.116 / 1.117 | 1.112 / 1.113 |
+
+- **`convlobe-long` is the chosen 1024 model** (`models/cfo_split_nn_L1024.pth`). It picks the wrong lobe as often
+  as the split ML or slightly less (−0.1 points at −5 dB), and its MSE over all frames is equal or lower at every
+  SNR (17 % lower at −5 dB). On the right lobe it is 0.1–0.5 % above the ML.
+- **What made the difference:** the translation-equivariant coarse stage (`conv` alone cuts the gap to the ML from
+  7 to 0.5 points at −5 dB), then the learned lobe choice (closes the rest; with it even the poor MLP coarse stage
+  reaches the ML, `mlplobe`). Capacity does not help (`wide`, 3× the cost, is still 4.5 points behind). Doubling the
+  training gave a small further gain.
+- **Against the CRB:** at 10 dB the all-frames MSE is 1.11 × the CRB, the full-chain floor (matched-filter loss at a
+  large CFO) that every estimator in this study pays. At low SNR no estimator can approach the CRB at 1024: the
+  lobes are 99 % equal, so a third of the frames sit on the wrong lobe at −5 dB, for the ML as well.
+- **Cost:** 163,004 real MACs per estimate (filter bank 65.5k, conv 86.4k, lobe classifier 9.6k, rest 1.5k), 4.7×
+  the split ML. It matches the ML; it is not cheaper.
+- **512 symbols:** still the first design (`cfo_split_nn_L512.pth`); the new architecture was trained only at 1024.
+
+**BLER of the chosen 1024 model** (R = 1/10, CRC-16, full chain; sources `Split pilots NN, quarter` with and without
+`+ CRC search (first pass)` in `polar_ber_experiment.py`; the CRC search is the split ML's own: ±2 lobes × the fine
+grid, tried in order of the pilot likelihood, around the NN estimate; job `add7-a`, the same number of frames per SNR
+as the split-ML curve, at least 2000 without the search; figure
+`lowrate/plots/bler/polar_bler_vs_snr_split_pilots_R0p1_C16_L1024.png`, cyan):
+
+| SNR | −5 dB | −4.5 | −4 | −3.5 | −3 | −2.5 | −2 | −1.5 | −1 | −0.5 | 0 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Split ML, no search | 3.2e-1 | 3.2e-1 | 2.6e-1 | 2.3e-1 | 2.4e-1 | 1.9e-1 | 1.7e-1 | 1.6e-1 | 1.3e-1 | 1.3e-1 | 8.3e-2 |
+| Split NN, no search | 3.4e-1 | 3.1e-1 | 3.0e-1 | 2.4e-1 | 2.3e-1 | 2.2e-1 | 1.8e-1 | 1.4e-1 | 1.2e-1 | 1.1e-1 | 8.3e-2 |
+| Split ML + CRC (first pass) | 2.9e-3 | 4.0e-4 | 2.1e-4 | 1.2e-4 | 8.7e-5 | 1.0e-4 | 6.4e-5 | 5.3e-5 | 5.2e-5 | 3.9e-5 | 3.4e-5 |
+| Split NN + CRC (first pass) | 2.7e-3 | 3.4e-4 | 1.2e-4 | 1.3e-4 | 8.2e-5 | 8.7e-5 | 6.7e-5 | 6.6e-5 | 4.0e-5 | 4.2e-5 | 2.7e-5 |
+| Decodes / packet, ML / NN | 2.83 / 2.84 | 2.42 / 2.41 | 2.18 / 2.18 | 2.00 / 1.99 | 1.84 / 1.83 | 1.69 / 1.69 | 1.57 / 1.56 | 1.46 / 1.46 | 1.37 / 1.37 | 1.30 / 1.29 | 1.23 / 1.23 |
+| Split ML + CRC (full search) | 2.8e-3 | 2.0e-4 | 7.3e-5 | 2.8e-5 | 3.5e-5 | 2.3e-5 | 3.9e-5 | 2.2e-5 | 2.7e-5 | 1.5e-5 | 9.8e-6 |
+| Split NN + CRC (full search) | 2.4e-3 | 2.2e-4 | 5.3e-5 | 4.7e-5 | 2.7e-5 | 3.7e-5 | 2.5e-5 | 1.2e-5 | 2.2e-5 | 1.7e-5 | 1.7e-5 |
+| Full-search decodes / packet, ML / NN | 23.2 / 23.3 | 21.1 / 21.3 | 19.4 / 19.2 | 14.9 / 14.9 | 13.4 / 13.4 | 12.0 / 11.9 | 10.6 / 10.6 | 7.7 / 7.7 | 6.7 / 6.7 | 5.8 / 5.8 | 4.9 / 4.9 |
+
+(28–124 errors per point with the first-pass search; 10–140 with the full search, the same frame counts as the split
+ML's full-search curve, job `add8-a…d`; without the search 166–687 for the NN, 66–160 for the ML.) Pooled over the
+11 SNRs (inverse-variance weighted log ratio), **NN / ML BLER = 1.01 (95 %: 0.95–1.08) without the search, 0.93
+(0.84–1.03) with the first-pass search and 0.93 (0.79–1.09) with the full search**, χ²/dof = 0.7, 1.3 and 1.35: the point-to-point differences are Monte-Carlo noise, and the NN receiver is statistically the same as the
+split-ML receiver, at the same number of decodes. With the search, most remaining errors are undetected (a wrong
+codeword passes CRC-16: 621 of 691 NN errors, 672 of 744 ML errors), the CRC floor of A.11.
+
+**The same comparison at R = 1/4, SNR 0 … 10 dB** (`lowrate/plots/bler/polar_bler_vs_snr_split_pilots_R1_4_C16_L1024.png`;
+jobs `add9-a…e` (≤ 200k frames or 300 errors per point) and the top-up `add10-a…h`). **R = 1/4 (512 data bits,
+CRC-16) is the highest rate with BLER < 1e-2 at 0 dB:** R = 1/3 fails there even with the true CFO (genie 4.8e-2;
+M&M + CRC 3.8e-2, split NN + CRC 3.8e-2), while at R = 1/4 the genie has 1.2e-5 (27 errors in 2.2M) and no error
+in 200k frames from 0.5 dB up. (No rate between 1/4 and 1/3 was simulated.)
+
+| SNR | 0 dB | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| M&M, no search | 2.8e-1 | 1.9e-1 | 9.0e-2 | 4.5e-2 | 1.8e-2 | 5.5e-3 | 1.6e-3 | 3.4e-4 | 5.1e-5 | 2.3e-6 (5) | 4.5e-7 (1) |
+| **Split NN, no search** | **8.6e-2** | **5.7e-2** | **3.2e-2** | **1.5e-2** | **7.0e-3** | **2.6e-3** | **8.4e-4** | **1.6e-4** | **2.6e-5** | 4.1e-6 (9) | 4.5e-7 (1) |
+| M&M + CRC (first pass) | 2.6e-4 | 1.2e-4 | 6.3e-5 | 1.9e-5 | 9.5e-6 (21) | 8.3e-7 (1) | 0 in 1.2M | | | | |
+| **Split NN + CRC (first pass)** | **4.2e-5** | **2.0e-5** | **1.3e-5** | **3.4e-6** (11) | **2.8e-6** (9) | 0 in 200k | | | | | |
+| Decodes / packet, M&M / NN | 2.36 / 1.23 | 1.67 / 1.13 | 1.30 / 1.07 | 1.12 / 1.03 | 1.04 / 1.01 | 1.01 / 1.00 | | | | | |
+
+(Error counts in brackets where < 25; the other points have 40–577 errors. Up to 2.2M frames per point without the
+search, 3.2M (NN) / 2.2M (M&M) with it.)
+- **Without the search, every error is a CFO-estimate error**, since the code itself is error-free from 0.5 dB.
+  The split NN is 2.5–3.3× below M&M up to 4 dB and ≈ 2× at 5–6 dB (at 0 dB its 8.6 % ≈ its 9 % wrong-lobe rate); the two meet near
+  8–9 dB, where both are at ≈ 1e-5 … 1e-6 and only a handful of errors were counted.
+- **With the first-pass search, the split NN is 3–6× below M&M at 0–4 dB with fewer decodes** (1.23 vs 2.36 per
+  packet at 0 dB). Practically all remaining errors are undetected (a wrong codeword passing CRC-16), so the BLER
+  follows the number of extra decodes, which falls to ≈ 1 by 4–5 dB; above that neither receiver had an error in
+  the frames simulated (no point drawn).
+
+**And at R = 1/3** (683 data bits, CRC-16; `polar_bler_vs_snr_split_pilots_R1_3_C16_L1024.png`, jobs `add11-a…h`,
+≤ 100 errors or 500k frames per run, up to 4 runs per point). Here the code itself still fails at low SNR: the genie
+falls from 4.8e-2 at 0 dB to 1.9e-4 at 1 dB and 3.3e-6 (5 errors) at 1.5 dB, with no errors in 1.5M frames from 2 dB.
+
+| SNR | 0 dB | 0.5 | 1 | 1.5 | 2 | 3 | 4 | 5 | 6 | 8 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Genie | 4.8e-2 | 5.0e-3 | 1.9e-4 | 3.3e-6 (5) | 0 in 1.5M | | | | | | |
+| M&M, no search | 5.4e-1 | 3.9e-1 | 2.9e-1 | 2.4e-1 | 2.1e-1 | 9.5e-2 | 4.1e-2 | 1.6e-2 | 5.9e-3 | 3.4e-4 | 1.3e-6 (2) |
+| **Split NN, no search** | **1.4e-1** | **8.1e-2** | **5.5e-2** | **4.2e-2** | **2.9e-2** | **2.0e-2** | **7.5e-3** | **2.7e-3** | **7.7e-4** | **3.3e-5** | 0 in 1.5M |
+| M&M + CRC (first pass) | 3.8e-2 | 3.6e-3 | 4.5e-4 | 1.8e-4 | 1.3e-4 | 4.8e-5 | 2.1e-5 | 6.0e-6 (3) | 2.0e-6 (1) | | |
+| **Split NN + CRC (first pass)** | **3.7e-2** | **2.9e-3** | **1.3e-4** | **2.5e-5** | **1.1e-5** (21) | **5.5e-6** (11) | **2.5e-6** (5) | 0 in 500k | | | |
+| Decodes / packet, M&M / NN | 5.09 / 2.88 | 3.09 / 1.31 | 2.39 / 1.14 | 1.96 / 1.10 | 1.66 / 1.07 | 1.29 / 1.03 | 1.12 / 1.01 | | | | |
+
+(Error counts in brackets where < 25; the other points have 42–409 errors.)
+- **Up to 1 dB both search receivers follow the genie** (the code's own errors dominate). From 1 dB the split NN
+  stays on the waterfall longer: 1.3e-4 vs 4.5e-4 at 1 dB, then 7–12× below M&M at 1.5–2 dB, with 1.1 vs 2.0 decodes.
+  Both then flatten on the undetected-error floor (a wrong codeword passing CRC-16), M&M's ≈ 8–15× higher (2.5–4 dB) because it
+  needs more decodes.
+- **Without the search** the split NN is 4–10× below M&M at every SNR from 0 to 9 dB; above the genie's waterfall
+  every remaining error is a CFO error (the split NN's wrong lobe, M&M's spread error).
+- **BLER < 1e-2:** first pass from ≈ 0.3 dB for both; without the search from ≈ 3.7 dB (split NN) and ≈ 5.4 dB
+  (M&M).
+
+**And at R = 1/2** (1024 data bits, CRC-16, SNR 2 … 10 dB; `polar_bler_vs_snr_split_pilots_R1_2_C16_L1024.png`, jobs
+`add12-a…h`, same stopping rule). The genie's waterfall is at 2–4 dB (1.4e-1 at 2 dB, 2.2e-3 at 3 dB, 7.4e-5 at
+3.5 dB, 1.3e-6 (2 errors) at 4 dB).
+
+| SNR | 2 dB | 2.5 | 3 | 3.5 | 4 | 4.5 | 5 | 6 | 7 | 8 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Genie | 1.4e-1 | 3.3e-2 | 2.2e-3 | 7.4e-5 | 1.3e-6 (2) | | | | | | |
+| M&M, no search | 5.8e-1 | 4.7e-1 | 3.2e-1 | 2.6e-1 | 1.9e-1 | 1.3e-1 | 8.7e-2 | 3.7e-2 | 1.5e-2 | 4.7e-3 | 2.2e-4 |
+| **Split NN, no search** | **2.0e-1** | **6.2e-2** | **1.8e-2** | **1.1e-2** | **7.4e-3** | **4.9e-3** | **3.0e-3** | **7.8e-4** | **1.9e-4** | **4.1e-5** | 6.7e-7 (1) |
+| M&M + CRC (first pass) | 1.6e-1 | 2.8e-2 | 2.1e-3 | 2.0e-4 | 1.1e-4 | 6.3e-5 | 5.3e-5 | 2.0e-5 | 1.0e-5 (5) | 0 in 500k | |
+| **Split NN + CRC (first pass)** | **1.5e-1** | **2.6e-2** | **1.4e-3** | **4.1e-5** | **3.5e-6** (7) | **3.5e-6** (7) | 0 in 2M | 5e-7 (1) | 0 in 500k | | |
+| Decodes / packet, M&M / NN | 7.76 / 6.02 | 3.48 / 1.96 | 2.23 / 1.08 | 1.79 / 1.02 | 1.52 / 1.01 | 1.34 / 1.01 | 1.22 / 1.00 | 1.09 / 1.00 | | | |
+
+(Error counts in brackets where < 25; the other points have 39–423 errors.)
+- **Without the search the gap is largest at this rate:** the split NN is 3× below M&M at 2 dB and 18–115× at
+  3–8 dB. R = 1/2 tolerates the least CFO error, and M&M's spread error (RMS ≈ 1e-4 even at 10 dB) keeps failing
+  it, while the split NN's right-lobe error is ≈ 7× smaller; its remaining no-search errors are wrong-lobe frames.
+- **With the first-pass search, the split NN follows the genie** down to 3.5 dB (slightly below it at 3 and 3.5 dB,
+  the re-decoding effect of A.13) and then has only 7 errors in 2M frames at 4 and 4.5 dB; M&M + search leaves the
+  waterfall at 3.5 dB and flattens at 1e-4 … 2e-5 (undetected errors from its extra decodes): 5× higher at 3.5 dB,
+  ≈ 20–30× at 4–4.5 dB.
+- **BLER < 1e-2:** with the search from ≈ 2.7 dB for both; without it from ≈ 3.7 dB (split NN) and ≈ 7.4 dB (M&M).
+
+**CFO MSE against M&M** (`train_cfo_split_nn.plot_vs_mm()` → `plots/mse/cfo_mse_vs_snr_split_nn_vs_mm_L1024.png`;
+the split NN over all frames, M&M on 128 contiguous pilots from `logs/cfo_v2_light32_test.json`, and both CRBs):
+
+| SNR | −5 dB | −4 | −3 | −2 | −1 | 0 | 2 | 5 | 10 |
+|---|---|---|---|---|---|---|---|---|---|
+| M&M, MSE | 2.5e-5 | 3.0e-6 | 3.9e-7 | 1.5e-7 | 1.1e-7 | 8.4e-8 | 5.2e-8 | 2.6e-8 | 8.1e-9 |
+| Split NN, MSE (all frames) | **1.6e-6** | **1.1e-6** | 8.8e-7 | 6.7e-7 | 4.9e-7 | 3.4e-7 | 1.2e-7 | **1.1e-8** | **1.7e-10** |
+| CRB, contiguous / split | 2.3e-7 / 4.8e-9 | 1.8e-7 / 3.8e-9 | 1.5e-7 / 3.0e-9 | 1.2e-7 / 2.4e-9 | 9.1e-8 / 1.9e-9 | 7.3e-8 / 1.5e-9 | 4.6e-8 / 9.5e-10 | 2.3e-8 / 4.8e-10 | 7.3e-9 / 1.5e-10 |
+
+The split NN has the lower MSE at −5 and −4 dB (M&M's own threshold region) and from ≈ 3.5 dB up (49× lower at
+10 dB, at 1.11 × its CRB). From ≈ −3.5 to 3.5 dB M&M has the lower MSE, yet the split NN + CRC search has the lower
+BLER there (first pass, −2 … 0 dB: 6.7e-5 … 2.7e-5 vs M&M's 2.2e-4 … 4.1e-5). The split NN's MSE in this range is
+the wrong-lobe frames (13 % at −1 dB, each ≈ 2e-3 off), which the lobe-ordered search fixes in one or two decodes;
+M&M's error is spread continuously (RMS ≈ 3–4e-4 at −2 … 0 dB), so its search scans more hypotheses (2.09 vs 1.56 decodes per
+packet at −2 dB, 1.26 vs 1.23 at 0 dB), and almost all remaining errors of both are undetected CRC passes, which grow
+with the number of decodes.
+
+**CFO outage** (`cfo_outage_split.py` → `logs/cfo_outage_split.json`, `plots/outage/cfo_outage_split_nn_vs_mm_L1024.png`;
+P(|CFO error| > 1.0e-4), 1e6 frames at ≤ −3 dB, 1e5 above).
+
+**Why the threshold is 1.0e-4** (`python cfo_outage_split.py --plot-tolerance` →
+`plots/outage/cfo_outage_threshold_tolerance_L1024.png`): an outage threshold should be the CFO error the *code*
+cannot tolerate, not a round number. From the BLER-vs-CFO-error run of this code (1024 symbols, R = 1/10, CRC-16,
+450–500 errors per point), the error at which the BLER doubles relative to no CFO error is 1.07e-4 at −5.5 dB
+(BLER(0) = 2.7e-2), 0.98e-4 at −5 dB (4.3e-3) and 0.83e-4 at −4.5 dB (3.7e-4); at BLER(0) ≈ 1e-2 (the operating point
+used for the tolerance throughout this study) it is **1.0e-4**. The figure shows the absolute BLER at −5.5 and
+−4.5 dB (the two SNRs on either side of the threshold; −5 dB is left out to keep it readable): dotted line = BLER with
+no CFO error, dashed = twice that, ◆ = where each curve doubles, dash-dot = 1.0e-4. Below it the BLER is nearly flat (+12–15 % at 3.75e-5),
+above it it rises steeply (×5 at 1.5e-4, ×15 at 2e-4 at −5 dB). The other thresholds (3e-4, 1e-3) were dropped:
+both lie on the steep part, where any estimator error is already a decoding failure.
+
+| Outage, \|error\| > 1.0e-4 | −5 dB | −4 | −3 | −2 | −1 | 0 | 2 | 5 | 10 |
+|---|---|---|---|---|---|---|---|---|---|
+| M&M (128 contiguous pilots) | 0.86 | 0.83 | 0.81 | 0.78 | 0.76 | 0.73 | 0.66 | 0.53 | 0.27 |
+| **Split pilots NN** | **0.46** | **0.38** | **0.30** | **0.22** | **0.16** | **0.10** | **0.035** | **3.1e-3** | **0** |
+| Split ML (same frames) | 0.46 | 0.38 | 0.30 | 0.22 | 0.16 | 0.10 | 0.034 | 3.0e-3 | 0 |
+
+The split NN has lower outage than M&M at every SNR: 1.9× at −5 dB, 7× at 0 dB, and none in 1e5 frames at 10 dB,
+where 27 % of M&M frames still exceed the tolerance (M&M's RMS error is ≈ 9e-5 even at 10 dB). Most of the NN's
+outage frames are wrong-lobe frames (a lobe is 1.95e-3 off: 34 % of frames at −5 dB, 9 % at 0 dB), which the
+lobe-ordered CRC search recovers in 1–2 extra decodes; M&M's are spread errors around its RMS. The split ML on the
+same frames has the same outage as the NN within ±0.001 everywhere.
+
+**Would an estimator built to minimise outage do better? No, not with these pilots.** Both outages are close to
+what the pilots allow:
+- **Split pilots, −5 dB:** a wrong lobe is always an outage (34.2 %). On the right lobe, even an estimator at the
+  CRB (σ = 6.9e-5) exceeds 1.0e-4 in 2Q(1.46) = 15 % of frames, i.e. 0.66 × 0.15 ≈ 0.10. Together ≈ 0.44 of the
+  measured 0.455. The lobe choice by maximum pilot likelihood is already near the best possible: an estimator
+  trained on the outage itself would pick the lobe with the most probability within ±τ, which for lobes of equal
+  width is almost always the same lobe (expected gain ≤ 1–2 points; not trained).
+- **M&M, contiguous pilots:** the CRB alone gives an outage of 0.84 at −5 dB (σ = 4.8e-4) and 0.24 at 10 dB
+  (σ = 8.5e-5, almost the threshold); M&M measures 0.855 and 0.266. No estimator on 128 contiguous pilots can get
+  much lower.
+
+The outage is set by the pilot layout and the SNR, not by the estimator. What would lower it: a layout that trades
+less fine accuracy for fewer lobe ambiguities (three blocks with unequal gaps, unequal block sizes; the bound per
+layout can be computed with the split ML), decision-directed re-estimation over all 1024 symbols after a decode, and,
+for the receiver, the CRC search, which already turns most outage frames into extra decodes (the BLER table above).
+
+**Checks made before these results were written down:**
+- **Paired CFO evaluation:** every 1024 / 512 test file contains the split-ML statistics of its own run, and their
+  wrong-lobe counts are identical across all 7 (1024) / 2 (512) runs (the MSE sums differ only at 1e-16, summation
+  order), so every model was scored on exactly the same frames. They also agree with the independent split-ML run
+  `cfo_split_mse.json` (other seeds) within 2σ.
+- **No leakage:** training producers, validation and evaluation use disjoint seeds; the best epoch's validation
+  (10k frames per SNR: 34.0 % wrong lobe at −5 dB) matches the 1e6-frame evaluation (34.2 %), so no over-fit.
+- **Formulas:** the split CRB reduces to the contiguous CRB 3 / (2π² SNR L(L² − 1)) for one block; the quarter
+  positions (224–287 and 736–799 at 1024) and the lobe spacing 2/N are as designed; the DFT-initialised bank rows
+  are Re / Im of Σ z e^{−j2πfm}; the operation count adds up (conv 14,336 + 57,344 + 14,336 + 384).
+- **Simulator:** the NN receives z = r·s* at the same quarter positions as the split ML and, like NN v1 / v2, the
+  true SNR; its search reuses the split ML's offsets and likelihood ordering; on 2000 shared frames (−3 dB) it gave
+  460 vs 462 errors without the search and 1.83 vs 1.84 decodes with it.
+- **All BLER results of the study** (512: CRC-11 / CRC-16, 1024: CRC-16, every receiver, −5 … 0 dB): consistent
+  counts, ≥ 1 decode per packet, undetected ≤ BLER, no SNR step where the BLER rises by more than 3σ, and no
+  estimator whose CRC search is worse than the same estimator without it.
 
 # Part B: Multipath channel (3-tap Rayleigh)
 

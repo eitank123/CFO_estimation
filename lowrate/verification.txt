@@ -1,0 +1,6 @@
+PASS  NN + CRC search BLER <= NN BLER at all 243 common points
+PASS  CRB source R=0.1, -5 dB: measured BLER 0.212 vs predicted 0.199 from the BLER-vs-CFO-error curve (sqrt CRB = 4.79e-04)
+PASS  CRB source R=0.1, -4 dB: measured BLER 0.086 vs predicted 0.081 from the BLER-vs-CFO-error curve (sqrt CRB = 4.27e-04)
+PASS  BLER falls with SNR on every curve (3 sigma)
+PASS  429 points copied from the main results unchanged
+PASS  required SNR: Genie <= CRB bound <= NN, M&M; search within 0.2 dB of Genie
