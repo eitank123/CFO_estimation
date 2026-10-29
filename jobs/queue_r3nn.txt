@@ -1,0 +1,2 @@
+nn-r10-r1|-|@jobs/nn-r10.sh
+nn-r4-r1|-|@jobs/nn-r4.sh

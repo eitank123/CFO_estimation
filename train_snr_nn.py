@@ -34,7 +34,7 @@ from Hybrid import FusionNetwork, DenseCFOEstimator
 if __name__ == "__main__" and "--length" in sys.argv:   # the environment carries it to the producer processes
     os.environ["CFO_EST_LEN"] = sys.argv[sys.argv.index("--length") + 1]
 PREAMBLE_LENGTH = int(os.environ.get("CFO_EST_LEN", "128"))   # known symbols per estimate (training/evaluation)
-MAX_CFO = 0.2
+MAX_CFO = float(os.environ.get("CFO_MAX", "0.2"))      # CFO range (a study sets e.g. CFO_MAX=0.03)
 MAX_LAG = PREAMBLE_LENGTH // 2    # lags m = 1..L/2, as M&M's N = L0/2 (64 for L = 128)
 EVAL_SNRS = list(range(-5, 11))
 SNR_CENTER = 2.5   # (snr_db - center) / scale maps [-5, 10] dB to [-1, 1]

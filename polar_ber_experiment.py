@@ -53,9 +53,10 @@ N_BITS = 2 * N_SYM
 if "--est-len" in sys.argv:
     os.environ["POLAR_LEST"] = sys.argv[sys.argv.index("--est-len") + 1]
 L_EST = int(os.environ.get("POLAR_LEST", "128"))  # symbols the estimators see (start of the packet, treated as known)
-MAX_CFO = 0.2
+os.environ.setdefault("CFO_BLOCK", str(min(L_EST, 128) // 2))   # split pilots: 2 x L_EST/2 (train_cfo_v3.BLOCK)
+MAX_CFO = float(os.environ.get("CFO_MAX", "0.2"))      # CFO range (a study sets e.g. CFO_MAX=0.03)
 LINE_SNR = -4.0                   # Es/N0 of the estimator-RMSE lines in the CFO-error plots
-SUFFIX = "" if N_SYM == 512 else f"_L{N_SYM}"      # file names of other packet lengths
+SUFFIX = ("" if N_SYM == 512 else f"_L{N_SYM}") + ("_P64" if L_EST == 64 else "")   # other packet / preamble lengths
 
 # name: (data bits A, CRC length, Eb/N0 grid for --mode ebn0, Eb/N0 points for --mode error)
 # R=1/2 and R=1/4 (both packet lengths): Es/N0 -5 .. 10 dB in 0.25 dB steps (R=1/4: Es/N0 = Eb/N0 - 3.01 dB)
@@ -99,9 +100,10 @@ elif N_SYM == 1024:               # N = 2048, low-rate study: same data rates, h
             CODES[_name if _c == 11 else f"{_name},C{_c}"] = (
                 _a, _c, list(np.round(np.arange(-6, 0.01, 0.5) - 10 * np.log10(_a / N_SYM), 4)), [])
     # adaptive-rate study: higher rates with CRC-16, each around the SNR region where it is the best rate
-    for _name, _a, _lo, _hi in (("R=0.2", 410, -4.5, 0), ("R=1/4", 512, -3.5, 1.5), ("R=1/3", 683, -2.5, 4),
+    for _name, _a, _lo, _hi in (("R=0.2", 410, -4.5, 0), ("R=1/4", 512, -3.5, 1.5), ("R=1/3", 683, -2.5, 4), ("R=2/5", 819, -1.5, 5), ("R=3/5", 1229, 1.5, 8), ("R=2/3", 1365, 2, 9),
                                 ("R=1/2", 1024, 0, 7.5), ("R=3/4", 1536, 3.5, 10)):
         CODES[f"{_name},C16"] = (_a, 16, list(np.round(np.arange(_lo, _hi + 0.01, 0.5) - 10 * np.log10(_a / N_SYM), 4)), [])
+    CODES["R=1/4,C24"] = (512, 24, list(np.round(np.arange(0, 10.01, 0.5) - 10 * np.log10(512 / N_SYM), 4)), [])  # 64-pilot study
 else:
     raise ValueError(f"no code table for a {N_SYM}-symbol packet")
 ERRORS = np.concatenate([[0.0], np.logspace(-5, np.log10(0.2), 18)])
@@ -129,24 +131,78 @@ SEARCH_SPLIT_QUARTER = SPLIT_QUARTER + " + CRC search (first pass)"
 SEARCH_SPLIT_QUARTER_FULL = SPLIT_QUARTER + " + CRC search"          # full search over the same lobes x fine grid
 SEARCH_SPLIT_NN = SPLIT_NN + " + CRC search (first pass)"             # the split ML's search, around the NN estimate
 SEARCH_SPLIT_NN_FULL = SPLIT_NN + " + CRC search"                     # ... full search (every hypothesis, best metric)
-FIRST_PASS = {SEARCH_FIRST, SEARCH_MM_FIRST, SEARCH_V2_FIRST, SEARCH_SPLIT_ENDS, SEARCH_SPLIT_QUARTER, SEARCH_SPLIT_NN}
-SEARCH_BASE = {SEARCH: "SNR-aware NN", SEARCH_MM: "M&M", SEARCH_FIRST: "SNR-aware NN", SEARCH_HALF: "SNR-aware NN",
+# pre-MF correction (blind_fast.premf): the pre-MF samples de-rotated by the CFO estimate, then the matched filter, so
+# the MF is matched to the signal for any CFO (correcting after the MF loses up to 1.2 dB + ISI at |f| = 0.2)
+GENIE_PREMF = "Genie (known CFO), pre-MF correction"
+SEARCH_SPLIT_NN_PREMF = SPLIT_NN + ", pre-MF correction + CRC search (first pass)"
+SEARCH_MM_PREMF = "M&M, pre-MF correction + CRC search (first pass)"   # M&M on the first L_EST (128) known symbols
+# Literature benchmarks on the same 128 known symbols (start of the packet), pre-MF correction, and the carrier phase
+# ESTIMATED from those symbols (angle of sum z e^{-j 2 pi f_hat (n + D)}; the sources above get the phase as a genie):
+#   M&M                 Mengali & Morelli 1997 (feedforward, lag correlations)
+#   M&M + ML Newton     coarse M&M, then 2 Newton steps on the ML periodogram |sum z e^{-j 2 pi f n}| (Rife & Boorstyn)
+#   ML periodogram      zero-padded FFT (1024) of z over |f| <= MAX_CFO, then 2 Aboutanios & Mulgrew iterations
+#   + code-aided EM     on a CRC failure: the CA-SCL output re-encoded (hard decisions; the known symbols as they
+#                       are) -> CFO by 2 Newton steps / phase from all N_SYM symbols -> re-decode, up to EM_ITERS times
+#                       (decision-directed EM, Noels / Herzet et al. code-aided synchronisation)
+BM_MM = "M&M, est. phase, pre-MF + CRC search (first pass)"
+BM_MMN = "M&M + ML Newton, est. phase, pre-MF + CRC search (first pass)"
+BM_PG = "ML periodogram (FFT + AM), est. phase, pre-MF + CRC search (first pass)"
+BM_EM = "M&M + ML Newton, est. phase, pre-MF + code-aided EM"
+BM_EMS = "M&M + ML Newton, est. phase, pre-MF + code-aided EM + CRC search (first pass)"
+# classic fine estimators on the same 128 known symbols (user 2026-10-29: M&M as the coarse stage, then a fine one):
+# Luise & Reggiannini and Fitz on the residual after the M&M de-rotation (alone their range is |f| < 1 / (M + 1) and
+# 1 / (2 M), M = L / 2: below the +-0.03 here), Kay's weighted phase-difference average (alone, range 1/2); and the
+# split pilots (2 x 64, quarter layout: the long-baseline estimators of distributed pilot blocks) with the phase
+# ESTIMATED from the pilots, as every benchmark here (the split-NN reference has the genie phase)
+BM_LR = "M&M + L&R, est. phase, pre-MF + CRC search (first pass)"
+BM_FITZ = "M&M + Fitz, est. phase, pre-MF + CRC search (first pass)"
+BM_KAY = "Kay, est. phase, pre-MF + CRC search (first pass)"
+BM_SPML = "Split pilots ML, est. phase, pre-MF + CRC search (first pass)"
+BM_SPNN = "Split pilots NN, est. phase, pre-MF + CRC search (first pass)"
+BENCH = {BM_MM: "mm", BM_MMN: "mmn", BM_PG: "pg", BM_EM: "mmn", BM_EMS: "mmn", BM_LR: "lr", BM_FITZ: "fitz",
+         BM_KAY: "kay", BM_PG + " + re-encode check": "pg", BM_MM + " + re-encode check": "mm"}
+# + the blind receivers' re-encoding check (user 2026-10-29): a CRC pass is accepted only if the normalised correlation
+# of r with the re-encoded packet clears the threshold (blind_fast.rho_min, and the per-rate table RHO_N of blind_ber);
+# otherwise the CRC search goes on. Every benchmark also COUNTS its CRC passes, the wrong ones (true data known to the
+# simulator) and which of them the check would remove, without acting on it
+RE = " + re-encode check"
+BM_SPML_RE, BM_PG_RE, BM_MM_RE = BM_SPML + RE, BM_PG + RE, BM_MM + RE
+BENCH_SPLIT = {BM_SPML, BM_SPNN, BM_SPML_RE}
+REENC = {BM_SPML_RE, BM_PG_RE, BM_MM_RE}
+RHO_N = {"R=0.1,C16": ((-5.0, 0.775), (-4.0, 0.72), (-3.0, 0.66), (-2.0, 0.625), (-1.0, 0.59), (0.0, 0.553)),
+         "R=2/5,C16": ((0.5, 0.928), (1.0, 0.91), (1.5, 0.894), (2.0, 0.883)),
+         "R=1/2,C16": ((2.0, 0.934), (3.0, 0.903))}
+BENCH_EM = {BM_EM, BM_EMS}
+EM_ITERS = 2
+PREMF = {GENIE_PREMF, SEARCH_SPLIT_NN_PREMF, SEARCH_MM_PREMF} | set(BENCH) | BENCH_SPLIT
+FIRST_PASS = {SEARCH_FIRST, SEARCH_MM_FIRST, SEARCH_V2_FIRST, SEARCH_SPLIT_ENDS, SEARCH_SPLIT_QUARTER, SEARCH_SPLIT_NN,
+              SEARCH_SPLIT_NN_PREMF, SEARCH_MM_PREMF, BM_MM, BM_MMN, BM_PG, BM_EMS, BM_LR, BM_FITZ, BM_KAY, BM_SPML,
+              BM_SPNN, BM_SPML_RE, BM_PG_RE, BM_MM_RE}
+SEARCH_BASE = {BM_SPML_RE: SPLIT_QUARTER, BM_PG_RE: "M&M", BM_MM_RE: "M&M", BM_LR: "M&M", BM_FITZ: "M&M", BM_KAY: "M&M", BM_SPML: SPLIT_QUARTER, BM_SPNN: SPLIT_NN, BM_MM: "M&M", BM_MMN: "M&M", BM_PG: "M&M", BM_EMS: "M&M",SEARCH: "SNR-aware NN", SEARCH_MM: "M&M", SEARCH_FIRST: "SNR-aware NN", SEARCH_HALF: "SNR-aware NN",
                SEARCH_MM_FIRST: "M&M", SEARCH_V2_FIRST: V2, SEARCH_V2: V2, SEARCH_SPLIT_ENDS: SPLIT_ENDS,
                SEARCH_SPLIT_QUARTER: SPLIT_QUARTER, SEARCH_SPLIT_QUARTER_FULL: SPLIT_QUARTER, SEARCH_SPLIT_NN: SPLIT_NN,
-               SEARCH_SPLIT_NN_FULL: SPLIT_NN}
+               SEARCH_SPLIT_NN_FULL: SPLIT_NN, SEARCH_SPLIT_NN_PREMF: SPLIT_NN, SEARCH_MM_PREMF: "M&M"}
 SOURCES = DEFAULT_SOURCES + [CRB_SRC, SEARCH, SEARCH_MM, SEARCH_FIRST, SEARCH_HALF, SEARCH_MM_FIRST, SEARCH_V2_FIRST,
                              SEARCH_V2, V2, SPLIT_ENDS, SPLIT_QUARTER, SEARCH_SPLIT_ENDS, SEARCH_SPLIT_QUARTER,
-                             SEARCH_SPLIT_QUARTER_FULL, SPLIT_NN, SEARCH_SPLIT_NN, SEARCH_SPLIT_NN_FULL]
+                             SEARCH_SPLIT_QUARTER_FULL, SPLIT_NN, SEARCH_SPLIT_NN, SEARCH_SPLIT_NN_FULL, GENIE_PREMF,
+                             SEARCH_SPLIT_NN_PREMF, SEARCH_MM_PREMF] + list(BENCH) + sorted(BENCH_SPLIT)
 COLORS = {GENIE: "k", "SNR-aware NN": "#9467bd", "M&M": "#ff7f0e", CRB_SRC: "#7f7f7f", SEARCH: "#2ca02c",
           SEARCH_MM: "#d62728", SEARCH_FIRST: "#1f77b4", SEARCH_HALF: "#8c564b", SEARCH_MM_FIRST: "#d62728",
           SEARCH_V2_FIRST: "#2ca02c", SEARCH_V2: "#17becf", V2: "#8c564b", SPLIT_ENDS: "#e377c2",
           SPLIT_QUARTER: "#e377c2", SEARCH_SPLIT_ENDS: "#d62728", SEARCH_SPLIT_QUARTER: "#d62728",
           SEARCH_SPLIT_QUARTER_FULL: "#d62728", SPLIT_NN: "#17becf", SEARCH_SPLIT_NN: "#17becf",
-          SEARCH_SPLIT_NN_FULL: "#17becf"}
+          SEARCH_SPLIT_NN_FULL: "#17becf", GENIE_PREMF: "0.4", SEARCH_SPLIT_NN_PREMF: "#d62728"}
 MARKERS = {GENIE: "", "SNR-aware NN": "s", "M&M": "d", CRB_SRC: "", SEARCH: "^", SEARCH_MM: "v", SEARCH_FIRST: "o",
            SEARCH_HALF: "P", SEARCH_MM_FIRST: "v", SEARCH_V2_FIRST: "^", SEARCH_V2: "D", V2: "s", SPLIT_ENDS: "x",
            SPLIT_QUARTER: "x", SEARCH_SPLIT_ENDS: "*", SEARCH_SPLIT_QUARTER: "*",
-           SEARCH_SPLIT_QUARTER_FULL: "P", SPLIT_NN: "X", SEARCH_SPLIT_NN: "h", SEARCH_SPLIT_NN_FULL: "H"}
+           SEARCH_SPLIT_QUARTER_FULL: "P", SPLIT_NN: "X", SEARCH_SPLIT_NN: "h", SEARCH_SPLIT_NN_FULL: "H",
+           GENIE_PREMF: "", SEARCH_SPLIT_NN_PREMF: "h"}
+COLORS[SEARCH_MM_PREMF], MARKERS[SEARCH_MM_PREMF] = "#ff7f0e", "v"
+for _s, _c, _m in ((BM_MM, "#ff7f0e", "v"), (BM_MMN, "#2ca02c", "^"), (BM_PG, "#8c564b", "P"), (BM_EM, "#9467bd", "*"),
+                   (BM_EMS, "#e377c2", "X"), (BM_LR, "#bcbd22", "<"), (BM_FITZ, "#7f7f7f", ">"),
+                   (BM_KAY, "#17becf", "d"), (BM_SPML, "#1f77b4", "s"), (BM_SPNN, "#d62728", "o"),
+                   (BM_SPML_RE, "#1f77b4", "D"), (BM_PG_RE, "#8c564b", "p"), (BM_MM_RE, "#ff7f0e", "1")):
+    COLORS[_s], MARKERS[_s] = _c, _m
 # CFO grid step (cycles/symbol): 1.5e-4 for 512 symbols (residual <= 7.5e-5, below the code's tolerance); the tolerance
 # scales with 1 / packet length (the phase drift 2 pi e n grows along the packet), so the step does too
 SEARCH_STEP = 1.5e-4 * 512 / N_SYM
@@ -185,7 +241,7 @@ def split_nn(zp, snr_db):
 
 def _load_split_nn(mod):
     import torch
-    ck = torch.load(paths.model(f"cfo_split_nn_L{N_SYM}.pth"), map_location="cpu", weights_only=False)
+    ck = torch.load(paths.model(mod.best_name(N_SYM)), map_location="cpu", weights_only=False)
     m = mod.build(ck["config"])
     m.load_state_dict(ck["state_dict"])
     return m.eval()
@@ -206,7 +262,8 @@ BLER_TARGET = 1e-2                   # operating points: highest rate with BLER 
 SNR_MIN = -5.0                       # low-rate study plots: SNR (Es/N0) from -5 dB up
 
 SNR_AWARE_PATH = paths.model({128: "snr_aware_cfo_model_L64_chain150.pth",   # full chain, 40 + 150 epochs
-                              256: "snr_aware_cfo_model_L128_est256.pth"}[L_EST])   # full chain, 256 symbols
+                              256: "snr_aware_cfo_model_L128_est256.pth",   # full chain, 256 symbols
+                              64: "snr_aware_cfo_model_L32_chain.pth"}[L_EST])   # full chain, 64 symbols (lowrate/)
 RMSE_FILE = paths.result("cfo_rmse_chain.npz")
 _snr_nn = _v2 = None
 
@@ -251,6 +308,81 @@ def estimate(src, z, snr_db):
     return f.double().numpy()[:, 0] * MAX_CFO
 
 
+def ml_newton(z, t, f, iters=2):
+    """Newton steps on the ML periodogram |sum_n z_n e^{-j 2 pi f t_n}|^2 from f (B,); z (B, L), t (L,) centred."""
+    w = -2j * np.pi * t
+    for _ in range(iters):
+        e = np.exp(-2j * np.pi * f[:, None] * t[None])
+        A, A1, A2 = (z * e).sum(1), (z * w * e).sum(1), (z * w ** 2 * e).sum(1)
+        g = 2 * (A1 * A.conj()).real
+        h = 2 * ((A2 * A.conj()).real + np.abs(A1) ** 2)
+        step = np.where(h < 0, -g / np.where(h < 0, h, -1.0), 0.0)
+        f = f + np.clip(step, -0.5 / len(t), 0.5 / len(t))
+    return f
+
+
+PG_NFFT = 1024
+
+
+def ml_periodogram(z, iters=2):
+    """ML periodogram: peak of the zero-padded FFT of z (B, L) inside |f| <= MAX_CFO, then Aboutanios & Mulgrew
+    iterations (the two DFT coefficients half a bin 1/L either side; delta = (|X+| - |X-|) / (|X+| + |X-|) / 2 bins)."""
+    L = z.shape[1]
+    Z = np.abs(np.fft.fft(z, PG_NFFT, axis=1))
+    nu = np.fft.fftfreq(PG_NFFT)
+    f = nu[np.where(np.abs(nu)[None] <= MAX_CFO, Z, -1.0).argmax(1)]
+    n = np.arange(L)
+    for _ in range(iters):
+        Xp = np.abs((z * np.exp(-2j * np.pi * (f[:, None] + 0.5 / L) * n[None])).sum(1))
+        Xm = np.abs((z * np.exp(-2j * np.pi * (f[:, None] - 0.5 / L) * n[None])).sum(1))
+        f = f + 0.5 * (Xp - Xm) / (Xp + Xm + 1e-30) / L
+    return f
+
+
+def kay(z):
+    """Kay's weighted phase-difference average over z (B, L): parabolic window on arg(z[k] z*[k-1])."""
+    L = z.shape[1]
+    k = np.arange(1, L)
+    w = 1.5 * L / (L ** 2 - 1) * (1 - ((k - L / 2) / (L / 2)) ** 2)
+    return (np.angle(z[:, 1:] * z[:, :-1].conj()) * w).sum(1) / (2 * np.pi)
+
+
+def lr_fitz(z, kind):
+    """Luise & Reggiannini ("lr") or Fitz ("fitz") on z (B, L), M = L / 2 lags R(m) = mean_k z[k] z*[k-m]."""
+    L = z.shape[1]
+    M = L // 2
+    R = np.stack([(z[:, m:] * z[:, :L - m].conj()).mean(1) for m in range(1, M + 1)], 1)
+    if kind == "lr":
+        return np.angle(R.sum(1)) / (np.pi * (M + 1))
+    return np.angle(R).sum(1) / (np.pi * M * (M + 1))
+
+
+def bench_estimate(kind, z, snr_db):
+    """CFO (B,) of a literature benchmark (BENCH) from z = r s* of the L_EST known symbols."""
+    if kind == "pg":
+        return ml_periodogram(z)
+    if kind == "kay":
+        return kay(z)
+    f = estimate("M&M", z, snr_db)
+    if kind == "mmn":
+        f = ml_newton(z, np.arange(z.shape[1]) - (z.shape[1] - 1) / 2, f)
+    if kind in ("lr", "fitz"):                            # coarse M&M, then the fine estimator on the residual
+        f = f + lr_fitz(z * np.exp(-2j * np.pi * f[:, None] * np.arange(z.shape[1])[None]), kind)
+    return f
+
+
+# MACs of the benchmarks' estimators (real multiply-adds, as EST_MACS): M&M 24,704; Newton step 3 sums x 4 x L + the
+# exponentials 8 x L; FFT 2 NFFT log2 NFFT; AM iteration 2 sums x (4 + 8) x L; phase 4 x L (per hypothesis too)
+BENCH_EST_MACS = {"mm": 24_704 + 4 * 128, "mmn": 24_704 + 2 * (3 * 4 + 8) * 128 + 4 * 128,
+                  "pg": 2 * PG_NFFT * 10 + 4 * 128 + 2 * 2 * 12 * 128 + 4 * 128,
+                  "lr": 24_704 + 8 * 128 + 4 * sum(128 - m for m in range(1, 65)) + 4 * 128,
+                  "fitz": 24_704 + 8 * 128 + 4 * sum(128 - m for m in range(1, 65)) + 64 * 20 + 4 * 128,
+                  "kay": 4 * 127 + 127 * 20 + 4 * 128}       # (an angle ~ 20 MACs)
+EM_MACS = 20_000 + 4 * N_SYM + 2 * 20 * N_SYM + 8 * N_SYM     # re-encode + z + 2 Newton steps + phase (+ the decode)
+EM_SCAN = np.arange(-8, 9) * 1.25e-4                          # 1st EM round: scan of +-1e-3 (as blind_cfo.dd_refine)
+EM_SCAN_MACS = 4 * N_SYM + len(EM_SCAN) * 4 * N_SYM           # e^{-j 2 pi fe t} once, then fixed tables per offset
+
+
 # =====================================================================
 # Monte Carlo
 # =====================================================================
@@ -273,7 +405,8 @@ def simulate_point(task):
     n = np.arange(N_SYM)
     centre = (N_SYM - 1) / 2
 
-    stats = {s: dict(frames=0, frame_err=0, bit_err=0, raw_err=0, searched=0, undetected=0, se_first=0.0,
+    stats = {s: dict(frames=0, frame_err=0, bit_err=0, raw_err=0, searched=0, em=0, undetected=0, se_first=0.0,
+                     crc_pass=0, crc_pass_wrong=0, re_caught=0, re_lost=0, crc_undetected=0,
                      se_final=0.0) for s in srcs}
     running = lambda s: stats[s]["frame_err"] < min_errors and stats[s]["frames"] < max_frames
     while any(running(s) for s in srcs):
@@ -282,11 +415,15 @@ def simulate_point(task):
         sym = ((1 - 2.0 * cw[:, 0::2]) + 1j * (1 - 2.0 * cw[:, 1::2])) / np.sqrt(2)
         f = rng.uniform(-MAX_CFO, MAX_CFO, batch)
         ph = rng.uniform(0, 2 * np.pi, batch)
-        r = transmit(sym, f, ph, snr_db, rng)             # full Tx/Rx chain, shared by every source
+        if PREMF & set(srcs):                             # the same chain, also keeping the pre-MF samples
+            from blind_cfo import transmit_full
+            r, rx = transmit_full(sym, f, ph, snr_db, rng)
+        else:
+            r, rx = transmit(sym, f, ph, snr_db, rng), None   # full Tx/Rx chain, shared by every source
         for src in srcs:
             if running(src):
                 _receive(src, stats[src], rng_es[src], code, data, cw, sym, f, ph, r, snr_db, sigma2, interleaver,
-                         n, centre, batch)
+                         n, centre, batch, rx)
         done = min(min(1.0, max(stats[s]["frame_err"] / min_errors, stats[s]["frames"] / max_frames)) for s in srcs)
         with open(progress_file, "a") as fp:     # per-batch progress, read by job_progress.py
             fp.write(f"{task_id} {done:.4f}\n")
@@ -294,16 +431,19 @@ def simulate_point(task):
     out =[{"code": code_name, "ebn0": ebn0_db, "esn0": snr_db, "src": s, "frames": st["frames"],
             "frame_err": st["frame_err"], "ber": st["bit_err"] / (st["frames"] * A), "bler": st["frame_err"] / st["frames"],
             "raw_ber": st["raw_err"] / (st["frames"] * N_BITS), "extra_decodes_per_frame": st["searched"] / st["frames"],
+            "em_per_frame": st["em"] / st["frames"],
+            "crc_pass": st["crc_pass"], "crc_pass_wrong": st["crc_pass_wrong"], "re_caught": st["re_caught"],
+            "re_lost": st["re_lost"], "crc_undetected": st["crc_undetected"],
             "undetected_bler": st["undetected"] / st["frames"], "rmse_cfo_first": np.sqrt(st["se_first"] / st["frames"]),
             "rmse_cfo_final": np.sqrt(st["se_final"] / st["frames"])} for s, st in stats.items()]
     return out if isinstance(src_arg, tuple) else out[0]
 
 
-def _receive(src, st, rng_e, code, data, cw, sym, f, ph, r, snr_db, sigma2, interleaver, n, centre, batch):
+def _receive(src, st, rng_e, code, data, cw, sym, f, ph, r, snr_db, sigma2, interleaver, n, centre, batch, rx=None):
     """Receiver `src` on one batch of frames (estimate, de-rotate, decode, CRC search); accumulates into st."""
     from txrx_chain import DELAY_SYM
     if True:                                              # (the body of the former per-source loop)
-        if src == GENIE:
+        if src in (GENIE, GENIE_PREMF):
             f_hat = f
         elif src == CRB_SRC:
             f_hat = f + crb_std(snr_db) * rng_e.standard_normal(batch)
@@ -316,17 +456,30 @@ def _receive(src, st, rng_e, code, data, cw, sym, f, ph, r, snr_db, sigma2, inte
                 f_hat = split_nn(zp, snr_db)
             else:
                 f_hat = split_ml(zp, N_SYM, layout)[0].numpy()
+        elif src in BENCH:
+            f_hat = bench_estimate(BENCH[src], r[:, :L_EST] * np.conj(sym[:, :L_EST]), snr_db)
         elif isinstance(src, str):
             nn = SEARCH_BASE.get(src, src)
             f_hat = estimate(nn, r[:, :L_EST] * np.conj(sym[:, :L_EST]), snr_db)
         else:
             f_hat = f + src * rng_e.choice([-1.0, 1.0], batch)
+        if src in PREMF:                                  # MF output of the pre-MF samples de-rotated by f_hat (same
+            from blind_fast import premf                  # phase model 2 pi f (n + DELAY_SYM) + ph as r)
+            r = premf(r, rx, f_hat)
 
-        def llrs(fh, idx):
+        def llrs(fh, idx, th=None):
             """De-interleaved LLRs of frames idx de-rotated by fh; the phase of r[n] is 2 pi f (n + DELAY_SYM) + ph,
-            the reference is exact at the packet centre."""
-            rot = (2 * np.pi * fh[:, None] * (n + DELAY_SYM)
-                   + (ph[idx] + 2 * np.pi * (f[idx] - fh) * (centre + DELAY_SYM))[:, None])
+            the reference is exact at the packet centre (genie), or, for the benchmarks, estimated: th (given) or the
+            angle of the known symbols' sum at fh."""
+            if src in BENCH or src in BENCH_SPLIT:
+                if th is None:                            # the known symbols: the preamble, or the split pilots
+                    pk_ = kp if src in BENCH_SPLIT else np.arange(L_EST)
+                    zk = r[idx][:, pk_] * np.conj(sym[idx][:, pk_])
+                    th = np.angle((zk * np.exp(-2j * np.pi * fh[:, None] * (n[pk_] + DELAY_SYM))).sum(1))
+                rot = 2 * np.pi * fh[:, None] * (n + DELAY_SYM) + th[:, None]
+            else:
+                rot = (2 * np.pi * fh[:, None] * (n + DELAY_SYM)
+                       + (ph[idx] + 2 * np.pi * (f[idx] - fh) * (centre + DELAY_SYM))[:, None])
             y = r[idx] * np.exp(-1j * rot)
             llr = np.empty((len(idx), N_BITS))
             llr[:, 0::2] = np.sqrt(2) * y.real / sigma2
@@ -335,11 +488,79 @@ def _receive(src, st, rng_e, code, data, cw, sym, f, ph, r, snr_db, sigma2, inte
             deint[:, interleaver] = llr
             return llr, deint
 
+        s_lin = 10 ** (snr_db / 10)
+        thr = 0.0
+        if src in BENCH or src in BENCH_SPLIT:
+            from blind_fast import rho_min
+            thr = rho_min(snr_db)
+            cname = next((k for k, v in CODES.items() if v[0] == code.A and v[1] == code.C), None)
+            if cname in RHO_N:
+                thr = max(thr, float(np.interp(snr_db, *zip(*RHO_N[cname]))) * np.sqrt(s_lin / (1 + s_lin)))
+        seen = np.zeros(batch, bool)                      # a CRC pass seen (the first one: a CRC-only receiver)
+
+        def check(idx, d_k, ok_k, fh):
+            """CRC passes of frames idx: counted (wrong data? removed by the re-encoding check?); with the check
+            (REENC) only the passes that clear it stay accepted."""
+            if not (src in BENCH or src in BENCH_SPLIT):
+                return ok_k
+            j = np.where(ok_k)[0]
+            if not len(j):
+                return ok_k
+            wrong = (d_k[j] != data[idx[j]]).any(1)
+            c_ = code.encode(d_k[j])[:, interleaver]
+            s_ = ((1 - 2.0 * c_[:, 0::2]) + 1j * (1 - 2.0 * c_[:, 1::2])) / np.sqrt(2)
+            rj = r[idx[j]]
+            rho = np.abs(np.sum(rj * np.conj(s_) * np.exp(-2j * np.pi * fh[j][:, None] * n[None]), 1)) / np.sqrt(
+                N_SYM * np.sum(np.abs(rj) ** 2, 1))
+            acc = rho > thr
+            st["crc_pass"] += len(j)
+            st["crc_pass_wrong"] += int(wrong.sum())
+            st["re_caught"] += int((wrong & ~acc).sum())
+            st["re_lost"] += int((~wrong & ~acc).sum())
+            first_ = ~seen[idx[j]]
+            st["crc_undetected"] += int((wrong & first_).sum())
+            seen[idx[j]] = True
+            if src in REENC:
+                ok_k = ok_k.copy()
+                ok_k[j] = acc
+            return ok_k
+
         allf = np.arange(batch)
         llr, deint = llrs(f_hat, allf)
         st["raw_err"] += int(np.sum((llr < 0) != cw))
         dec, ok, pm = code.decode(deint, return_info=True)
+        ok = check(allf, dec, ok, f_hat)
         f_final = f_hat.copy()                            # the CFO the delivered decode used
+        if src in BENCH_EM and not ok.all():
+            # code-aided EM (decision-directed): the failing frames' CA-SCL output re-encoded, the known symbols kept;
+            # CFO by Newton on |sum z e^{-j 2 pi f (n + D)}| over all symbols, phase of that sum, re-decode
+            from polar import polar_transform
+            idx = np.where(~ok)[0]
+            info = code.last_info[idx]                    # the decoded paths' own info bits (CRC included: the
+            fe = f_hat[idx].copy()                        # CRC of their data would be another codeword)
+            t = n + DELAY_SYM - (centre + DELAY_SYM)
+            for it in range(EM_ITERS):
+                if not len(idx):
+                    break
+                u = np.zeros((len(idx), N_BITS), np.uint8)
+                u[:, code.info_pos] = info
+                c = polar_transform(u)[:, interleaver]
+                s = ((1 - 2.0 * c[:, 0::2]) + 1j * (1 - 2.0 * c[:, 1::2])) / np.sqrt(2)
+                s[:, :L_EST] = sym[idx, :L_EST]
+                z = r[idx] * np.conj(s)
+                if it == 0:                               # 1st round: the best of a +-1e-3 scan (Newton alone only
+                    cand = fe[:, None] + EM_SCAN[None]    # converges within ~2e-4, the preamble error is larger)
+                    A = np.abs(np.einsum("bn,bkn->bk", z, np.exp(-2j * np.pi * cand[:, :, None] * t[None, None])))
+                    fe = cand[np.arange(len(idx)), A.argmax(1)]
+                fe = ml_newton(z, t, fe)
+                th = np.angle((z * np.exp(-2j * np.pi * fe[:, None] * (n + DELAY_SYM))).sum(1))
+                d_k, ok_k, _ = code.decode(llrs(fe, idx, th)[1], return_info=True)
+                st["searched"] += len(idx)
+                st["em"] += len(idx)
+                dec[idx] = d_k
+                f_final[idx[ok_k]] = fe[ok_k]
+                ok[idx[ok_k]] = True
+                idx, fe, info = idx[~ok_k], fe[~ok_k], code.last_info[~ok_k]
         if src in SEARCH_BASE and not ok.all():
             # CRC-aided CFO search: frames whose CRC failed are decoded on a grid around the NN estimate; the
             # hypothesis that passes the CRC with the best path metric wins (none passes: the first decode stays)
@@ -367,6 +588,7 @@ def _receive(src, st, rng_e, code, data, cw, sym, f, ph, r, snr_db, sigma2, inte
                 fh = f_hat[bad[idx]] + off[idx, t]
                 d_k, ok_k, pm_k = code.decode(llrs(fh, bad[idx])[1], return_info=True)
                 st["searched"] += len(idx)
+                ok_k = check(bad[idx], d_k, ok_k, fh)
                 win = ok_k & (pm_k < best_pm[idx])
                 w = idx[win]
                 dec[bad[w]], best_pm[w] = d_k[win], pm_k[win]
@@ -397,6 +619,9 @@ def pool_points(a, b, tag):
     for f in ("rmse_cfo_first", "rmse_cfo_final"):
         if a.get(f) is not None and b.get(f) is not None:
             out[f] = float(np.sqrt((a[f] ** 2 * fa + b[f] ** 2 * fb) / (fa + fb)))
+    for f in ("crc_pass", "crc_pass_wrong", "re_caught", "re_lost", "crc_undetected"):   # counts: summed
+        if f in a or f in b:
+            out[f] = a.get(f, 0) + b.get(f, 0)
     return out
 
 
@@ -436,7 +661,7 @@ def run(args):
 # Report / plots
 # =====================================================================
 
-SHORT = {"R=0.5": "R=1/2", "R=0.25": "R=1/4", "R=0.1": "R=1/10", "R=1/3": "R=1/3", "R=0.75": "R=3/4"}
+SHORT = {"R=0.5": "R=1/2", "R=0.25": "R=1/4", "R=0.1": "R=1/10", "R=1/3": "R=1/3", "R=2/5": "R=2/5", "R=0.75": "R=3/4", "R=3/5": "R=3/5", "R=2/3": "R=2/3"}
 
 
 def short(name):
@@ -698,7 +923,8 @@ def plot_split_compare(results, name, xlim=None):
     axes[0].set_ylim(top=1.5)
     fig.suptitle("BLER vs SNR", fontsize=15, fontweight="bold")
     axes[0].set_title(f"{N_SYM}-symbol packet, R = {short(name.split(',')[0]).replace('R=', '')}, "
-                      f"CRC-{CODES[name][1]} ({CODES[name][0]} data bits); 128 known symbols in every receiver",
+                      f"CRC-{CODES[name][1]} ({CODES[name][0]} data bits); {L_EST} known symbols in every receiver"
+                      + ("" if L_EST == 128 else f" (split: 2 × {L_EST // 2})"),
                       fontsize=11, color="0.3")
     fig.tight_layout()
     tag = name.replace("R=0.1", "R0p1").replace("R=", "R").replace("/", "_").replace(",", "_")
@@ -921,7 +1147,7 @@ if __name__ == "__main__":
                         help="simulate only these SNR (Es/N0) points [dB] instead of the code's grid")
     parser.add_argument("--snr-max", type=float, default=None, help="simulate only SNR (Es/N0) <= this [dB]")
     parser.add_argument("--plot-only", action="store_true", help="redraw plots from polar_results_<mode>_chain.npy")
-    parser.add_argument("--est-len", type=int, choices=[128, 256], default=128,
+    parser.add_argument("--est-len", type=int, choices=[64, 128, 256], default=128,
                         help="known symbols the CFO estimators use (start of the packet); 256 uses the 128-lag "
                              "SNR-aware NN. Run with CFO_STUDY=est256 to keep its files apart")
     parser.add_argument("--packet", type=int, choices=[128, 256, 512, 1024], default=512,
@@ -957,7 +1183,7 @@ if __name__ == "__main__":
         merged = {key(r): r for r in (np.load(results_file, allow_pickle=True) if os.path.exists(results_file) else [])}
         base = f"polar_results_{args.mode}_chain{SUFFIX}_"
         parts = sorted(p for p in glob.glob(paths.result(base + "*.npy"))   # not another packet length's files
-                       if not re.match(r"L\d+(_|\.npy)", os.path.basename(p)[len(base):]))
+                       if not re.match(r"(L\d+|P\d+)(_|\.npy)", os.path.basename(p)[len(base):]))
         # "add*" parts are extra frames of saved points (another seed): pooled into the saved point, never replacing
         # it; each record lists the add tags it already contains, so merging again does not count them twice
         is_add = lambda p: os.path.basename(p)[len(base):].startswith("add")

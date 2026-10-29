@@ -239,9 +239,14 @@ def load(n_sym, tag):
     return m.eval()
 
 
+def best_name(n_sym):
+    """The chosen model: cfo_split_nn_L<n_sym>.pth for 2 x 64 pilots, cfo_split_nn_L<n_sym>_B32.pth for 2 x 32."""
+    return f"cfo_split_nn_L{n_sym}" + ("" if BLOCK == 64 else f"_B{BLOCK}") + ".pth"
+
+
 def load_best(n_sym):
-    """The chosen model models/cfo_split_nn_L<n_sym>.pth (a copy of the best tagged checkpoint)."""
-    ck = torch.load(paths.model(f"cfo_split_nn_L{n_sym}.pth"), map_location="cpu", weights_only=False)
+    """The chosen model (best_name, a copy of the best tagged checkpoint)."""
+    ck = torch.load(paths.model(best_name(n_sym)), map_location="cpu", weights_only=False)
     m = build(ck["config"])
     m.load_state_dict(ck["state_dict"])
     return m.eval()

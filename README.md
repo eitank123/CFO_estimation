@@ -39,6 +39,17 @@ Part A, so the switch back is instant. Those AWGN runs are reported in Part A an
   +1.2 dB at BLER 1e-2 in AWGN and a higher floor in multipath, at ≈ 500× the MACs of the 4th-power stage
   ([A.8](#a8-stage-3-neural-coarse-cfo-estimator-8-sps), [B.5](#b5-stage-3-neural-coarse-estimator-in-multipath),
   [Part C](#part-c-conclusions-stage-4)).
+* **Blind and 24-pilot receivers with a code-metric CFO search (A.16, 1024 symbols, CRC-16).** A CFO correction
+  before the matched filter makes the 128-pilot split NN up to 100× better on the waterfall (R = 2/5, 0.5 dB:
+  1.8e-1 → 1.7e-3); that version is the target. With
+  **24 pilots** (2.3 % instead of 12.5 %) a best-first search scored by a Fast-SSC path metric, a cheap 4th-power
+  fast path and a pilot check **match the target's BLER at R = 2/5 and 1/2 and beat its ≈ 1e-5 floor** (no error in
+  400k packets from 2 dB). The **blind** receiver (0 pilots) matches at R = 1/2 and from 2 dB at R = 2/5. Cost:
+  with a parabolic fast-path refinement the 24-pilot receiver now costs **the same as the target above the
+  waterfall** (0.35–0.37 M vs 0.35–0.36 M; blind 0.36–0.41 M); on the waterfall 1.35–4.3× (pilots) and up to 7×
+  (blind). At R = 1/10 a last-stage "rescue" of the
+  packets the search loses cut the 24-pilot BLER at −5 dB **4×** (1.1e-3 → 2.8e-4, target 2.5e-4) for +4 % MACs;
+  from −4 dB the BLER beats the target, but the CFO search costs 5–8× the target with pilots and up to 33× blind.
 
 ---
 
@@ -63,6 +74,10 @@ and the scripts write there automatically (`paths.py`):
 | `lowrate/` | study A.9 (`CFO_STUDY=lowrate`): `results/`, `logs/`, `plots/bler/`, `plots/operating_points/`, `verification.txt` |
 | `est256/`, `packet256/` | the 256-symbol studies (same layout) |
 | `multipath/` | Part B, with its own `results_*` folders (unchanged) |
+| `blind/` | A.16: blind / few-pilot receiver results, logs, models and smoke tests |
+| `Blind CFO estimation/` | A.16 figures: `bler/` (BLER of the final receivers vs the target), `macs/` (their MACs per packet), `coarse/`, `metric/`, `estimation/`, `mse/`, `throughput/` (`archive/`: superseded figures; `mse/` and `throughput/` are from the earlier v3 receivers and not part of the final comparison) |
+| `premf_split/` | A.16: the split NN with the pre-MF correction (`CFO_STUDY=premf_split`): `results/`, `logs/` |
+| `small_cfo/` | A.17: the small-CFO study (\|f\| ≤ 0.03, `BLIND_STUDY=small_cfo`, `CFO_STUDY=small_cfo`): `results/` (benchmarks), `blind/results/` (receiver parts + merged `blind_ber.json`), `Blind CFO estimation/` figures (`bler/`, `macs/`, `bench/`); the trained NNs (`blind/models/*.npz`) are not in git (`*.npz` is ignored) |
 
 | File | What it does |
 |---|---|
@@ -96,6 +111,9 @@ and the scripts write there automatically (`paths.py`):
 | `multipath/zero_overhead_mp.py` | Stage 2: the same receiver with equalization (BCJR-MLSE / block MMSE, CMA or strongest-tap init, joint CFO + taps loop). `--channel awgn` reduces it to Stage 1. `--nn` adds the Stage 3 receivers |
 | `multipath/coarse_nn.py` | Stage 3: 8-SPS neural coarse CFO estimator (front end, model, training, stand-alone evaluation) |
 | `multipath/cluster.py` | Push / submit / sync helper for the Run:ai cluster (`bhn20`) |
+| `multipath/slot_queue.py` | Submits queued Run:ai jobs as slots free (`--max-active 7` keeps one slot for smoke tests) |
+| **`blind_*.py`** | **A.16: blind and few-pilot receivers** (file list in [A.16.6](#a166-how-to-run-files)) |
+| **`small_rx.py`, `small_*.py`** | **A.17: the small-CFO receivers on 32 decoder cores** (file list in [A.17.8](#a178-how-to-run-files)) |
 
 ---
 
@@ -1226,6 +1244,512 @@ for the receiver, the CRC search, which already turns most outage frames into ex
   counts, ≥ 1 decode per packet, undetected ≤ BLER, no SNR step where the BLER rises by more than 3σ, and no
   estimator whose CRC search is worse than the same estimator without it.
 
+## A.16 Blind and few-pilot receivers with a code-metric CFO search (`blind_*.py`, folder `Blind CFO estimation/`)
+
+**Question.** Can a receiver with **no pilots** (blind) or only **24 pilots** (2.3 %) match the 128-pilot split NN
+of A.15 in BLER, and at what cost in MACs per packet?
+
+**Setup.** 1024-symbol QPSK packet, polar N = 2048 with CA-SCL L = 8 and CRC-16 (A = 205 / 819 / 1024 data bits at
+R = 1/10 / 2/5 / 1/2), full Tx/Rx chain (8 SPS, RRC β = 0.25, CFO U[−0.2, 0.2] before the matched filter, AWGN),
+SNR = Es/N0. Each BLER point is 8 × 50,000 = 400k packets (or 100 errors per chunk). All receivers of a rate run
+on the same frames (paired seeds 5701 / 5702 / 5703), so differences between them are not sampling noise in the
+frames. "0" in the tables means no error in 400k packets (BLER < 2.5e-6).
+
+**Target: the 128-pilot split NN of A.15, with the pre-MF correction.** A CFO of up to 0.2 Rs before the receiver's
+fixed matched filter costs up to 1.22 dB plus ISI (SDR 12 dB at f = 0.2). The **pre-MF correction** de-rotates the
+8-SPS samples by a CFO estimate, runs the matched filter and puts the same CFO back at symbol rate. The rest of the
+receiver is unchanged, and the MF is matched to a residual of a few 1e-2 instead of up to 0.2. It costs only the
+de-rotation (33.8k MACs), since its matched filter replaces the chain's own. Applied to the split NN (study
+`premf_split/`, `CFO_STUDY=premf_split`), it is a large gain, so this version is the target:
+
+| Split NN, 128 pilots | R = 2/5, 0.5 dB | 1 dB | 1.5 dB | 2 dB | R = 1/2, 2 dB | 2.5 dB | 3 dB | R = 1/10, −5 dB |
+|---|---|---|---|---|---|---|---|---|
+| without pre-MF | 1.8e-1 | 4.1e-2 | 3.8e-3 | 1.2e-4 | 1.4e-1 | 2.6e-2 | 1.5e-3 | 3.0e-3 |
+| **with pre-MF (target)** | **1.7e-3** | **5.2e-5** | **1.9e-5** | **1.0e-5** | **2.3e-4** | **1.3e-5** | **6.7e-6** | **2.5e-4** |
+| known CFO, pre-MF (bound) | 3.1e-3 | 7.1e-5 | 2.0e-6 | 0 | 4.2e-4 | 1.0e-5 | 6.7e-7 | 4.4e-5 |
+
+**Is a de-rotation before the matched filter realistic?** Yes. It is the usual digital front end: an NCO mixes the
+oversampled ADC samples to the estimated carrier before the (digital) matched filter and decimation (e.g. the coarse
+frequency correction / AFC of DVB-S2 and of burst-mode satellite receivers). Two conditions, both met here: the
+packet is buffered, so the CFO can be estimated from its own samples before the MF (block processing, as in any
+packet receiver); and the analog anti-alias filter is wide enough to pass the ±0.2 Rs offset (8 SPS). The target uses
+the same correction, so the comparison is fair. The known-CFO bound below is a single decode at the true CFO, so a
+receiver that accepts the first CRC pass among several CFO / phase hypotheses can sit slightly below it on the
+waterfall (an effectively larger list, paid for with a higher false-pass risk).
+
+Its cost: NN 132,932 MACs + (1 + extra CRC-search decodes) × 186,368 per decode + 33,792 pre-MF, i.e. 0.37–0.40 M at
+R = 2/5 and 1/2 and 0.40–0.66 M at R = 1/10. The split NN has an error floor of ≈ 1e-5 (R = 2/5) and 3e-5–2.5e-4
+(R = 1/10): wrong lobes of the split-pilot likelihood that the CRC search does not recover.
+
+### A.16.1 The receiver (`blind_fast.sps3_receive`, "v3")
+
+1. **Fast path** (only above an SNR threshold): coarse CFO, pre-MF correction there, the 4th-power line of the MF
+   output (FFT of −r⁴, refined by a parabolic fit) gives the CFO modulo 1/4. The coarse estimate resolves the 1/4
+   ambiguity; the 4th-power phase is fixed up to π/2, and the π/2 branch is chosen. One CA-SCL decode follows. Most
+   packets above the waterfall finish here. Thresholds: R = 2/5 and 1/2 from 0 dB; R = 1/10 from −2 dB with 24 pilots
+   (the peak NN picks among the top 16 peaks), never for blind R = 1/10.
+2. **Coarse posterior** over a CFO grid (step k × STEP, STEP = 7.5e-5, k from the measured basin of the code
+   metric, `grid_step`), for packets the fast path does not deliver. It combines a Student-t prior around the
+   spectral (PSD-template) estimate, the 4th-power periodogram and a band-edge cyclic statistic, plus the pilot
+   likelihood for pilot receivers.
+3. **Best-first search** in posterior order, in rounds of 8, 8, 16, 32, … cells. Every cell is scored with a
+   **Fast-SSC list-1 path metric** (≈ 27k MACs at R = 2/5, ≈ 1/7 of a CA-SCL decode) at 2 (above −1 dB) or 4
+   phase hypotheses. A robust z-test against the packet's own wrong-cell scores (z > 4) sends a cell to
+   refinement (± k/2 STEP offsets × phase sub-offsets) and CA-SCL decoding.
+4. **Acceptance:** the CRC, plus a **re-encoding check**: the correlation ρ of r with the re-encoded packet,
+   normalised by its expected value for a right decode, **ρ_n = ρ / √(s / (1 + s))** (s = Es/N0), must exceed a
+   per-rate, per-SNR threshold (`blind_ber.RHO_N`, 0.55–0.93). It rejects CRC-16 false passes of wrong-CFO hypotheses,
+   including the "staircase" codewords of A.16.4. The 24-pilot receivers also run a **pilot check**: the coherent pilot
+   sum of the decoded packet must be near K.
+5. **Last stage** (only for packets still undecoded after every round): the best-metric cells (`final`) and the top
+   posterior cells (`final_post`) are refined and decoded; the "rescue" receivers widen it (32 metric cells, 64
+   (pilots) / 256 (blind) posterior cells, and the 4 best cells again on a half-STEP, π/16 grid with 6 decodes,
+   `fine_last`). Only ≈ 0.1–0.2 % of the packets get there, so it costs little on average.
+6. **24 pilots (N3x8 nested comb):** 3 blocks of 8 symbols at positions 0, 32 and 128, chosen from the comb
+   patterns in `blind_vp.PATTERNS`. They add the pilot ruler to the posterior and run the pilot check.
+
+**The z-test of the search** (`blind_fast.sps3_receive`, search loop). The problem it solves: the code metric of a
+cell has no absolute scale (it depends on the SNR, the rate and the packet), so a fixed threshold on it cannot tell
+the true CFO cell from the thousands of wrong ones. Instead every cell is compared with the packet's own wrong cells.
+
+1. **Score.** For a candidate cell (CFO f_c), the receiver de-rotates r by f_c, applies the cell's 4th-power phase plus
+   each phase hypothesis q (2 or 4 multiples of π/4), and runs the list-1 Fast-SSC decoder. Its path metric
+   M = −log P(frozen bits = 0 | r) along the SC path (hard-penalty approximation) is small when the de-rotated packet
+   looks like a codeword and large otherwise. The cell keeps its best phase: M_c = min_q M_c,q.
+2. **Reference population.** All base-phase scores of this packet in every round so far (8, then 16, 32, … cells,
+   × phases). Almost all of them are wrong cells, so they describe the metric's "noise" distribution for this packet.
+3. **Robust z.** Mean and standard deviation would be pulled by the rare true cell and by heavy tails, so the median
+   and the median absolute deviation (MAD) are used:
+   z_c = (median(M_ref) − M_c) / (1.4826 · MAD(M_ref)), where 1.4826 · MAD equals σ for a Gaussian. The sign is
+   flipped so that a high z means "much more code-like than a wrong cell".
+4. **Decision.** In each round the 2 cells with the highest z are sent to refinement (± k/2 STEP offsets × phase
+   sub-offsets) and CA-SCL decoding if z > z0 = 4 and the cell was not tried before. Below z0 the search moves on to
+   the next round. The CRC and the ρ_n check then accept or reject the decode.
+
+Why z0 = 4: for a Gaussian population, z > 4 has probability 3e-5 per wrong cell, so a search over a few thousand cells
+triggers few wasted decodes, while the true cell near its centre has z ≈ 10 or more (A.16.4: the decoded-but-lost
+packets had z ≈ 10). The weakness is the true cell's CFO offset inside its cell: there the metric degrades and z falls
+to ≈ 2.5 (the 68–71 % "scored, z ≤ 4" failures at R = 1/10, −5 dB), which the last stage (rescue) recovers by
+decoding the best-metric cells regardless of z. The same robust z (with threshold z_screen) drives the cheaper
+left-half-metric screening of eco6/eco7, and an NN grader with z, posterior rank and SNR as inputs did not detect the
+true cell better than the z-test (A.16.4).
+
+**MAC model** (`blind_vp.MAC`, per packet): CA-SCL decode 180,224 + LLRs 6,144; re-encoding 20,000; complex multiply
+4; FFT 2 N log₂N; 4th-power phase 4,096; spectral 1.41 M; cyclic 1.44 M; 2-SPS statistics 0.44 M each; pre-MF
+de-rotation 33.8k. Every block of the receiver adds its MACs per packet as it runs, so the reported cost is the
+measured average over the packets of a point.
+
+### A.16.2 Cutting the MACs at the same BLER (eco → eco7)
+
+All steps were measured as full 400k-packet runs on the paired frames, so each change is compared against the
+same packets. Short 2,000–4,000-frame smoke tests were used only to measure MACs: they cannot resolve BLER near 1e-4
+(the −4 dB screening below looked clean in a smoke test and was 5–7× worse in the full run).
+
+| Step (receiver name in `blind_ber.RX`) | What changed | Effect |
+|---|---|---|
+| v3 fast → **v3 eco** | small 2-SPS spectral estimate for the fast path; the full statistics and the cyclic term only for packets the fast path does not deliver; one de-rotation per cell (the π/2 phase is an I/Q swap); no LLR scaling in the search (metric and z-test are scale-invariant) | same BLER, R = 2/5: 8.5 → 4.3 M at 0.5 dB, 2.1 → 0.77 M above the waterfall |
+| **eco+** | code-aided CFO/phase retry (Newton on r·ŝ* with the SC hard decisions) when a decode fails; decode the top 8 posterior cells when the search fails | waterfall BLER ÷1.6–2.7 (R = 2/5, 0.5 dB: 1.5e-2 → 5.5e-3); more CRC false passes above it |
+| **eco3** | coarse CFO from the lag-4 autocorrelation of the 8-SPS samples (33k vs 273k MACs; std 0.03 resolves the ±1/8 ambiguity), the pre-MF correction redone at the 4th-power estimate, 2 Newton steps, π/2 branch by a half-length (left) metric | same BLER, −14 … −34 % MACs (floor 0.77 → 0.51 M) |
+| fast path from 0 dB | at R = 2/5 and 1/2 (was 1 dB) | −18 % at 0.5 dB |
+| **peak-picked fast path** | the fast path takes one of the near-highest 4th-power peaks (height ≥ 0.7 × the strongest for pilots, ≥ 0.85 blind): pilots rank the top 16 by their coherent sum, blind ranks the top 4 by the left metric | pilots: −41 % at 0.5 dB, −46 % at 1 dB; BLER better (fewer packets reach the search, so fewer CRC false passes); the height gate is needed, without it high SNR got worse |
+| blind extras gated | eco+ extras only on the waterfall (R = 1/10 below −4.5 dB, 2/5 below 1.25 dB, 1/2 below 2.25 dB) | blind BLER: best of eco and eco+ at every SNR |
+| **eco4 / eco5** | pilots choose the fast path's π/2 branch (−5 … −8 %); no code-aided retry inside the fast path (−3 … −4 %); 1 dB or more above the waterfall a 1024-point 4th-power FFT with off-bin interpolation and no second pre-MF (−15 … −17 %; lossy at 1.5–2 dB at R = 2/5) | floor 0.51 → 0.41–0.44 M |
+| **eco6** | R = 1/10: half-length-metric screening and adaptive phases in the search (z_screen 1.5 below −2.5 dB); cell phases from the 4th-power FFT | R = 1/10, −3 dB: blind 13.0 → 6.15 M with better BLER, pilots −16 %; but lossy at −4 dB (BLER ×5–7) |
+| **eco7** | eco6 with the screening only from −3.5 dB, plus grid step 6 at R = 1/10 from −3 dB | restores −4 dB (blind 1.1e-3 → 1.7e-4, pilots 2.8e-4 → 2.8e-5); but grid 6 makes −3 dB 3–5× worse (blind 9.2e-5 → 4.7e-4, pilots 1.5e-5 → 4.5e-5), so the best receivers keep the default grid ("eco7, default grid") |
+| **parabolic fast path** | the fast path's tone refined by a 3-point parabolic fit through the largest points of the zero-padded FFT / off-bin grid (¼-bin spacing, already computed) instead of 2 Newton steps (61k MACs); bias ≤ 0.0015 bin | same or better BLER, **−0.06 M at every SNR** of R = 2/5 and 1/2; 24 pilots (+ peak NN) 0.35 M from 3.5 dB at R = 1/2 = the target |
+| **peak NN, 24 pilots** | `blind_peak_nn.py` picks the fast-path peak (+24k MACs) | −3 … −4 % MACs at R = 2/5, 0.5–1 dB, same BLER |
+| **rescue** | a wider last stage for the packets the search loses (A.16.1 step 5; from the failure diagnosis, A.16.4); default grid at R = 1/10 | 24 pilots, R = 1/10 −5 dB: **1.1e-3 → 2.8e-4** (+4 % MACs); blind −5 dB 2.0e-3 → 6.5e-4; but more decodes also mean more CRC false passes (blind R = 2/5: 507 of 800 errors at 0.5 dB) |
+| **ρ_n check** | re-encoding threshold on ρ_n = ρ / √(s / (1 + s)) instead of ρ_min (A.16.4); thresholds midway between the right passes' 0.1 % quantile and the false passes' maximum (`fp_check.py`) | removes the staircase false passes at no MAC cost: blind R = 1/10 −5 dB 6.5e-4 → **3.6e-4**; blind R = 2/5 0.5 dB 2.8e-3 → **1.6e-3**, 1 dB 1.0e-4 → **1.7e-5**; pilots R = 1/10 −5 dB 2.8e-4 → **2.0e-4**, −4 dB 2.3e-5 → **0** |
+| **24-pilot fast path at R = 1/10 from −2 dB** | with ρ_n (the old ρ_min / pilot check let wrong CRC passes through, BLER ×10–15) | no error at −2 … 0 dB (as before), MACs **2.79 → 2.71 M (−2 dB), 2.06 → 1.77 M (−1 dB), 2.02 → 1.18 M (0 dB)**; from −4 / −3 dB it costs more (+5 % / +4 %), so it starts at −2 dB |
+
+### A.16.3 Results: final receivers vs the target
+
+Figures: `Blind CFO estimation/bler/bler_vs_snr_R{1_10,2_5,1_2}.png` (BLER vs SNR) and `Blind CFO estimation/macs/macs_vs_snr_R*.png` (MACs per packet vs SNR): the
+target and the two final receivers, `blind_plots.FINAL`, labelled "blind" and "pilots 3x8"). Points with no error
+in 400k packets are not drawn (BLER < 7.5e-6 at 95 %). `macs/macs_towers_R2_5.png`: total MACs per packet of the three receivers at R = 2/5, 0.5 and
+2.5 dB side by side.
+
+The final receivers (`blind_ber.RX`):
+* **blind (0 pilots):** `v3 eco7, rescue, rho_n + CRC` (eco7 with the parabolic fast path, default grid, rescue last
+  stage with 32 metric + 256 posterior + 4 fine cells, ρ_n check);
+* **pilots 3x8 (24 pilots, N3x8, 2.3 %):** `Pilots N3x8 + v3 eco7, rescue, rho_n + CRC` (peak NN + parabolic fast path, rescue
+  with 64 posterior cells, ρ_n and pilot checks), with the fast path also at R = 1/10 from −2 dB
+  (`..., rescue, rho_n, fast R=1/10 from -2 dB + CRC`). Below −2 dB that receiver is identical to the first one (the
+  fast path is a gate on the SNR and the runs are paired), so its R = 1/10 curve joins the two runs.
+
+Cells: BLER (errors / packets) / MACs per packet; "0" = no error in 400k packets. Undetected errors (CRC false passes)
+are included in the BLER: at most 4 per point (blind R = 1/10, −5 dB), 0 above the waterfall.
+
+| R = 2/5 | Target: 128 pilots, split NN + pre-MF | **24 pilots** | **blind, 0 pilots** |
+|---|---|---|---|
+| 0.5 dB | 1.7e-3 / 0.40 M | **1.4e-3** (578 / 400k) / 2.28 M | **1.6e-3** (630 / 400k) / 5.56 M |
+| 1 dB | 5.2e-5 / 0.38 M | **1.7e-5** (7) / 0.70 M | **1.7e-5** (7) / 1.17 M |
+| 1.5 dB | 1.9e-5 / 0.37 M | **0** / 0.52 M | **5.0e-6** (2) / 0.65 M |
+| 2 dB | 1.0e-5 / 0.37 M | **0** / 0.47 M | **0** / 0.50 M |
+| 2.5 dB | 9.5e-6 / 0.36 M | **0** / 0.37 M | **0** / 0.41 M |
+| 3 dB | 8.0e-6 / 0.36 M | **0** / 0.36 M | **0** / 0.38 M |
+| 4 dB | 1.5e-6 / 0.36 M | **0** / **0.35 M** | **0** / 0.36 M |
+
+| R = 1/2 | Target | **24 pilots** | **blind** |
+|---|---|---|---|
+| 2 dB | 2.3e-4 / 0.37 M | **1.4e-4** (56 / 400k) / 0.54 M | **1.4e-4** (56 / 400k) / 0.71 M |
+| 2.5 dB | 1.3e-5 / 0.36 M | **0** / 0.46 M | **2.5e-6** (1) / 0.46 M |
+| 3 dB | 6.7e-6 / 0.36 M | **0** / **0.36 M** | **0** / 0.38 M |
+| 3.5 dB | 7.0e-6 / 0.36 M | **0** / **0.35 M** | **0** / 0.37 M |
+| 4–5 dB | 1.3e-6 / 0.35–0.36 M | **0** / **0.35 M** | **0** / 0.37 M |
+
+| R = 1/10 | Target | **24 pilots** | **blind** |
+|---|---|---|---|
+| −5 dB | 2.5e-4 / 0.66 M | **2.0e-4** (81 / 400k) / 5.09 M | 3.6e-4 (72 / 200k) / 22.5 M |
+| −4 dB | 1.6e-4 / 0.57 M | **0** / 3.65 M | **2.5e-6** (1) / 16.3 M |
+| −3 dB | 1.2e-4 / 0.51 M | **0** / 2.76 M | **2.5e-6** (1) / 6.23 M |
+| −2 dB | 7.0e-5 / 0.46 M | **0** / 2.71 M | **0** / 4.10 M |
+| −1 dB | 4.6e-5 / 0.42 M | **0** / 1.77 M | **0** / 2.60 M |
+| 0 dB | 3.2e-5 / 0.40 M | **0** / 1.18 M | **0** / 2.05 M |
+
+* **BLER: the target is met or beaten at every point but one,** by both receivers at R = 2/5 and 1/2, and by the
+  24-pilot receiver at R = 1/10. The exception is blind at R = 1/10, −5 dB (3.6e-4 vs 2.5e-4, 1.4×; 200k packets).
+  Above the waterfall neither receiver has the target's ≈ 1e-5 error floor (split-NN wrong lobes): no error in 400k
+  packets, against 1e-5 – 1e-4 for the target. At R = 1/2, 2 dB both receivers lose the same 56 packets, below the
+  known-CFO single-decode bound (4.2e-4): the rescue decodes several CFO / phase hypotheses of a failing packet, an
+  effectively larger list, and the ρ_n check keeps the false passes at 0.
+* **Cost at R = 2/5 and 1/2:** the 24-pilot receiver matches the target (within 3 %) from 2.5 dB (R = 2/5) / 3 dB
+  (R = 1/2) at 0.35–0.37 M; blind is within 0–6 % of it from 3 dB. On the waterfall the search costs more: 24 pilots 5.7× (R = 2/5,
+  0.5 dB), 1.8× (1 dB), 1.5× (R = 1/2, 2 dB); blind 14×, 3.1×, 1.9×.
+* **Cost at R = 1/10:** every packet below −2 dB goes through the code-metric search: 24 pilots 7.7× the target at
+  −5 dB, 5.4–6.4× at −4 … −2 dB, 4.2× / 3.0× at −1 / 0 dB (fast path); blind 34× at −5 dB, 12× at −3 dB, 5× at 0 dB.
+* **Overhead:** 24 pilots are 2.3 % of the packet instead of 12.5 % (+10 % information rate at the same BLER), blind 0 %.
+* **Compared with where this cycle started** (v3 fast): R = 2/5 2.1 → 0.35–0.41 M above the waterfall and 8.5 →
+  2.3 M at 0.5 dB with lower BLER; R = 1/10, −5 dB: 24 pilots 1.1e-3 → 2.0e-4, blind 2.0e-3 → 3.6e-4.
+
+### A.16.4 Why packets fail, and what did not help
+
+**Failure diagnosis** (`blind/smoke/fail_diag.py`: every failed packet classified; the known-CFO pre-MF genie decodes
+the same packet). Against the genie, R = 1/10 loses almost everything to the CFO search (−5 dB: genie 2.3e-5 vs
+pilots 1.1e-3, blind 2.0e-3), while at R = 2/5 most pilot failures are noise (genie fails too).
+
+| Point (eco7 / eco6) | False CRC pass | Genie fails too | True cell never scored | Scored, z ≤ 4 | z > 4, crowded out | Decoded, CRC failed |
+|---|---|---|---|---|---|---|
+| R = 1/10, −5 dB, 24 pilots (70) | 9 % | 0 | 0 | **71 %** (z ≈ 2.6, 1st–2nd of its round) | 0 | 20 % (z ≈ 10) |
+| R = 1/10, −5 dB, blind (124) | 17 % | 0 | 0 | **68 %** (z ≈ 2.5) | 0 | 15 % |
+| R = 2/5, 0.5 dB, 24 pilots (72) | 0 | **69 %** | 1 % | 3 % | 0 | 26 % |
+| R = 2/5, 0.5 dB, blind (146) | 2 % | 36 % | 28 % | 25 % | 0 | 10 % |
+| R = 2/5, 1 dB, 24 pilots / blind | 36 % / 24 % | 50 % / 17 % | 0 / 24 % | 0 / 29 % | 0 | 14 % / 7 % |
+
+The z of the true cell is low because of its CFO offset inside the cell (the code metric's basin, E3/E6), not because
+the metric is weighted badly (node-weighted / MLP metrics in E3 detect no better). The packets that miss it reach the
+last stage with the true cell among the best few dozen metric cells, hence the **rescue** stage (A.16.2).
+
+**False CRC passes are "staircase" codewords.** They pass in the fast path (R = 2/5) or early in the search before the
+true cell is scored, at a CFO 0.003–0.17 off. Their re-encoding correlation is as high as a right decode's
+(R = 2/5, 1 dB: ρ = 0.65 vs ρ_min 0.37; R = 1/10, −5 dB: 0.35 vs 0.245), so the old ρ_min check could not reject them:
+the decoded codeword follows the transmitted one rotated by the residual CFO in π/2 steps (correlation with the
+residual-rotated truth 0.49–0.55; random 0.03), though its data bits are unrelated (≈ 50 % wrong). The code is not
+closed under a π/2 rotation (`blind/smoke/rot_test.py`: CRC never passes for j·s), so this is a property of the
+decoder's search, not of the code.
+
+**The fix: normalise ρ by its expected value.** ρ_min was half the expected correlation, far too loose. With
+ρ_n = ρ / √(s / (1 + s)) the two populations separate completely (`blind/smoke/fp_check.py`, every CRC pass at the top 8
+4th-power peaks, both π/2 branches): right passes ≥ 0.94–0.95 (0.1 % quantile) vs false passes ≤ 0.88–0.905 at
+R = 2/5, 0.5–1 dB; ≥ 0.76–0.79 vs ≤ 0.69–0.75 at R = 1/10, −5 / −4 dB. The thresholds (`blind_ber.RHO_N`) sit midway.
+The other candidate features (lag-1 / lag-4 phase and spread of the data-aided residual, path metric, distance to the
+coarse CFO, peak rank / height) separate no better, so no false-pass NN is needed. With ρ_n the false passes are
+≤ 4 of 72 errors (blind R = 1/10, −5 dB) and 0–2 elsewhere (the "undet." counts in A.16.3).
+
+| Idea | Result |
+|---|---|
+| Re-decode a CRC pass at the decision-directed CFO and keep it only if it passes again ("verified") | identical BLER to eco+ in every run: a wrong codeword re-converges to itself |
+| Re-decode with rejection, both π/2 branches on a failed decode | worse BLER or no change, more MACs |
+| Smaller 4th-power FFT / fewer Newton steps on the waterfall | the fast path fails more often: more MACs, not fewer |
+| Smaller first search round (2 or 4 cells) | the z-test needs a population of wrong cells: (2, 6, …) multiplied the MACs |
+| Capping the search | 0.45–0.75 % of the packets only pass late in a long search: the BLER would double |
+| Fast path at R = 1/10 | the strongest 4th-power peak is right for ≤ 7 % of packets even at −1 dB |
+| Pilot-chosen search phases at R = 1/10 | BLER ×2–2.7 at −4 / −3 dB |
+| Trying the top posterior cell directly at R = 1/10 (pilots) | decodes ×2, MACs up |
+| Ranking the search without the spectral / cyclic statistics (pilots only) | worse ranking, more metric evaluations |
+| Coarser grid (step 6) at R = 1/10, −4 / −5 dB; screening at −4 dB (z 1.5) | lossy (BLER ×1.5–7) |
+| NN posterior over the grid (`blind_post_nn.py`, E5) | the same ranks as the analytic posterior: the coarse statistics are the limit, not their combination |
+| NN cell grader replacing the search's z-test (`blind_cell_nn.py`: z, posterior rank and score, SNR) | at the z-test's false-trigger rate it detects the true cell equally often (±2 %, R = 1/10, −5 … 0 dB): the robust z of the code metric already holds the information |
+| Blind peak NN instead of the left-metric pick | picks better than the strongest peak (0.5 dB: outage 0.50 vs 0.57) but worse than the code metric (0.40): the code sees what the peak features cannot |
+| Pilot fast path at R = 1/10 from −1 dB | −15 … −40 % MACs, but BLER ×10–15: at that SNR the pilot check lets wrong CRC passes through |
+| Screening from the first search round (eco8 candidate) | R = 2/5 same BLER but 4–8× MACs on the waterfall (0.5 dB: blind 11.9 vs 2.9 M, pilots 14.1 vs 1.8 M); R = 1/2 1.2–2.6× MACs at 2–3 dB; R = 1/10 worse BLER and MACs at every SNR (0 dB blind 9.2e-5 / 7.2 M vs 1.3e-5 / 2.1 M) |
+| Screening at −4 dB with z 1.0 (eco8 candidate) | −42 % MACs at −4 dB but BLER ×3 (blind 5.1e-4 vs 1.7e-4; pilots 1.3e-4 vs 2.8e-5) |
+| Peak NN, blind (full BLER runs) | +3 … +14 % MACs and 1.2–1.7× the errors at R = 2/5 vs the left-metric pick |
+| Peak NN "none" head (skip hopeless fast-path decodes at P(none) > 0.8) | never triggers in the BLER runs: identical results |
+| Retry the peak NN's 2nd / 3rd choice before the search (24 pilots) | the 2nd choice is right in only 3–14 % of the failed picks at 0–1 dB (the true peak is usually not among the top 16): a 0.19 M retry does not pay against the 0.9 M search entry |
+| Cell-ranking NN (`blind_rank_nn.py`): a per-cell MLP re-scoring the top 512 cells of the posterior (+83k MACs) | blind mean rank of the true cell −2 … −14 %, pilots no change; full BLER: R = 2/5 neutral, R = 1/10 blind −3 … −1 dB slightly better (−1 dB: 4 vs 13 errors, −1 … −3 % MACs), but those errors were false passes, which ρ_n now removes; not in the final receivers |
+| Pilot check at 3σ instead of 5σ (against the staircase passes) | worse: it rejects ≈ 0.13 % of the right decodes at low SNR, which are not found again (R = 1/10 −5 dB 5.7e-4 vs 2.8e-4, −4 dB 2.2e-4 vs 2.3e-5; R = 2/5 1 dB 1.7e-4 vs 6.0e-5), and does not catch the false passes at −5 dB; replaced by ρ_n |
+| Lag-1 phase of the data-aided residual (staircase decodes turn inside their π/2 steps) | does not separate right and false passes (`fp_check.py`) |
+| Cheaper cell scoring with the rescue, blind R = 1/10 −5 dB: adaptive phases / left-metric screening | 5.2e-3 / 21.7 M and 4.2e-3 / 16.9 M vs 6.5e-4 / 22.5 M: lossy even with the rescue |
+| Smaller blind rescue ("rescue lite", 64 instead of 256 posterior cells), R = 2/5 | 0.5 dB 2.1e-3 / 3.70 M vs 1.6e-3 / 5.56 M, 1 dB 2.8e-5 / 1.09 M vs 1.7e-5 / 1.17 M: −33 % MACs for +30 % BLER on the waterfall; a trade-off, not a gain |
+| 24-pilot fast path at R = 1/10 from −4 / −3 dB | same BLER (1 vs 0 errors at −4 dB, 0 vs 0 at −3 dB), but +5 % / +4 % MACs (3.84 vs 3.65 M, 2.88 vs 2.76 M): the fast path fails too often there |
+
+### A.16.5 Open points
+
+* **The cost at R = 1/10 and on the waterfall.** Every R = 1/10 packet without the fast path pays for the code-metric
+  search (≈ 77 metric evaluations per packet at −3 dB with pilots); the cheaper scorings tried so far (screening,
+  adaptive phases, coarser grid, NN graders) all lost BLER. This is the remaining gap to the target's 0.4–0.7 M.
+* **Statistics.** "0" is no error in 400k packets (BLER < 2.5e-6, 95 % upper bound 7.5e-6), and a point with 5–10
+  errors is known only to within about a factor of 2 (95 % Poisson interval), so differences of < 2× between such
+  points are not significant. The target was
+  run with more packets (0.4–3 M per point) than the blind / 24-pilot receivers (200k–400k).
+* **NNs in the final receivers:** only the 24-pilot fast-path peak grader (`blind_peak_nn.py`, ≈ 24k MACs). The other
+  NNs (posterior, cell grader, rank NN, blind peak NN) did not beat the analytic rules (A.16.4).
+
+Figures of the estimation stages (from `blind/smoke/est_stats.py`, 4000 packets per SNR): `coarse/` = the fast path
+(CFO MSE and outage per peak picker, P(true CFO among the top 1 / 4 / 16 peaks)); `estimation/` = the coarse
+estimators (autocorrelation, 2-SPS and 8-SPS spectral MSE) and the search (rank of the true cell, blind vs 24 pilots),
+each against the 128-pilot split NN.
+
+### A.16.6 How to run, files
+
+```
+py blind_ber.py --points 2/5:0.5:8 2/5:1:8 --max-frames 50000 --min-errors 100 \
+    --rx "v3 eco7, rescue, rho_n + CRC" "Pilots N3x8 + v3 eco7, rescue, rho_n + CRC"     --seed 5702 --part <job>               # as a Run:ai job (jobs/*.sh)
+py blind_ber.py --merge                    # merges blind/results/blind_ber_<part>.json -> blind_ber.json
+py blind_plots.py                          # every figure in "Blind CFO estimation/"
+CFO_STUDY=premf_split py polar_ber_experiment.py --mode ebn0 --packet 1024 --merge   # the split NN with pre-MF
+```
+
+| File | What it does |
+|---|---|
+| `blind_cfo.py` | Frames (full chain), codes (`PiCode`: CA-SCL that also accepts the π-rotated codeword), 4th-power and spectral estimators, Newton, decision-directed refinement |
+| `blind_fast.py` | Fast-SSC metric, coarse posterior, `sps3_receive` (v3 and every eco option), pre-MF correction, code-aided CFO |
+| `blind_vp.py` | Few-pilot patterns, pilot likelihood / ruler, the MAC model, 2-SPS statistics |
+| `blind_ber.py` | BLER experiment: receiver list `RX`, Run:ai parts, merge |
+| `blind_plots.py` | Figures; `FINAL` names the final blind and 24-pilot receivers drawn (per rate, as SNR segments of one receiver) |
+| `blind_post_nn.py`, `blind_peak_nn.py` | NN posterior over the grid (E5); fast-path peak grader (+ `retry` statistics) |
+| `blind_cell_nn.py`, `blind_rank_nn.py` | NN cell grader (replaces the z-test); per-cell ranking NN for the search order |
+| `blind_basin.py`, `blind_diag.py` | Basin of the code metric vs CFO offset (E6); diagnosis of waterfall failures |
+| `blind/smoke/*.py` | Smoke tests on the cluster: receiver comparison, per-packet MAC profile, 4th-power peak ranks, estimation statistics (`est_stats`), failure classification (`fail_diag`), π/2-rotation test (`rot_test`), false-pass consistency checks (`fp_check`) |
+| `blind/results/`, `blind/logs/`, `blind/models/` | Results per job part and merged, logs, trained NNs |
+| `premf_split/` | Study of the split NN with the pre-MF correction (results, logs) |
+
+## A.17 Small CFO (|f| ≤ 0.03): blind and 24-pilot receivers on 32 decoder cores (study `small_cfo/`, `small_rx.py`)
+
+**Question.** With the CFO limited to |f| ≤ 0.03 Rs, can a receiver with **no pilots** (blind) or **24 pilots**
+(3 × 8, 2.3 %) reach the BLER of the 128-pilot receivers at an affordable cost, on a realistic number of decoder
+cores (32, not one per CFO hypothesis)?
+
+**Setup.** As A.16 (1024-symbol QPSK packet, polar N = 2048, CA-SCL-8, CRC-16, full Tx/Rx chain, SNR = Es/N0), CFO
+U[−0.03, 0.03]. R = 1/10 is reported from −5 dB up. Study folder `small_cfo/` (`BLIND_STUDY=small_cfo`, references with
+`CFO_STUDY=small_cfo CFO_MAX=0.03`). Paired seeds per rate (5701 / 5702 / 5703): every receiver of a rate sees the same
+packets. Full-statistics points: 100k–600k packets or ≥ 100 errors; "0" = no error in ≥ 100k packets.
+
+**Important for the comparison: the pilots are simulated as known codeword symbols.** All 1024 symbols carry the
+codeword and the receiver is told 128 (or 24) of them. A real system sends them as *extra* symbols (preamble / pilot
+blocks): 1024 + 128 symbols for the same data, +0.51 dB of energy per information bit (+0.10 dB for 24 pilots),
+or 11 % (2.3 %) less throughput. The `bler_vs_ebn0_*` and right-hand `bench_*` plots charge it.
+
+### A.17.1 The receiver (`small_rx.small_receive`)
+
+1. **Fast path:** 4th power + FFT + parabolic refinement, CFO corrected before the matched filter, one CA-SCL-8
+   decode (blind: π/2 branch by the metric; pilots: by the pilot phase).
+2. **Search** (packets the fast path does not decode): a grid of CFO cells (step 4 STEP = 201 cells at R = 1/10,
+   2 STEP = 401 at R = 2/5, 1/2) × 4 phases (2 above −1 dB), scored with the list-1 Fast-SSC path metric (PM),
+   decoded only up to **checkpoints** (codeword fractions) where cells are pruned (robust z-test on the PMs; at
+   R = 2/5, 1/2 the checkpoint NN `small_ck_nn.py`). R = 1/10: **coarse start** (every other cell up to 1/2, the
+   neighbours of the survivors join there) and each cell keeps its **best 2 phases** at 1/2. Pilots: the pilots'
+   log-likelihood is added to the cell score; at R = 2/5, 1/2 the cell-prior NN (`small_prior_nn.py`) ranks the cells.
+3. **Candidates:** the best cells are refined (CFO offsets × phase sub-offsets, scored in parallel) and decoded with
+   CA-SCL-8; a code-aided CFO / phase retry if the CRC fails.
+4. **Acceptance:** CRC-16 **and the re-encoding check** (the packet's correlation with its re-encoded codeword must
+   clear a threshold set from the SNR; A.17.4) and, with pilots, the pilot-consistency check.
+5. **Rescue** (packets still undecoded): more cells on both π/2 branches, then a finer grid around the best cells.
+
+**32 decoder cores.** One core holds one CFO cell (its phases). Two ways to run 201 / 401 cells on 32 cores, both with
+the partial PMs **stored** and compared over all cells already decoded (nothing is decoded twice):
+* **Passes** (`cores=32`): each stage of the search in ⌈cells / 32⌉ passes; same total MACs, longer latency.
+* **Batches** (`batch=(32, z)`, R = 1/10): contiguous blocks of ≤ 32 cells in the order of a cheap prior (4th-power
+  spectrum / pilot NN), one block at a time to the first checkpoint; a block without a clear cell (z < 5 blind, 3
+  pilots) is set aside and the next one starts; the last round sees every cell. The search stops as soon as a block
+  holds the packet: **−30 to −45 % total MACs at no BLER cost** (diag-b: 47 / 47 / 47 / 47 errors in 40k packets
+  with and without batches, z 3 / 5, blocks of 32 / 64).
+* **Joint CA-SCL** (`joint=(2, 16, 4)`, R = 2/5, 1/2): up to 4 candidate cells × their 2 best hypotheses decoded in
+  ONE list of 16 paths, pruned globally (`PiCode.decode_joint`); −5 to −9 % critical path at R = 2/5, no gain at 1/10.
+
+**Cost model.** MACs per packet as A.16, with the list-1 search charged its Fast-SSC cost per decoded leaf ("tree
+cost": at R = 1/10 the mostly frozen first half of the codeword is 36 % of a full pass, not 50 %). Besides the total
+(energy / silicon), the **critical path per core**: the serial work (FFT, every CA-SCL decode, checks) + for each pass
+of the parallel work the busiest core (cells dealt 32 at a time, largest first), with the 8 list paths of a CA-SCL-8
+decode on their own cores (one SC pass + the path-metric sort 16 → 8 at each information bit). The references get
+the same treatment.
+
+### A.17.2 Results: final receivers vs the 128-pilot references
+
+Final receivers (`blind_ber.py` names): blind R = 1/10 `S blind final v2`, R = 2/5 `S blind final 2/5, 1/2, best-first
+32`, R = 1/2 `S blind final 2/5, 1/2`; 3 × 8 pilots R = 1/10 `S pilots final`, R = 2/5, 1/2 `S pilots final 2/5, 1/2`.
+BLER (total MACs / MACs per core):
+
+Each cell: BLER (total MACs / MACs per core, in M; per core = critical path on 32 cores with list-parallel decodes). Pilots as known codeword symbols (no overhead: see the Eb/N0 plots). Benchmark MACs computed from their estimator + decodes (A.16 model).
+
+**R = 1/10**
+
+| SNR | blind (0 pilots) | 3 × 8 (24 pilots) | split NN, 128 pilots (A.16 target) | split ML + re-encoding check, 128 pilots |
+|---|---|---|---|---|
+| -5 dB | 1.7e-04 (4.16 / 0.77) | 2.4e-04 (2.89 / 1.07) | 2.1e-04 (0.61 / 0.26) | 2.5e-05 (0.52 / 0.16) |
+| -4.5 dB | 3.5e-05 (3.41 / 0.72) | 2.0e-05 (2.55 / 1.01) | 1.5e-04 (0.57 / 0.25) | 2.1e-06 (0.48 / 0.15) |
+| -4 dB | 5.0e-06 (2.99 / 0.70) | 5.0e-06 (2.36 / 0.98) | 1.2e-04 (0.53 / 0.24) | 0 (475k) (0.44 / 0.15) |
+| -3 dB | 0 (100k) (2.67 / 0.68) | 0 (100k) (2.11 / 0.93) | 9.9e-05 (0.48 / 0.23) | — |
+| -2 dB | 0 (100k) (2.52 / 0.66) | 0 (100k) (1.83 / 0.85) | 4.8e-05 (0.44 / 0.22) | — |
+| -1 dB | 0 (100k) (1.94 / 0.62) | 0 (100k) (1.23 / 0.70) | 4.0e-05 (0.41 / 0.22) | — |
+| +0 dB | 0 (100k) (1.44 / 0.54) | 0 (100k) (0.85 / 0.52) | 2.4e-05 (0.39 / 0.21) | — |
+
+**R = 2/5**
+
+| SNR | blind (0 pilots) | 3 × 8 (24 pilots) | split NN, 128 pilots (A.16 target) | split ML + re-encoding check, 128 pilots |
+|---|---|---|---|---|
+| +0 dB | 6.1e-02 (34.44 / 16.63) | 6.1e-02 (3.57 / 1.69) | 5.0e-02 (0.81 / 0.44) | — |
+| +0.5 dB | 2.1e-03 (3.65 / 1.72) | 1.6e-03 (0.89 / 0.60) | 1.7e-03 (0.39 / 0.26) | 2.4e-03 (0.30 / 0.17) |
+| +1 dB | 8.0e-05 (1.26 / 0.73) | 5.3e-05 (0.64 / 0.47) | 5.3e-05 (0.37 / 0.25) | — |
+| +1.5 dB | 0 (100k) (0.77 / 0.53) | 0 (100k) (0.55 / 0.42) | 1.1e-05 (0.37 / 0.25) | — |
+| +2 dB | 0 (100k) (0.60 / 0.44) | 0 (100k) (0.51 / 0.40) | 9.0e-06 (0.36 / 0.25) | — |
+| +2.5 dB | 0 (100k) (0.56 / 0.42) | 0 (100k) (0.50 / 0.39) | 5.0e-06 (0.36 / 0.25) | — |
+| +3 dB | 0 (100k) (0.55 / 0.42) | 0 (100k) (0.49 / 0.39) | 3.0e-06 (0.36 / 0.25) | — |
+
+**R = 1/2**
+
+| SNR | blind (0 pilots) | 3 × 8 (24 pilots) | split NN, 128 pilots (A.16 target) | split ML + re-encoding check, 128 pilots |
+|---|---|---|---|---|
+| +1.5 dB | 1.1e-02 (3.23 / 1.54) | 9.8e-03 (0.99 / 0.63) | 1.3e-02 (0.45 / 0.31) | — |
+| +2 dB | 1.4e-04 (0.74 / 0.47) | 1.6e-04 (0.52 / 0.42) | 2.4e-04 (0.36 / 0.26) | 4.4e-04 (0.27 / 0.17) |
+| +2.5 dB | 0 (400k) (0.58 / 0.43) | 0 (400k) (0.50 / 0.40) | 8.0e-06 (0.36 / 0.26) | — |
+| +3 dB | 0 (100k) (0.55 / 0.43) | 0 (100k) (0.49 / 0.40) | 7.0e-06 (0.36 / 0.26) | — |
+| +3.5 dB | 0 (100k) (0.55 / 0.43) | 0 (100k) (0.49 / 0.40) | 2.0e-06 (0.36 / 0.26) | — |
+| +4 dB | 0 (100k) (0.55 / 0.43) | 0 (100k) (0.49 / 0.40) | 3.0e-06 (0.35 / 0.26) | — |
+| +5 dB | 0 (100k) (0.55 / 0.43) | 0 (100k) (0.49 / 0.40) | 2.0e-06 (0.35 / 0.26) | — |
+
+* **R = 1/10:** blind costs **−52 % MACs** against its earlier receiver (8.69 → 4.16 M at −5 dB) at the same BLER;
+  3 × 8 −66 % (8.49 → 2.89 M). The batches make that possible on 32 cores. Cost tail (blind, −5 dB): 99th / 99.9th
+  percentile 10.0 / 12.6 M MACs, 2.5 M per core at the 99.9th.
+* **R = 2/5:** blind −39 % (0.5 dB) / −50 % (1 dB) from the best-first order (the 4th-power spectrum's best 32 cells
+  first). Adding the 4-peak fast path (the top 4th-power peaks graded by a half-length metric of both π/2
+  branches) saves another 1–14 % at the same BLER (bf-25, 400k packets: 3.60 / 1.09 M at 0.5 / 1 dB); it is not in the
+  final 32-core receiver. 3 × 8 costs 1.7–2.3 × the split NN.
+* **R = 1/2:** blind 2 ×, 3 × 8 1.4 × the split NN in total MACs.
+* Plots: `small_cfo/Blind CFO estimation/bler/bler_vs_snr_R*.png` (as simulated), `bler/bler_vs_ebn0_R*.png` (pilot
+  energy charged), `macs/macs_vs_snr_R*.png` (total), `macs/macs_per_core_vs_snr_R*.png` (critical path),
+  `bench/bench_R*.png` (all preamble estimators, both axes).
+
+### A.17.3 Preamble / pilot CFO estimators as the benchmark (`polar_ber_experiment.py` BENCH)
+
+All on the same 128 known symbols, phase estimated from them, pre-MF correction, CRC search (first pass).
+BLER at R = 1/10 −5 dB / R = 2/5 0.5 dB / R = 1/2 2 dB:
+
+| 128 known symbols | R = 1/10 | R = 2/5 | R = 1/2 |
+|---|---|---|---|
+| Kay (contiguous) | 0.91 | 0.73 | 0.45 |
+| M&M (coarse) | 4.5e-3 | 2.9e-3 | 9.5e-4 |
+| M&M + Luise–Reggiannini | 1.9e-3 | 3.4e-3 | 9.7e-4 |
+| M&M + Fitz | 2.7e-3 | 3.3e-3 | 9.1e-4 |
+| ML periodogram + Aboutanios–Mulgrew | 8.6e-4 | 2.9e-3 | 9.7e-4 |
+| M&M + Newton + code-aided EM + search | 4.4e-3 | 2.9e-3 | 1.2e-3 |
+| **split pilots 2 × 64, ML** | 1.8e-4 | 2.0e-3 | 2.8e-4 |
+| split pilots 2 × 64, NN (estimated phase) | 1.9e-4 | 2.1e-3 | 2.8e-4 |
+| split pilots 2 × 64, NN, genie phase (A.16 target) | 2.1e-4 | 1.7e-3 | 2.4e-4 |
+| **split ML + re-encoding check** | **2.5e-5** | 2.4e-3 | 4.4e-4 |
+
+* With one contiguous preamble every estimator stays between M&M and the periodogram (the fine stages of L&R / Fitz
+  help ≈ 2 × at R = 1/10 only; Kay is below its SNR threshold; code-aided EM adds nothing to the CRC search).
+* **Pilot placement matters more than the estimator:** the same 128 symbols as two blocks of 64 (the
+  distributed-known-symbol practice of DVB-RCS2-type burst modems) give 3.5–10 × lower BLER. The genie phase of the
+  A.16 target costs nothing (estimated phase: same BLER). The realistic satcom benchmark is the split ML.
+* **The split ML's R = 1/10 errors were almost all false CRC passes** (1.6e-4 of its 1.8e-4 undetected). With the
+  re-encoding check it reaches 2.5e-5 at −5 dB (2.1e-6 at −4.5, 0 at −4 dB; 475k–600k packets).
+
+**Blind / 3 × 8 against the best benchmark (split ML + check), with the pilots' energy charged:** at R = 1/10 roughly
+even (blind 3.5e-5 at −4.5 dB ≈ split ML 2.5e-5 at −5 dB, 0.51 dB apart in Es/N0); at R = 2/5 and 1/2 blind is
+≈ 0.5 dB better and 3 × 8 ≈ 0.4 dB better (the check does not help the split ML there). Blind costs 8 × (R = 1/10),
+12 × (R = 2/5 0.5 dB) and 2.7 × (R = 1/2) the split ML's total MACs.
+
+### A.17.4 The re-encoding check: false passes saved, BLER cost
+
+A search over hundreds of CFO / phase hypotheses checks the CRC many times, and CRC-16 alone passes wrong packets.
+The check correlates the received samples with the decoded packet re-encoded and accepts only above a threshold
+(`blind_fast.rho_min` and the per-rate table `RHO_N`). Measured with the true data (counted only, `small_rx._truth`),
+and with the check switched off (`reencode=False`) on the same packets:
+
+| | wrong CRC passes removed | right packets rejected | BLER with / without the check (undetected without) |
+|---|---|---|---|
+| blind R = 1/10 −5 dB (¹) | 100 % (68 / 68) | 0 | 1.0e-3 / 1.6e-3 (6.8e-4) |
+| blind R = 1/10 −4.5 dB (¹) | 100 % (29 / 29) | 0 | 1.2e-4 / 6.8e-4 (5.8e-4) |
+| 3 × 8 R = 1/10 −5 dB | 98 % (61 / 62) | 0 | 2.4e-4 / 6.1e-4 (3.8e-4) |
+| blind R = 2/5 0.5 dB | 100 % (127 / 127) | 1 in 98k | 2.1e-3 / 2.5e-3 (9.4e-4) |
+| blind / 3 × 8 R = 1/2 2 dB | 100 % | 0 | 1.4e-4 / 1.7e-4 (5e-5) |
+| split ML R = 1/10 −5 dB | 100 % (88 / 88) | 0 | 2.5e-5 / 1.8e-4 (1.6e-4) |
+| periodogram / M&M (all rates) | 86–98 % | 0 | ≈ 2–12 × lower BLER at R = 1/10 |
+
+(¹) measured on the earlier blind receiver with the cheaper join (`S blind final`, A.17.6), paired packets; v2 has
+the same check (0 undetected errors, 103 / 90 wrong first CRC passes removed at −5 / −4.5 dB).
+
+**Noise only** (no signal, at the operating point's noise power, 1600 packets each; `--noise-only`): CRC-16 alone
+"decodes" a packet in 7.6 % (blind R = 1/10), 25 % (R = 2/5) and 22 % (R = 1/2) of the noise packets (3 × 8: 6.5 %
+at R = 1/10, its pilot check rejects the rest); with the re-encoding check **0** in all 9600. Without the check a
+blind receiver is unusable; with it the undetected error rate is 0 in every full run (> 5 M packets).
+
+### A.17.5 Robustness
+
+* **SNR mismatch** (`snr_err`: the receiver is told the SNR ± 0.5 / 1 dB, LLRs scaled to it): BLER, MACs and decodes
+  unchanged for −0.5 … +1 dB. An SNR **under**estimated by 1 dB lowers the check's threshold: 3–5 undetected errors
+  in 3200–6400 packets (blind R = 1/10, 2/5; 3 × 8 R = 1/10). **Fix: the threshold at the SNR estimate + 1 dB**
+  (`re_margin=1`): no undetected error with the −1 dB error, and at the right SNR 0 (R = 1/10) / 4 in 6400 (R = 2/5)
+  right packets rejected, all recovered by the search (same BLER). Recommended; the full runs above are without it.
+* **Worst case:** a noise-only packet runs the whole search and rescue: blind ≈ 140 M MACs at R = 1/10 and ≈ 400 M
+  at R = 2/5, 1/2 (≈ 100 × a normal packet; 99th percentile 630 M, 200 M per core); 3 × 8 31 M at R = 2/5, 1/2 (its
+  pilot check stops noise early). Hardware needs a per-packet budget or an early "no packet" exit (not implemented).
+* **High SNR:** `blind_fast.grid_step` widened the R = 1/10 grid to 6 / 8 STEP from −2 / 0 dB (tuned for the ±0.2
+  receivers that decode every cell in full); with the coarse start and the checkpoint at 1/2 that lost packets
+  (blind BLER rising to 1.9e-3 at 0 dB). Fixed with `kstep=4` at every SNR: 0 errors in 100k packets per point from
+  −3 to 0 dB.
+
+### A.17.6 What did not work
+
+* **A hard cap on the cells** (grade them by a prior, decode only the top 32 / 64 / 128): the true cell is outside
+  the blind prior's top 64 in 63 % of the packets at R = 1/10 −5 dB (BLER 0.5); fine only for 3 × 8 at R = 2/5, 1/2.
+* **Cheaper neighbour join for blind** (only the best 8 / 16 coarse cells bring in neighbours, phase hand-off): ≈ 5 ×
+  BLER at R = 1/10 −5 dB (1.0e-3 vs 1.8e-4, 200k packets); harmless with pilots. A 3200-packet smoke test missed it.
+* PM beam / gap / phase racing, 2 phases below −1 dB, a harder z cut, stride 3, an early checkpoint at 1/8 (blind),
+  the checkpoint NN at R = 1/10, a cut-size NN (predicting how many cells to keep): no gain or lost BLER.
+* The joint CA-SCL: correct but small (−5 to −9 % critical path at R = 2/5 only).
+
+### A.17.7 Conclusions
+
+1. **Blind and 3 × 8 match the 128-pilot receivers at the same SNR** and, with the pilots sent as extra symbols,
+   win ≈ 0.4–0.5 dB (≈ 9–11 % throughput) at R = 2/5 and 1/2; at R = 1/10 the best benchmark with the re-encoding
+   check is even with blind.
+2. **The re-encoding check is essential** for any CRC-search receiver (blind or pilot-based) and costs nothing in
+   BLER; it should also be added to the pilot benchmarks.
+3. **On 32 cores** the search is time-multiplexed with stored PMs; batches cut the total MACs 30–45 % at no BLER cost.
+   Per core the blind receiver needs 0.5–1.7 M MACs at the operating points (3 × 8 0.4–1.1 M, split NN 0.26 M).
+4. **Cost:** blind 2.7–12 × the split ML's total MACs (most at R = 2/5 0.5 dB), 3 × 8 1.9–5.6 ×. Worth it where the
+   decoder sits at a gateway / hub (satcom return link: compute is cheap, terminal power and spectrum are not);
+   for a battery receiver 3 × 8 is the better trade (≈ 0.4 dB of the 0.5 dB, 1.4–2.3 × the split NN at R = 2/5, 1/2).
+5. **Open:** a worst-case budget (noise-only packets), the threshold margin in the full runs, timing / burst detection
+   without a preamble, CFO drift and phase noise, fixed-point arithmetic.
+
+### A.17.8 How to run, files
+
+```bash
+export BLIND_STUDY=small_cfo
+python blind_ber.py --points 1/10:-5:8 --max-frames 25000 --min-errors 25 --rx "S blind final v2" "S pilots final" --seed 5701 --part fin-10c
+python blind_ber.py --noise-only --points 1/10:-5:16 --max-frames 100 --rx "S blind final" --seed 5711 --part noise-10
+python blind_ber.py --merge && python blind_plots.py          # merge the parts, small_cfo/Blind CFO estimation/*
+CFO_STUDY=small_cfo CFO_MAX=0.03 POLAR_NSYM=1024 python polar_ber_experiment.py --mode ebn0 --packet 1024 \
+    --codes "R=0.1,C16" --sources "Split pilots ML, est. phase, pre-MF + CRC search (first pass) + re-encode check" \
+    --shared-frames --extra-esn0 -5 --max-frames 100000 --seed 18000 --tag re-x     # the benchmarks
+```
+
+| File | Contents |
+|---|---|
+| `small_rx.py` | the receiver: fast path, checkpointed PM search, coarse start / join, batches, passes, joint CA-SCL, checks, cost / critical-path / histogram counters, `snr_err`, `re_margin`, `reencode`, `kstep` |
+| `blind_ber.py` | receiver registry (`RX`), Monte Carlo (`--points`, `--noise-only`), `--merge` |
+| `blind_plots.py` | `small()` (BLER, MACs, MACs per core, BLER vs Eb/N0) and `bench()` |
+| `blind_cfo.py` | chain (`transmit_full(..., noise_only)`), `PiCode` (+ `decode_joint`) |
+| `small_ck_nn.py`, `small_prior_nn.py`, `small_cut_nn.py`, `small_race.py` | checkpoint NN, cell-prior NN, cut-size NN, PM-race replays |
+| `polar_ber_experiment.py` | the benchmarks (BENCH, BENCH_SPLIT, REENC) |
+
+---
+
 # Part B: Multipath channel (3-tap Rayleigh)
 
 > **Everything in this part uses the multipath channel.** r[n] = e^{j(2πεn+φ)} Σ_k h_k s[n−k] + w[n],
@@ -1441,6 +1965,11 @@ r⁴ peak, so it inherits the failure.
 5. **Overall**: for CFO in this system the classical estimators (ML in AWGN, MP-ML in multipath, the 4th power
    + CRC for blind operation) are at or near the relevant bound, and no neural estimator built here beat them.
    The neural approach would only pay off for an impairment without a tractable model-based estimator.
+6. **Update (A.16, 1024-symbol packets, AWGN): "more hypotheses instead of a better estimator" works.** Scoring
+   CFO hypotheses with a cheap code metric (Fast-SSC path metric) and decoding only the best ones, with a CFO
+   correction before the matched filter, closes the blind gap of item 3: with 24 pilots the receiver reaches the
+   known-CFO bound at R = 2/5 from 1.5 dB and beats the 128-pilot split NN's floor. Blind it does so from 2 dB.
+   The remaining cost is the search on the waterfall and at R = 1/10 (2–33× the split NN's MACs).
 
 ### Conclusions on AWGN known-sequence estimation (full chain, A.3–A.5)
 

@@ -1,0 +1,4 @@
+j6-r10a-r1|-|@jobs/j6-r10a.sh
+j6-r10b-r1|-|@jobs/j6-r10b.sh
+j6-r25-r1|-|@jobs/j6-r25.sh
+j6-r2-r1|-|@jobs/j6-r2.sh

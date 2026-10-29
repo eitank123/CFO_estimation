@@ -1,0 +1,802 @@
+[
+ {
+  "code": "R=0.1,C16",
+  "esn0": -4.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0009624373082381983
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -3.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0009762426852248609
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -2.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0009999241083084296
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -5.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.004,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0009969549093705912
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -1.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0009408714476351937
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -2.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.5313333333333333,
+  "time_per_frame": 0.0031938413825895015
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -3.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.8373333333333334,
+  "time_per_frame": 0.0037481103559645515
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -2.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 1.0683333333333334,
+  "time_per_frame": 0.004020231850988542
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -2.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0003333333333333333,
+  "extra_decodes_per_frame": 1.134,
+  "time_per_frame": 0.0042403443363728
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -4.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0006666666666666666,
+  "extra_decodes_per_frame": 1.1796666666666666,
+  "time_per_frame": 0.004273852172618111
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": 0.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0009364506286801771
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -1.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.577,
+  "time_per_frame": 0.003205012392369099
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -1.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.37966666666666665,
+  "time_per_frame": 0.003079542453051545
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -1.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0003333333333333333,
+  "extra_decodes_per_frame": 0.6003333333333334,
+  "time_per_frame": 0.003305031297262758
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -5.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0023333333333333335,
+  "extra_decodes_per_frame": 1.664,
+  "time_per_frame": 0.005433322129189037
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -3.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0006666666666666666,
+  "extra_decodes_per_frame": 2.188,
+  "time_per_frame": 0.005648777737786683
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -3.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0013333333333333333,
+  "extra_decodes_per_frame": 2.1043333333333334,
+  "time_per_frame": 0.005742058504295225
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": 0.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.29833333333333334,
+  "time_per_frame": 0.0019437575600653265
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 0.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0015195614213201528
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": 0.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0003333333333333333,
+  "extra_decodes_per_frame": 0.2773333333333333,
+  "time_per_frame": 0.0019528298280201853
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": 0.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.23566666666666666,
+  "time_per_frame": 0.0016807922632821526
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 1.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0017776730167291437
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -4.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.004333333333333333,
+  "extra_decodes_per_frame": 3.5526666666666666,
+  "time_per_frame": 0.007983884982337864
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -4.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 4.012666666666667,
+  "time_per_frame": 0.008074908084003254
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 2.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.001503600434710582
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 0.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.234,
+  "time_per_frame": 0.0027550039370932305
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 1.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.14,
+  "time_per_frame": 0.002489006760607784
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 2.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.06833333333333333,
+  "time_per_frame": 0.0022223670226133737
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 2.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.15933333333333333,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0022916648810496552
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 2.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.295,
+  "time_per_frame": 0.003296443853992969
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 3.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.001500768071001706
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 1.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0003333333333333333,
+  "extra_decodes_per_frame": 0.6333333333333333,
+  "time_per_frame": 0.004405624244284505
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 2.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.335,
+  "time_per_frame": 0.0034543220879665265
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 1.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.7456666666666667,
+  "time_per_frame": 0.004723436235062157
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 0.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0003333333333333333,
+  "extra_decodes_per_frame": 1.4033333333333333,
+  "time_per_frame": 0.0064407812555631
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 3.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.11533333333333333,
+  "time_per_frame": 0.002607707610237412
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -5.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.006,
+  "extra_decodes_per_frame": 6.870666666666667,
+  "time_per_frame": 0.012329253853997215
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 0.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 1.49,
+  "time_per_frame": 0.007177404687080222
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 3.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.139,
+  "time_per_frame": 0.002649700191648056
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 3.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.037,
+  "time_per_frame": 0.0020328781921804574
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 3.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0006666666666666666,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.002286647317193759
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 4.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.001503881495872823
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 4.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.034666666666666665,
+  "time_per_frame": 0.001957996765268035
+ },
+ {
+  "code": "R=0.1,C16",
+  "esn0": -5.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.037333333333333336,
+  "extra_decodes_per_frame": 7.749333333333333,
+  "time_per_frame": 0.014410769018266972
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 4.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.05533333333333333,
+  "time_per_frame": 0.0021930636293642845
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 4.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.010666666666666666,
+  "time_per_frame": 0.0017649084946606307
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 4.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.002292614877068748
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 6.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0014896166091396784
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 3.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0013333333333333333,
+  "extra_decodes_per_frame": 0.06233333333333333,
+  "time_per_frame": 0.004355361599746781
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 6.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.005333333333333333,
+  "time_per_frame": 0.001632220172129261
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 6.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.005666666666666667,
+  "time_per_frame": 0.0016222799335761616
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 4.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.014666666666666666,
+  "time_per_frame": 0.00284014016459696
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 6.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0003333333333333333,
+  "time_per_frame": 0.0015944508619528885
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 6.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0022991821192748225
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 8.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0015096437877121691
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 8.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0015117932003922761
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 8.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0015223290619517987
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 6.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0023333333333333335,
+  "time_per_frame": 0.002445849249178233
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 8.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0015689185357574994
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 6.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.08933333333333333,
+  "time_per_frame": 0.0036485821259751297
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 4.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.527,
+  "time_per_frame": 0.006158519893729438
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 4.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.5693333333333334,
+  "time_per_frame": 0.006366218793050696
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 3.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.001,
+  "extra_decodes_per_frame": 1.248,
+  "time_per_frame": 0.008772714235354214
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 8.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.002282033148493307
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 6.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.07766666666666666,
+  "time_per_frame": 0.0036028679279843344
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 3.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0013333333333333333,
+  "extra_decodes_per_frame": 1.2236666666666667,
+  "time_per_frame": 0.009123182069937077
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 10.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.001504369842625844
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 10.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.001531135370916066
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 10.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.001529924385016784
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 8.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.009,
+  "time_per_frame": 0.00256823496959017
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 8.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.002380821129695202
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 8.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.011333333333333334,
+  "time_per_frame": 0.0025981032840597133
+ },
+ {
+  "code": "R=1/4,C16",
+  "esn0": 10.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0015556927289968978
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 10.0,
+  "src": "Genie (known CFO)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0022500195308045173
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 10.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0023063750559231266
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 10.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0003333333333333333,
+  "time_per_frame": 0.0022956055890535937
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 10.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.0,
+  "extra_decodes_per_frame": 0.0,
+  "time_per_frame": 0.0023510502527545516
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 2.0,
+  "src": "Split pilots NN, quarter + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.14633333333333334,
+  "extra_decodes_per_frame": 5.071666666666666,
+  "time_per_frame": 0.02463554827546856
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 2.0,
+  "src": "SNR-aware NN + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.153,
+  "extra_decodes_per_frame": 6.392,
+  "time_per_frame": 0.026080274141587628
+ },
+ {
+  "code": "R=1/2,C16",
+  "esn0": 2.0,
+  "src": "M&M + CRC search (first pass)",
+  "est_len": 128,
+  "frames": 3000,
+  "bler": 0.141,
+  "extra_decodes_per_frame": 6.120333333333333,
+  "time_per_frame": 0.02967513377095262
+ }
+]

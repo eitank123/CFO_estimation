@@ -1,0 +1,5 @@
+l8-r10a-r1|-|@jobs/l8-r10a.sh
+l8-r10b-r1|-|@jobs/l8-r10b.sh
+l8-r25-r1|-|@jobs/l8-r25.sh
+l8-r10c-r1|-|@jobs/l8-r10c.sh
+l8-r2-r1|-|@jobs/l8-r2.sh

@@ -1,0 +1,5 @@
+sg-smoke2|-|@jobs/sg-smoke2.sh
+sg-b1|-|@jobs/sg-b1.sh
+sg-b2|-|@jobs/sg-b2.sh
+sg-p1|-|@jobs/sg-p1.sh
+sg-p2|-|@jobs/sg-p2.sh

@@ -1,0 +1,3 @@
+nn-r25b-r1|-|@jobs/nn-r25b.sh
+nn-r25a-r1|-|@jobs/nn-r25a.sh
+nn-r2-r1|-|@jobs/nn-r2.sh

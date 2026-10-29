@@ -1,0 +1,4 @@
+ckr-p10|-|@jobs/ckr-p10.sh
+ckr-b2|-|@jobs/ckr-b2.sh
+ckr-b25|-|@jobs/ckr-b25.sh
+ckr-p10b|-|@jobs/ckr-p10b.sh

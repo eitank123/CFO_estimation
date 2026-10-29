@@ -1,0 +1,3 @@
+bm-em-a|-|@jobs/bm-em-a.sh
+bm-em-b|-|@jobs/bm-em-b.sh
+bm-em-c|-|@jobs/bm-em-c.sh

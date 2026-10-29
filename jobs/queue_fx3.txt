@@ -1,0 +1,4 @@
+fx3-r10p|-|@jobs/fx3-r10p.sh
+fx3-r10b|-|@jobs/fx3-r10b.sh
+pf-r10a|-|@jobs/pf-r10a.sh
+pf-r10b|-|@jobs/pf-r10b.sh

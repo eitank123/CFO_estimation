@@ -1,0 +1,10 @@
+sw-b10a|-|@jobs/sw-b10a.sh
+sw-b10b|-|@jobs/sw-b10b.sh
+sw-b10c|-|@jobs/sw-b10c.sh
+sw-b10d|-|@jobs/sw-b10d.sh
+sw-p10|-|@jobs/sw-p10.sh
+sw-b25a|-|@jobs/sw-b25a.sh
+sw-b25b|-|@jobs/sw-b25b.sh
+sw-p25|-|@jobs/sw-p25.sh
+sw-b2|-|@jobs/sw-b2.sh
+sw-p2|-|@jobs/sw-p2.sh

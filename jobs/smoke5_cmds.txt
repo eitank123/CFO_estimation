@@ -1,0 +1,2 @@
+blind/smoke/rx_compare.py --frames 2000 --points 1/10:-5 1/10:-3 1/10:-1 --rx 'Pilots N3x8 + v3 eco+ + CRC' 'Pilots N3x8 + v3 eco+, pilot phase + CRC'
+blind/smoke/rx_compare.py --frames 2000 --points 2/5:0.5 2/5:1 2/5:2.5 1/2:2 --rx 'Pilots N3x8 + v3 eco3+, fast path from 0 dB, 16 peaks >= 0.7 + CRC' 'Pilots N3x8 + v3 eco3+, pilot-picked fast path + pilot phase + CRC'

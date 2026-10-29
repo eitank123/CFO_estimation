@@ -1,0 +1,6 @@
+rh-b10a|-|@jobs/rh-b10a.sh
+rh-b10b|-|@jobs/rh-b10b.sh
+rh-b25|-|@jobs/rh-b25.sh
+rh-b2|-|@jobs/rh-b2.sh
+rh-p10|-|@jobs/rh-p10.sh
+rh-p25|-|@jobs/rh-p25.sh

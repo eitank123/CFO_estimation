@@ -1,0 +1,8 @@
+blb-k|-|@jobs/blb-k.sh
+blb-l|-|@jobs/blb-l.sh
+blb-m|-|@jobs/blb-m.sh
+blb-j|-|@jobs/blb-j.sh
+pt-a|-|@jobs/pt-a.sh
+blb-t|-|@jobs/blb-t.sh
+blb-o|-|@jobs/blb-o.sh
+blb-n|-|@jobs/blb-n.sh

@@ -1,0 +1,2 @@
+rob-snr|-|@jobs/rob-snr.sh
+rob-noise|-|@jobs/rob-noise.sh

@@ -1,0 +1,5 @@
+blb-f|-|@jobs/blb-f.sh
+p64r4-a|-|@jobs/p64r4-a.sh
+p64r4-b|-|@jobs/p64r4-b.sh
+blb-h|-|@jobs/blb-h.sh
+bt-sub2|-|@jobs/bt-sub2.sh

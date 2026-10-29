@@ -1,0 +1,1 @@
+diag-hi|-|@jobs/diag-hi.sh

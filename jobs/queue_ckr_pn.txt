@@ -1,0 +1,2 @@
+ckr-pn25|-|@jobs/ckr-pn25.sh
+ckr-pn2|-|@jobs/ckr-pn2.sh

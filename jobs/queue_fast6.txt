@@ -1,0 +1,4 @@
+bfg-r1|-|@jobs/bf-g.sh
+bfh-r1|-|@jobs/bf-h.sh
+bfi-r1|-|@jobs/bf-i.sh
+bfe-r1|-|@jobs/bf-e.sh

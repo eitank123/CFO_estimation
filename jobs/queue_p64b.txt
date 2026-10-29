@@ -1,0 +1,7 @@
+p64out-a|-|@jobs/p64out-a.sh
+p64r10s-a|-|@jobs/p64r10s-a.sh
+p64r4s-a|-|@jobs/p64r4s-a.sh
+p64c24r10-a|-|@jobs/p64c24r10-a.sh
+p64c24r4-a|-|@jobs/p64c24r4-a.sh
+p64c24r4-b|-|@jobs/p64c24r4-b.sh
+blb-i|-|@jobs/blb-i.sh

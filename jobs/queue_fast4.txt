@@ -1,0 +1,10 @@
+fe-3r|-|@jobs/fe-3.sh
+bf-fr|-|@jobs/bf-f.sh
+bf-gr|-|@jobs/bf-g.sh
+bf-hr|-|@jobs/bf-h.sh
+bf-ir|-|@jobs/bf-i.sh
+bf-jr|-|@jobs/bf-j.sh
+bf-br|-|@jobs/bf-b.sh
+bf-cr|-|@jobs/bf-c.sh
+bf-dr|-|@jobs/bf-d.sh
+bf-er|-|@jobs/bf-e.sh

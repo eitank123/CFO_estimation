@@ -1,0 +1,4 @@
+fx-r10p|-|@jobs/fx-r10p.sh
+fx-r10b5|-|@jobs/fx-r10b5.sh
+fx-r10b4|-|@jobs/fx-r10b4.sh
+fx-r25b|-|@jobs/fx-r25b.sh

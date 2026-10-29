@@ -1,0 +1,3 @@
+cut-25|-|@jobs/cut-25.sh
+cut-2|-|@jobs/cut-2.sh
+cut-10|-|@jobs/cut-10.sh

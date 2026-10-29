@@ -1,0 +1,2 @@
+bx-r10a|-|@jobs/bx-r10a.sh
+bx-r10b|-|@jobs/bx-r10b.sh

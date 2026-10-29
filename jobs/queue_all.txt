@@ -1,0 +1,10 @@
+sx-f|-|@jobs/sx-f.sh
+sw10b-a|-|@jobs/sw10b-a.sh
+sw10b-b|-|@jobs/sw10b-b.sh
+sw10p|-|@jobs/sw10p.sh
+sw25b|-|@jobs/sw25b.sh
+sw25p|-|@jobs/sw25p.sh
+sw2|-|@jobs/sw2.sh
+st-a|-|@jobs/st-a.sh
+st-b|-|@jobs/st-b.sh
+st-c|-|@jobs/st-c.sh

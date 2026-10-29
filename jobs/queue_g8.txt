@@ -1,0 +1,9 @@
+f7-r25-r1|-|@jobs/f7-r25.sh
+f7-r2-r1|-|@jobs/f7-r2.sh
+g8-r25-r1|-|@jobs/g8-r25.sh
+g8-r10-r1|-|@jobs/g8-r10.sh
+g8-r2-r1|-|@jobs/g8-r2.sh
+e3-r25b-r1|-|@jobs/e3-r25b.sh
+e3-r2-r1|-|@jobs/e3-r2.sh
+e3-r10-r1|-|@jobs/e3-r10.sh
+b25-g-r1|-|@jobs/b25-g.sh

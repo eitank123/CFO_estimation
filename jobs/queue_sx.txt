@@ -1,0 +1,6 @@
+sx-b10|-|@jobs/sx-b10.sh
+sx-p10|-|@jobs/sx-p10.sh
+sx-b25|-|@jobs/sx-b25.sh
+sx-p25|-|@jobs/sx-p25.sh
+sx-r2|-|@jobs/sx-r2.sh
+sx-ref|-|@jobs/sx-ref.sh

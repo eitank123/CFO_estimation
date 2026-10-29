@@ -1,0 +1,2 @@
+bm2-a|-|@jobs/bm2-a.sh
+bm2-b|-|@jobs/bm2-b.sh

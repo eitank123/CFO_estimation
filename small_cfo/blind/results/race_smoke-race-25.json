@@ -1,0 +1,686 @@
+[
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 5 from 0.25",
+  "lost_phase": 0.21875,
+  "lost_cell": 0.21875,
+  "work": 0.2510033509975062
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.25 + gap 5",
+  "lost_phase": 0.21875,
+  "lost_cell": 0.21875,
+  "work": 0.2510033509975062
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.25 + gap 10",
+  "lost_phase": 0.125,
+  "lost_cell": 0.125,
+  "work": 0.251368648690773
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 10 from 0.25",
+  "lost_phase": 0.125,
+  "lost_cell": 0.125,
+  "work": 0.2513735193266833
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.25 + gap 15",
+  "lost_phase": 0.125,
+  "lost_cell": 0.125,
+  "work": 0.2525765663965087
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 15 from 0.25",
+  "lost_phase": 0.125,
+  "lost_cell": 0.125,
+  "work": 0.25259604894014964
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "beam 16 from 0.25",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.2549875311720698
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.25 + gap 20",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.2554843360349127
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 20 from 0.25",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.2556085372506234
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "beam 32 from 0.25",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.25748129675810466
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "beam 64 from 0.25",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.263715710723192
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.25 + gap 30",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.27208589853491266
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 30 from 0.25",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.27466002961346636
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "beam 128 from 0.25",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.27743142144638405
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.25 + gap 40",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.30252006701995016
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "beam 256 from 0.25",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.30486284289276805
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 40 from 0.25",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.3152080735660848
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.25 + gap 60",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.03125,
+  "work": 0.3596745441084788
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 5 from 0.375",
+  "lost_phase": 0.15625,
+  "lost_cell": 0.15625,
+  "work": 0.37586697319201995
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.375 + gap 5",
+  "lost_phase": 0.15625,
+  "lost_cell": 0.15625,
+  "work": 0.37586697319201995
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.375 + gap 10",
+  "lost_phase": 0.125,
+  "lost_cell": 0.125,
+  "work": 0.3759887390897756
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 10 from 0.375",
+  "lost_phase": 0.125,
+  "lost_cell": 0.125,
+  "work": 0.37599360972568585
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.375 + gap 15",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.3765926979426434
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 15 from 0.375",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.37663653366583544
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.375 + gap 20",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.3779710879052369
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 20 from 0.375",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.3780636299875312
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "beam 16 from 0.375",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.3812344139650872
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.375 + gap 30",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.38577871726932667
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 30 from 0.375",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.3866846555486284
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "beam 32 from 0.375",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.38746882793017456
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.375 + gap 40",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.39660127026184533
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "beam 64 from 0.375",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.39993765586034913
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.25 + gap 80",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "work": 0.40025424719451363
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 60 from 0.25",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.03125,
+  "work": 0.40039306031795513
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 40 from 0.375",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.40225607855361595
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.375 + gap 60",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.03125,
+  "work": 0.4138530626558604
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "beam 128 from 0.375",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.42487531172069826
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 60 from 0.375",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.03125,
+  "work": 0.4293562967581047
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.375 + gap 80",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "work": 0.44133319046134667
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 80 from 0.25",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "work": 0.4616632247506235
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 80 from 0.375",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "work": 0.4676443656483791
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "beam 256 from 0.375",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.4747506234413965
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 5 from 0.5",
+  "lost_phase": 0.125,
+  "lost_cell": 0.125,
+  "work": 0.5007695604738155
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.5 + gap 5",
+  "lost_phase": 0.125,
+  "lost_cell": 0.125,
+  "work": 0.5007695604738155
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 10 from 0.5",
+  "lost_phase": 0.125,
+  "lost_cell": 0.125,
+  "work": 0.5010812811720698
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.5 + gap 10",
+  "lost_phase": 0.125,
+  "lost_cell": 0.125,
+  "work": 0.5010812811720698
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.5 + gap 15",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.5016560162094763
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 15 from 0.5",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.5016754987531171
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.5 + gap 20",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.5031074657107232
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 20 from 0.5",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.5031561720698254
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 2 @0.125 + z",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.5033169030548628
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "beam 16 from 0.5",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.5074812967581047
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.5 + gap 30",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.5086307668329177
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 30 from 0.5",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.09375,
+  "work": 0.5095659289276808
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "beam 32 from 0.5",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.5149625935162093
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.5 + gap 40",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.5154593983790523
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 40 from 0.5",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.5193948721945136
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.5 + gap 60",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.03125,
+  "work": 0.5217327774314214
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 2 @0.25 + z",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.5251032574812967
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "beam 64 from 0.5",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.529925187032419
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 60 from 0.5",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.03125,
+  "work": 0.532418952618454
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.5 + gap 80",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "work": 0.5350198721945137
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "gap 80 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "work": 0.5492031639650872
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "beam 128 from 0.5",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.5598503740648378
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.25 + z",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.5759721789276808
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.125 + z",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.03125,
+  "work": 0.5934577618453866
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 2 @0.5 + z",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.6040660068578554
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "beam 256 from 0.5",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.6197007481296758
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 5 @0.5 + z",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.6218633104738154
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 10 @0.25 + z",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.6457586502493766
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 10 @0.5 + z",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.6518469451371571
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 10 @0.125 + z",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.6847724438902743
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 20 @0.5 + z",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.7008552836658355
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 20 @0.25 + z",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.7202939915835411
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "phase 20 @0.125 + z",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.7357290367830424
+ },
+ {
+  "rate": "2/5",
+  "snr": 0.5,
+  "packets": 32,
+  "rule": "z (receiver)",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0625,
+  "work": 0.7384176278054864
+ }
+]

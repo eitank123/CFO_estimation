@@ -1,0 +1,58 @@
+[
+ {
+  "rate": "1/10",
+  "snr": -4.0,
+  "rx": "v3 eco7 + CRC",
+  "packets": 48000,
+  "failures": [
+   {
+    "passed": true,
+    "ferr": 0.20465162046145624,
+    "genie_bad": false,
+    "prank": 887,
+    "z": NaN,
+    "rnd": -1,
+    "zrank": -1,
+    "Mrank": -1,
+    "tried": false,
+    "tried_nb": false
+   },
+   {
+    "passed": true,
+    "ferr": 0.019312741896239174,
+    "genie_bad": false,
+    "prank": 181,
+    "z": NaN,
+    "rnd": -1,
+    "zrank": -1,
+    "Mrank": -1,
+    "tried": false,
+    "tried_nb": false
+   },
+   {
+    "passed": true,
+    "ferr": 0.01763091405948583,
+    "genie_bad": false,
+    "prank": 151,
+    "z": NaN,
+    "rnd": -1,
+    "zrank": -1,
+    "Mrank": -1,
+    "tried": false,
+    "tried_nb": false
+   },
+   {
+    "passed": true,
+    "ferr": 0.0006512534007660498,
+    "genie_bad": false,
+    "prank": 19,
+    "z": NaN,
+    "rnd": -1,
+    "zrank": -1,
+    "Mrank": -1,
+    "tried": false,
+    "tried_nb": false
+   }
+  ]
+ }
+]

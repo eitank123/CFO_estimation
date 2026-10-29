@@ -1,0 +1,1 @@
+blind/smoke/rx_compare.py --frames 3000 --points 1/10:-5 1/10:-4 1/10:-3 1/10:-2 --rx 'Pilots N3x8 + v3 eco+ + CRC' 'Pilots N3x8 + v3 eco+, pilot phase + CRC'

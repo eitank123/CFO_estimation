@@ -1,0 +1,5 @@
+e3-r25a-r1|-|@jobs/e3-r25a.sh
+e3-r25b-r1|-|@jobs/e3-r25b.sh
+e3-r2-r1|-|@jobs/e3-r2.sh
+e3-r10-r1|-|@jobs/e3-r10.sh
+b25-g-r1|-|@jobs/b25-g.sh

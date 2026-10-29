@@ -1,0 +1,1192 @@
+[
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 5 from 0.25",
+  "lost_phase": 0.9375,
+  "lost_cell": 0.9375,
+  "lost_nb": 0.84375,
+  "work": 0.18005017450394156
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.25 + gap 5",
+  "lost_phase": 0.9375,
+  "lost_cell": 0.9375,
+  "lost_nb": 0.84375,
+  "work": 0.18005017450394156
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "beam 8 from 0.25",
+  "lost_phase": 0.96875,
+  "lost_cell": 0.9375,
+  "lost_nb": 0.84375,
+  "work": 0.18203316683868162
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "beam 16 from 0.25",
+  "lost_phase": 0.9375,
+  "lost_cell": 0.875,
+  "lost_nb": 0.71875,
+  "work": 0.1828848623930082
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "beam 32 from 0.25",
+  "lost_phase": 0.84375,
+  "lost_cell": 0.78125,
+  "lost_nb": 0.625,
+  "work": 0.18505648890479243
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.25 + gap 10",
+  "lost_phase": 0.75,
+  "lost_cell": 0.625,
+  "lost_nb": 0.46875,
+  "work": 0.19006463620080694
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 10 from 0.25",
+  "lost_phase": 0.75,
+  "lost_cell": 0.625,
+  "lost_nb": 0.46875,
+  "work": 0.190389050943519
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "beam 64 from 0.25",
+  "lost_phase": 0.75,
+  "lost_cell": 0.6875,
+  "lost_nb": 0.53125,
+  "work": 0.1908783800435114
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "beam 128 from 0.25",
+  "lost_phase": 0.5625,
+  "lost_cell": 0.4375,
+  "lost_nb": 0.25,
+  "work": 0.2042255534296025
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.25 + gap 15",
+  "lost_phase": 0.5,
+  "lost_cell": 0.375,
+  "lost_nb": 0.21875,
+  "work": 0.2169500199369706
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 15 from 0.25",
+  "lost_phase": 0.5,
+  "lost_cell": 0.375,
+  "lost_nb": 0.21875,
+  "work": 0.22216631635265321
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "beam 256 from 0.25",
+  "lost_phase": 0.375,
+  "lost_cell": 0.25,
+  "lost_nb": 0.125,
+  "work": 0.23091990020178477
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.25 + gap 20",
+  "lost_phase": 0.21875,
+  "lost_cell": 0.15625,
+  "lost_nb": 0.03125,
+  "work": 0.2472381812455456
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 5 from 0.375",
+  "lost_phase": 0.78125,
+  "lost_cell": 0.6875,
+  "lost_nb": 0.59375,
+  "work": 0.26777869032339785
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.375 + gap 5",
+  "lost_phase": 0.78125,
+  "lost_cell": 0.6875,
+  "lost_nb": 0.59375,
+  "work": 0.26777869032339785
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 20 from 0.25",
+  "lost_phase": 0.15625,
+  "lost_cell": 0.125,
+  "lost_nb": 0.03125,
+  "work": 0.26882361769515806
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "beam 8 from 0.375",
+  "lost_phase": 0.75,
+  "lost_cell": 0.65625,
+  "lost_nb": 0.46875,
+  "work": 0.27041531001619606
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.375 + gap 10",
+  "lost_phase": 0.65625,
+  "lost_cell": 0.53125,
+  "lost_nb": 0.375,
+  "work": 0.2708817895365652
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 10 from 0.375",
+  "lost_phase": 0.625,
+  "lost_cell": 0.53125,
+  "lost_nb": 0.375,
+  "work": 0.2710046705249264
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.125 + beam 16 from 0.5",
+  "lost_phase": 0.25,
+  "lost_cell": 0.125,
+  "lost_nb": 0.0625,
+  "work": 0.27195260077658073
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "beam 16 from 0.375",
+  "lost_phase": 0.65625,
+  "lost_cell": 0.5625,
+  "lost_nb": 0.40625,
+  "work": 0.27283041893760834
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.25 + beam 16 from 0.5",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.03125,
+  "lost_nb": 0.0,
+  "work": 0.2782930010143457
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "beam 32 from 0.375",
+  "lost_phase": 0.5,
+  "lost_cell": 0.4375,
+  "lost_nb": 0.1875,
+  "work": 0.2793640278890863
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.375 + gap 15",
+  "lost_phase": 0.40625,
+  "lost_cell": 0.25,
+  "lost_nb": 0.15625,
+  "work": 0.2798760140376974
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 15 from 0.375",
+  "lost_phase": 0.34375,
+  "lost_cell": 0.21875,
+  "lost_nb": 0.15625,
+  "work": 0.2808666784711276
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.125 + beam 32 from 0.5",
+  "lost_phase": 0.25,
+  "lost_cell": 0.09375,
+  "lost_nb": 0.0625,
+  "work": 0.28127393545448903
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 2 @0.25 + z",
+  "lost_phase": 0.28125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.28642575708735896
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.25 + beam 32 from 0.5",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.287614335692254
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.25 + gap 30",
+  "lost_phase": 0.15625,
+  "lost_cell": 0.09375,
+  "lost_nb": 0.0,
+  "work": 0.2918055970395693
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "beam 64 from 0.375",
+  "lost_phase": 0.34375,
+  "lost_cell": 0.1875,
+  "lost_nb": 0.09375,
+  "work": 0.2924312457920424
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 2 @0.125 + z",
+  "lost_phase": 0.375,
+  "lost_cell": 0.09375,
+  "lost_nb": 0.0,
+  "work": 0.29690561242972774
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.375 + gap 20",
+  "lost_phase": 0.3125,
+  "lost_cell": 0.1875,
+  "lost_nb": 0.0625,
+  "work": 0.2977891064047703
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 20 from 0.375",
+  "lost_phase": 0.15625,
+  "lost_cell": 0.125,
+  "lost_nb": 0.03125,
+  "work": 0.2982970879084861
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.125 + beam 64 from 0.5",
+  "lost_phase": 0.25,
+  "lost_cell": 0.09375,
+  "lost_nb": 0.03125,
+  "work": 0.2999166048103055
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.25 + beam 64 from 0.5",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.30625700504807046
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "beam 128 from 0.375",
+  "lost_phase": 0.28125,
+  "lost_cell": 0.125,
+  "lost_nb": 0.0625,
+  "work": 0.31856568159795434
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.3125 + beam 16 from 0.5",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.31950560255981825
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.25 + gap 40",
+  "lost_phase": 0.125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3196092458502021
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.125 + beam 16 from 0.5",
+  "lost_phase": 0.125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.32084303073497183
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.375 + beam 16 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.32267580267870083
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.25 + beam 16 from 0.5",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.32401323085385436
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.125 + z",
+  "lost_phase": 0.25,
+  "lost_cell": 0.09375,
+  "lost_nb": 0.03125,
+  "work": 0.32597353533501505
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.3125 + beam 32 from 0.5",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3288269372377266
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.125 + beam 32 from 0.5",
+  "lost_phase": 0.125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3301643654128801
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.375 + beam 32 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3319971373566091
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.25 + z",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.33243823358933483
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.25 + beam 32 from 0.5",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3333345655317626
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.375 + gap 30",
+  "lost_phase": 0.25,
+  "lost_cell": 0.125,
+  "lost_nb": 0.0,
+  "work": 0.33351513651033515
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.125 + beam 128 from 0.5",
+  "lost_phase": 0.25,
+  "lost_cell": 0.0625,
+  "lost_nb": 0.0,
+  "work": 0.3372019435219386
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.25 + z",
+  "lost_phase": 0.125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3424544819739228
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.25 + beam 128 from 0.5",
+  "lost_phase": 0.09375,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.34354234375970355
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.3125 + beam 16 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3446195316265906
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.375 + beam 16 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3462046316860319
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.3125 + beam 64 from 0.5",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.34746960659354315
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.125 + beam 64 from 0.5",
+  "lost_phase": 0.125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3488070347686966
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.375 + beam 64 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.35063980671242556
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 30 from 0.25",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.03125,
+  "lost_nb": 0.0,
+  "work": 0.35131753125101656
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.25 + beam 64 from 0.5",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.351977234887579
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.3125 + beam 32 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3539408663044989
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 30 from 0.375",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.03125,
+  "lost_nb": 0.0,
+  "work": 0.3540508554167936
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.375 + beam 32 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3555259663639401
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.375 + gap 40",
+  "lost_phase": 0.25,
+  "lost_cell": 0.0625,
+  "lost_nb": 0.0,
+  "work": 0.3605365780568132
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 5 from 0.5",
+  "lost_phase": 0.15625,
+  "lost_cell": 0.125,
+  "lost_nb": 0.0,
+  "work": 0.36133470378442634
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.5 + gap 5",
+  "lost_phase": 0.15625,
+  "lost_cell": 0.125,
+  "lost_nb": 0.0,
+  "work": 0.36133470378442634
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.5 + gap 10",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.03125,
+  "lost_nb": 0.0,
+  "work": 0.36152655707986714
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 10 from 0.5",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.03125,
+  "lost_nb": 0.0,
+  "work": 0.3615496608004163
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.5 + gap 15",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.03125,
+  "lost_nb": 0.0,
+  "work": 0.36195748767555125
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 15 from 0.5",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.03125,
+  "lost_nb": 0.0,
+  "work": 0.3620036951166497
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.5 + gap 20",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3634084937409248
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 20 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.36359507938808033
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "beam 8 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.36507279335440884
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "beam 16 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.36973346069336305
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "beam 256 from 0.375",
+  "lost_phase": 0.125,
+  "lost_cell": 0.03125,
+  "lost_nb": 0.0,
+  "work": 0.3708345532097783
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.5 + gap 30",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3721406835448279
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.3125 + beam 64 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3725835356603154
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.375 + beam 64 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.37416863571975656
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 30 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3746625008502169
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.3125 + z",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.37611193586259306
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.375 + z",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.37873522470863435
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "beam 32 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3790547953712712
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.125 + z",
+  "lost_phase": 0.1875,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3797969099790329
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.3125 + beam 128 from 0.5",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.384754945305176
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.125 + beam 128 from 0.5",
+  "lost_phase": 0.125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.38609237348032965
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.5 @0.375 + beam 128 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.38792514542405865
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.25 + beam 128 from 0.5",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3892625735992122
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 2 @0.5 + z",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.39136233213760796
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.25 + gap 60",
+  "lost_phase": 0.125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.391524751293069
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.5 + gap 40",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3920106225362192
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.5 + z",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.39573762232033804
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "beam 64 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.3976974647270878
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 40 from 0.25",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.4042731301512056
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 40 from 0.375",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.40435484030954794
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.125 + z",
+  "lost_phase": 0.125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.4052672601427181
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 40 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.40630729722696207
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 10 @0.5 + z",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.40647697095067553
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.25 + z",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.40664756882321107
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.3125 + beam 128 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.40986887437194847
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.375 + beam 128 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.4114539744313897
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 10 @0.25 + z",
+  "lost_phase": 0.0625,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.4263623740323546
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.375 + gap 60",
+  "lost_phase": 0.25,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.4268409907072524
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.3125 + z",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.42986412794359885
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "keep 0.75 @0.375 + z",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.4305542822838453
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "beam 128 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.43498280343872076
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 20 @0.5 + z",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.44406469115685687
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.25 + gap 80",
+  "lost_phase": 0.125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.4468209188109384
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.5 + gap 60",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.45277682693132315
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 10 @0.125 + z",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.4591435192030732
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.375 + gap 80",
+  "lost_phase": 0.25,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.4668570967729216
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 20 @0.25 + z",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.47626413855282734
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 20 @0.125 + z",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.4781396061721312
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "z (receiver)",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.47814720729619187
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "phase 5 @0.5 + gap 80",
+  "lost_phase": 0.03125,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.49235340781726394
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "beam 256 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.5095534808619869
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 60 from 0.25",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.529976615338209
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 60 from 0.375",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.529976615338209
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 60 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.529976615338209
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 80 from 0.25",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.6411178023593149
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 80 from 0.375",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.6411178023593149
+ },
+ {
+  "rate": "1/10",
+  "snr": -5.0,
+  "packets": 32,
+  "rule": "gap 80 from 0.5",
+  "lost_phase": 0.0,
+  "lost_cell": 0.0,
+  "lost_nb": 0.0,
+  "work": 0.6411178023593149
+ }
+]

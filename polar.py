@@ -96,18 +96,43 @@ class PolarCode:
         ok = np.all(self.crc(data.reshape(-1, self.A)).reshape(B, Ls, self.C) == crc, axis=2)
         score = np.where(ok, self._pm, np.inf)
         best = np.where(ok.any(1), score.argmin(1), self._pm.argmin(1))
+        self.last_info = info[np.arange(B), best]        # the chosen paths' info bits incl. their CRC (re-encoding)
         if return_info:   # also: did a list path pass the CRC, and the chosen path's metric
             return data[np.arange(B), best], ok.any(1), self._pm[np.arange(B), best]
         return data[np.arange(B), best]
+
+    def decode_traced(self, llr, ends):
+        """decode(llr, return_info=True) that also records the best path metric of the list after the bits [0, e)
+        for every e in ends (ascending bit counts): (data, CRC passed, path metric, trace (B, len(ends)))."""
+        self._ends, self._ci = list(ends), 0
+        self._tr = np.full((len(llr), len(ends)), np.nan, np.float32)
+        try:
+            out = self.decode(llr, return_info=True)
+            return (*out, self._tr)
+        finally:
+            self._ends = None
+
+    _ends = None
+
+    def _mark(self, end):
+        """(decode_traced) the list's best path metric once the first `end` bits are decided."""
+        while self._ci < len(self._ends) and self._ends[self._ci] <= end:
+            self._tr[:, self._ci] = self._pm.min(1)
+            self._ci += 1
 
     def _rec(self, alpha, lo, hi):
         """Decode leaves [lo, hi). Returns (re-encoded bits (B, Ls, n), path permutation or None)."""
         n = hi - lo
         if n == 1:
-            return self._leaf(alpha[..., 0], lo)
+            out = self._leaf(alpha[..., 0], lo)
+            if self._ends is not None:
+                self._mark(lo + 1)
+            return out
         if self.frozen[lo:hi].all():
             # Rate-0 node (Fast-SSCL): all-zero sub-codeword, metric of every node LLR being 0
             self._pm += np.logaddexp(np.float32(0), -alpha).sum(axis=2)
+            if self._ends is not None:
+                self._mark(hi)
             return np.zeros(alpha.shape, dtype=np.uint8), None
         mid = lo + n // 2
         a, b = alpha[..., :n // 2], alpha[..., n // 2:]

@@ -1,0 +1,6 @@
+fe-3|-|@jobs/fe-3.sh
+bf-f|-|@jobs/bf-f.sh
+bf-g|-|@jobs/bf-g.sh
+bf-h|-|@jobs/bf-h.sh
+bf-j|-|@jobs/bf-j.sh
+bf-i|-|@jobs/bf-i.sh

@@ -33,7 +33,7 @@ import os
 import paths
 from train_snr_nn import MAX_CFO, SNR_CENTER, SNR_SCALE, count_params, crb
 
-BLOCK = 64
+BLOCK = int(os.environ.get("CFO_BLOCK", "64"))   # symbols per pilot block (2 blocks); 32 for the 64-symbol preamble
 TEST_SNRS = [-5, -4, -3, -2, -1, 0, 2, 5, 10]
 N_IN = 9
 # "ends": blocks at 0..63 and N-64..N-1 (D = N - 64); "quarter": blocks centred at N/4 and 3N/4 (D = N/2)

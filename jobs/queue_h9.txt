@@ -1,0 +1,3 @@
+h9-r25a-r1|-|@jobs/h9-r25a.sh
+h9-r25b-r1|-|@jobs/h9-r25b.sh
+h9-r2-r1|-|@jobs/h9-r2.sh

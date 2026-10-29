@@ -1,0 +1,15 @@
+sn25-a-r1|-|@jobs/sn25-a.sh
+b25-a-r1|-|@jobs/b25-a.sh
+b25-b-r1|-|@jobs/b25-b.sh
+pv-r25a-r1|-|@jobs/pv-r25a.sh
+b25-c-r1|-|@jobs/b25-c.sh
+pv-r10a-r1|-|@jobs/pv-r10a.sh
+b25-e-r1|-|@jobs/b25-e.sh
+pv-r2a-r1|-|@jobs/pv-r2a.sh
+b25-d-r1|-|@jobs/b25-d.sh
+pv-r25b-r1|-|@jobs/pv-r25b.sh
+b25-f-r1|-|@jobs/b25-f.sh
+pv-r10b-r1|-|@jobs/pv-r10b.sh
+pv-r2b-r1|-|@jobs/pv-r2b.sh
+b25-h-r1|-|@jobs/b25-h.sh
+b25-g-r1|-|@jobs/b25-g.sh

@@ -1,0 +1,8 @@
+pe-r10-r1|-|@jobs/pe-r10.sh
+pe-r25-r1|-|@jobs/pe-r25.sh
+pe-r2-r1|-|@jobs/pe-r2.sh
+ec-r25b-r1|-|@jobs/ec-r25b.sh
+ec-r2b-r1|-|@jobs/ec-r2b.sh
+pv-r2b-r1|-|@jobs/pv-r2b.sh
+b25-h-r1|-|@jobs/b25-h.sh
+b25-g-r1|-|@jobs/b25-g.sh

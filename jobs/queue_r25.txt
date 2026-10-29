@@ -1,0 +1,9 @@
+sn25-a-r1|-|@jobs/sn25-a.sh
+b25-a-r1|-|@jobs/b25-a.sh
+b25-b-r1|-|@jobs/b25-b.sh
+b25-c-r1|-|@jobs/b25-c.sh
+b25-d-r1|-|@jobs/b25-d.sh
+b25-e-r1|-|@jobs/b25-e.sh
+b25-f-r1|-|@jobs/b25-f.sh
+b25-h-r1|-|@jobs/b25-h.sh
+b25-g-r1|-|@jobs/b25-g.sh

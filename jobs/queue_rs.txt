@@ -1,0 +1,5 @@
+rs-b10a|-|@jobs/rs-b10a.sh
+rs-b10b|-|@jobs/rs-b10b.sh
+rs-p10|-|@jobs/rs-p10.sh
+rs-25|-|@jobs/rs-25.sh
+rs-2|-|@jobs/rs-2.sh

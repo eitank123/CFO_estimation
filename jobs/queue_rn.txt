@@ -1,0 +1,3 @@
+rn-r10a|-|@jobs/rn-r10a.sh
+rn-r10b|-|@jobs/rn-r10b.sh
+rn-r25|-|@jobs/rn-r25.sh
