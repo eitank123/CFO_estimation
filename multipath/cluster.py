@@ -63,7 +63,7 @@ def push(paths):
     print(f"pushed {len(paths)} files")
 
 
-def submit(job, cmd, cpu, mem, study=""):
+def submit(job, cmd, cpu, mem, study="", gpu=0):
     if cmd.startswith("@"):                  # "@jobs/chain_x.sh": a bash script already pushed to the project
         sh = f"{REMOTE}/{cmd[1:]}"
         ssh(f"test -f {sh} && chmod +x {sh}")
@@ -77,7 +77,8 @@ def submit(job, cmd, cpu, mem, study=""):
         ssh(f"mkdir -p {REMOTE}/jobs {REMOTE}/{logs} && cat > {sh} && chmod +x {sh}", data=script.encode())
     if status(job) != "not found":
         raise RuntimeError(f"a Run:ai job named {job} already exists; use a new name")
-    out = ssh(f'runai-bgu submit python -n {job} -c {cpu} -m {mem} -- "bash {sh}" 2>&1')
+    g = f" -g {gpu}" if gpu else ""                         # GPU jobs: whole GPUs (over the project quota: preemptible)
+    out = ssh(f'runai-bgu submit python -n {job} -c {cpu} -m {mem}{g} -- "bash {sh}" 2>&1')
     text = out.decode(errors="replace").strip()
     print(text[-800:])
     if "Creating" not in text:                  # runai-bgu prints "Creating training <name>..."
@@ -139,6 +140,7 @@ if __name__ == "__main__":
     ap.add_argument("--job", required=True, nargs="+", help="job name(s); sync/status accept several")
     ap.add_argument("--cpu", type=int, default=16)
     ap.add_argument("--mem", default="24Gi")
+    ap.add_argument("--gpu", type=int, default=0, help="GPUs for the job (default: CPU only)")
     ap.add_argument("--push", nargs="*", default=[])
     ap.add_argument("--results", nargs="*", default=[], help="folders and/or files to sync back")
     ap.add_argument("--cmd", default="")
@@ -148,7 +150,7 @@ if __name__ == "__main__":
     if a.action in ("run", "push") and a.push:
         push(a.push)
     if a.action in ("run", "submit"):
-        submit(a.job[0], a.cmd, a.cpu, a.mem, a.study)
+        submit(a.job[0], a.cmd, a.cpu, a.mem, a.study, a.gpu)
     if a.action in ("run", "sync"):
         sync(a.job, a.results, a.interval)
     if a.action == "status":

@@ -58,7 +58,10 @@ STEP = 1.5e-4 * 512 / N_SYM                                # CFO grid step = the
 NFFT4 = 4096                                               # 4th-power FFT: 4x zero padding of the 1024 symbols
 NFFT_S = 16384                                             # spectral estimator FFT (8192 + 80 samples, 2x padding)
 TOL = 1.0e-4
-CODES = {"1/10": 205, "1/4": 512, "1/3": 683, "2/5": 819, "1/2": 1024, "3/5": 1229, "2/3": 1365, "3/4": 1536}   # data bits A, CRC-16, N = 2048 (as polar_ber_experiment)
+CODES = {"1/10": 205, "0.15": 307, "1/4": 512, "1/3": 683, "2/5": 819, "1/2": 1024, "3/5": 1229, "2/3": 1365, "3/4": 1536}   # data bits A, CRC-16, N = 2048 (as polar_ber_experiment)
+# a code without its own receiver tuning uses the settings of a neighbouring rate (the re-encoding threshold table
+# RHO_N stays per code): R = 0.15 runs the R = 1/10 blind receiver (user, 2026-11-10)
+PROFILE = {"0.15": "1/10"}
 INTERLEAVER = np.random.default_rng(12345).permutation(N_BITS)  # the same fixed interleaver as polar_ber_experiment
 
 

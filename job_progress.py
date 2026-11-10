@@ -510,6 +510,23 @@ JOBS["nn2_light16"] = ("CFO NN v2 light16 (train + test)", "train", ("run_nn2-li
 JOBS["chain_a"] = ("Chain A on the cluster (12 x 1024-symbol points + CRC-16 M&M search)", "count", ("run_chain-a.out", "chain-a.progress"))
 JOBS["chain_b"] = ("Chain B on the cluster (CRC-16 NN-search extra frames)", "count", ("run_chain-b.out", "chain-b.progress"))
 JOBS["chain_c"] = ("Chain C on the cluster (NN v2 light64/32/16 training)", "count", ("run_chain-c.out", "chain-c.progress"))
+# est3: three extra preamble CFO estimators (joint CFO / channel ML, clustering NN + CNNs, direct ML)
+_E3 = os.path.join("est3", "logs")
+JOBS["est3_smoke"] = ("est3 smoke test (AWGN validation)", "count",
+                      ("run_est3-smoke2.out", os.path.join(_E3, "bler_smoke3.progress")))
+for _k in ("cnn-cr", "cnn-reg", "cluster"):
+    JOBS[f"est3_train_{_k}"] = (f"est3 training {_k} (AWGN)", "count",
+                                (f"run_est3-awtrain-{_k}.out", os.path.join(_E3, f"train_{_k}.progress")))
+for _p in ("base", "nn"):
+    JOBS[f"est3_est_{_p}"] = (f"est3 CFO accuracy sweep ({_p})", "count",
+                              (f"run_est3-est-{_p}.out", os.path.join(_E3, f"est_{_p}.progress")))
+for _p in ("kb10", "kb25", "kb2", "kn10", "kn25", "kn2", "m10", "m25", "m2", "m15"):
+    JOBS[f"est3_bler_{_p}"] = (f"est3 BLER {_p}", "count",
+                               (f"run_est3-bler-{_p}.out", os.path.join(_E3, f"bler_{_p}.progress")))
+for _j, _p in (("more-10a", "more-10a"), ("more-10b", "more-10b"), ("more-10c", "more-10c"), ("more-hi", "more-25"),
+               ("more-hi", "more-2"), ("cap-25", "cap-25"), ("b15a", "b15a"), ("b15b", "b15b"), ("b15c", "b15c")):              # more blind statistics for the est3 comparison (small_cfo study)
+    JOBS[f"blind_{_p}"] = (f"blind more packets {_p}", "count",
+                           (f"run_{_j}.out", os.path.join("small_cfo", "blind", "logs", f"blind_ber_{_p}.progress")))
 JOBS["snr_chain"] =("SNR-aware NN retraining (full chain)", "train", ("run_snr-chain.out",))
 JOBS["mp_v2_eval"] =("MP-NN evaluation", "train", (os.path.join("multipath", "results_multipath", "run_v2_eval.log"),))
 for _i in range(8):   # Stage 1 split over up to 8 Run:ai jobs (zero_overhead_rx.py --parts N --part i)
@@ -628,7 +645,10 @@ def count_row(name, log_name, prog_name):
     prog = read_lines(where(prog_name))
     if not prog:
         return f"{name:<30} {bar(0)}  {'starting' if log is not None else 'waiting'}", False
-    d, n, sec = (float(v) for v in prog[-1].split())
+    v = [float(x) for x in prog[-1].split()]
+    if len(v) == 1:                                       # a bare fraction (no counts / time)
+        return f"{name:<30} {bar(min(v[0], 1.0))}  {100 * v[0]:.0f}%", False
+    d, n, sec = v
     eta = f"  ETA ~{fmt(sec * (n - d) / d)}" if d else ""
     return f"{name:<30} {bar(d / n)}  {int(d)}/{int(n)} chunks{eta}", False
 

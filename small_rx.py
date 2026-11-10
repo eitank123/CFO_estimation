@@ -201,6 +201,8 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
     if p["snr_err"]:                                          # an SNR estimate off by snr_err dB: every SNR-dependent
         snr = snr + p["snr_err"]                              # setting and the LLR scaling see it
         sigma2 = sigma2 * 10 ** (-p["snr_err"] / 10)
+    p["code_rate"] = p["rate"]                                # RHO_N per code; every other setting per profile
+    p["rate"] = bc.PROFILE.get(p["rate"], p["rate"])
     for key in PER_RATE:
         if isinstance(p[key], dict):
             p[key] = p[key].get(p["rate"])
@@ -263,7 +265,7 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
     if p["pilots"]:
         pos = np.array(vp.PATTERNS[p["pilots"]])
     s_lin = 10 ** (snr / 10)
-    tab = p["rho_n"].get(p["rate"]) if isinstance(p["rho_n"], dict) else p["rho_n"]
+    tab = p["rho_n"].get(p["code_rate"]) if isinstance(p["rho_n"], dict) else p["rho_n"]
 
     def _dec_cost(fr, L, H=1):                                # one CA-SCL-L decode of H hypotheses per frame: total
         tot = L / 8 * vp.MAC["decode"] + H * vp.MAC["llr"]  # MACs, and its critical path with every list path on
@@ -766,7 +768,11 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
     st["passes"] = st.get("passes", 0.0) + float(passes.sum())
     st["crit_macs"] = st.get("crit_macs", 0.0) + float((macs - pmac + crit).sum())   # MACs on the critical path
     st["crit_lp_macs"] = st.get("crit_lp_macs", 0.0) + float((macs - pmac + crit - dmac + dcrit).sum())   # with the
-    for tag, v in (("mh", macs), ("ch", macs - pmac + crit - dmac + dcrit)):   # per-packet histograms, 0.1-decade bins
+    hist = [("mh", macs), ("ch", macs - pmac + crit - dmac + dcrit)]
+    if p["truth"] is not None:          # (measurement) the same for the RIGHT decodes only: the search stops at the first
+        good = passed & (out == p["truth"]).all(1)    # accepted pass, so a MAC cap C turns exactly the right decodes
+        hist += [("mg", macs[good]), ("cg", (macs - pmac + crit - dmac + dcrit)[good])]   # above C into errors
+    for tag, v in hist:                                       # per-packet histograms, 0.1-decade bins
         bins = np.clip(np.floor((np.log10(np.maximum(v, 1.0)) - 5.0) * 10), 0, 39).astype(int)   # from 1e5 (tails)
         for b_, n_ in zip(*np.unique(bins, return_counts=True)):
             st[f"{tag}_{b_:02d}"] = st.get(f"{tag}_{b_:02d}", 0) + int(n_)

@@ -261,7 +261,9 @@ RX["v3 eco7, rescue, screen from -5.5 dB + CRC"] = dict(kind="sps3", sps={**RX["
                                                                          "eco_gate": {"1/10": -5.5}, "screen_from": -5.5})
 # the normalised re-encoding check (fp_check.py: midway between the right passes' 0.1 % quantile and the false
 # passes' maximum of rho / sqrt(s / (1 + s)), per rate): removes the staircase false passes at no MAC cost
-RHO_N = {"1/10": ((-5.0, 0.775), (-4.0, 0.72), (-3.0, 0.66), (-2.0, 0.625), (-1.0, 0.59), (0.0, 0.553)),
+RHO_N = {"0.15": ((-4.5, 0.873), (-4.0, 0.849), (-3.0, 0.786), (-2.0, 0.746), (-1.0, 0.694), (0.0, 0.693),
+                  (1.0, 0.655)),         # fp_check.py r15a / r15b (2026-11-10), same rule
+         "1/10": ((-5.0, 0.775), (-4.0, 0.72), (-3.0, 0.66), (-2.0, 0.625), (-1.0, 0.59), (0.0, 0.553)),
          "2/5": ((0.5, 0.928), (1.0, 0.91), (1.5, 0.894), (2.0, 0.883)),
          "1/2": ((2.0, 0.934), (3.0, 0.903))}
 for _nm in ("v3 eco7, rescue", "Pilots N3x8 + v3 eco7, rescue"):

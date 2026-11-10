@@ -206,6 +206,8 @@ def main():
     if bc.STUDY == "small_cfo":                               # the small-CFO study has its own figures only
         small()
         bench()
+        best()
+        modern()
         return
     coarse()
     metric()
@@ -319,7 +321,8 @@ def vp_premf():
 
 
 def throughput(target=None):
-    """Throughput vs SNR with the best rate per SNR: max_R R (1 - BLER_R) x 1024 / (1024 + pilots), information bits per
+    """Throughput vs SNR with the best rate per SNR: max_R R (1 - BLER_R) x (1024 - pilots) / 1024 (pilots inside the
+    1024-symbol packet), information bits per
     transmitted symbol over QPSK (x2 bits per symbol), and the MACs per packet at the chosen rate. A rate counts at an
     SNR only where it was measured with >= 1e4 frames (BLER 0 there taken as 0)."""
     snrs = np.arange(-5.0, 8.01, 0.5)
@@ -337,7 +340,7 @@ def throughput(target=None):
                 if v is None or v[1] < 1e4:
                     continue
                 R = 1.0 / float(eval(rate)) if False else float(eval(rate))
-                T = 2 * R * (1 - v[0]) * 1024 / (1024 + K)
+                T = 2 * R * (1 - v[0]) * (1024 - K) / 1024
                 if best is None or T > best[0]:
                     best = (T, v[2], rate, v[0])
             if best:
@@ -544,14 +547,13 @@ BENCH_SRC = (
 
 def bench():
     """bench/bench_R*.png: every 128-symbol preamble / pilot benchmark against the best blind and 3x8 receivers, BLER vs
-    SNR as simulated (the known symbols are codeword symbols: no overhead) and vs Eb/N0 with the pilots' energy counted
-    (128 extra symbols: +0.51 dB). Kay (below its threshold, BLER > 0.4 at every point) is left out."""
+    SNR (the preamble is inside the 1024-symbol packet: same symbols, same Es/N0). Kay (below its threshold, BLER > 0.4
+    at every point) is left out."""
     p = bc.path("results", "blind_ber.json")
     res = json.load(open(p)) if os.path.exists(p) else []
     P = _premf_split()
     for rate in BEST_RATES:
-        fig, (a1, a2) = plt.subplots(1, 2, figsize=(17, 7), sharey=True)
-        ebn0 = lambda x, n_p: np.asarray(x) + 10 * np.log10((bc.N_SYM + n_p) / bc.CODES[rate])
+        fig, a1 = plt.subplots(figsize=(11, 7.5))
         lo = SMALL_SNR_MIN.get(rate, -99)
         for src, lab, c, ls, mk in BENCH_SRC:
             pts = sorted((float(d["esn0"]), d["bler"]) for d in P if d["code"] == POLAR_CODE[rate] and d["src"] == src
@@ -560,7 +562,6 @@ def bench():
                 x, y = map(np.array, zip(*pts))
                 sty = dict(ls=ls, color=c, marker=mk, ms=5, lw=2.0, label=f"128 pilots: {lab}")
                 a1.semilogy(x, y, **sty)
-                a2.semilogy(ebn0(x, SMALL_PILOTS), y, **sty)
         for lab, n_p, per, c, ls, mk in SMALL_RX:
             for what, rx in per.get(rate, ()):
                 pts = sorted((x["snr"], x["bler"]) for x in res if x["rate"] == rate and x["rx"] == rx
@@ -569,18 +570,119 @@ def bench():
                     x, y = map(np.array, zip(*pts))
                     sty = dict(ls=ls, color=c, marker=mk, ms=6, lw=2.8, label=f"{lab}: {what}")
                     a1.semilogy(x, y, **sty)
-                    a2.semilogy(ebn0(x, n_p), y, **sty)
                     break
-        a1.set(xlabel="SNR (Es/N0) [dB]", ylabel="BLER", title="as simulated (known symbols inside the packet, no overhead)")
-        a2.set(xlabel="Eb/N0 [dB] (the pilots' energy counted: 128 pilots +0.51 dB, 24 pilots +0.10 dB)",
-               title="pilots sent as extra symbols (1024 + pilots)")
-        for ax in (a1, a2):
-            ax.grid(True, which="both", ls=":", alpha=0.6)
-        a2.legend(fontsize=8.5, loc="lower left")
-        fig.suptitle(f"Blind vs preamble / pilot CFO estimators, {RATE_LABEL[rate]}, CFO in [-{bc.MAX_CFO:g}, "
+        a1.set(xlabel="SNR (Es/N0) [dB]", ylabel="BLER", title="preamble / pilots inside the 1024-symbol packet")
+        a1.grid(True, which="both", ls=":", alpha=0.6)
+        a1.legend(fontsize=8.5, loc="lower left")
+        fig.suptitle(f"Blind vs preamble / pilot CFO estimators, {RATE_LABEL[rate]}\nCFO in [-{bc.MAX_CFO:g}, "
                      f"{bc.MAX_CFO:g}], CRC-16, {bc.N_SYM}-symbol packet", fontsize=13, fontweight="bold")
         fig.tight_layout()
         _save(fig, "bench", f"bench_R{rate.replace('/', '_')}.png")
+
+
+def _blind_pts(res, rate, lo):
+    """The best blind receiver of SMALL_RX at rate: (description, [(snr, bler, macs, frames)])."""
+    for what, rx in SMALL_RX[0][2].get(rate, ()):
+        pts = sorted((x["snr"], x["bler"], x.get("macs_per_frame"), x["frames"]) for x in res
+                     if x["rate"] == rate and x["rx"] == rx and x["snr"] >= lo)
+        if pts:
+            return what, pts
+    return None, []
+
+
+def _draw_blind(ax, what, pts, zero=True):
+    """The blind curve (thick red) on a BLER vs SNR axis; points without an error as hollow markers at 1 / packets
+    (an upper bound)."""
+    sty = dict(ls="-", color="#d62728", marker="o", ms=6, lw=2.8)
+    q = [p_ for p_ in pts if p_[1] > 0]
+    z = [p_ for p_ in pts if p_[1] == 0]
+    if q:
+        ax.semilogy([p_[0] for p_ in q], [p_[1] for p_ in q], label=f"blind, 0 pilots: {what}", **sty)
+    if z and zero:
+        ax.semilogy([p_[0] for p_ in z], [1 / p_[3] for p_ in z], ls="none", marker="o", ms=7, mfc="none",
+                    mec="#d62728", mew=1.6, label="blind: 0 errors (plotted at 1 / packets simulated)")
+
+
+# the best 128-pilot curve of each family (lowest BLER over the range): both get the carrier phase as a genie (the
+# estimated-phase versions are equal for the split NN and worse for M&M above the waterfall, so this favours them)
+BEST_REF = ((TARGET, "split NN, 128 pilots (2x64), true phase given", "#1f77b4", "-", "D", NN_MACS),
+            ("M&M, pre-MF correction + CRC search (first pass)", "M&M, 128 pilots, true phase given", "#ff7f0e", "-",
+             "v", MM_MACS))
+
+
+def best():
+    """best/best_R*.png: only the best blind receiver against the best split NN and the best M&M (128 pilots inside the
+    1024-symbol packet): BLER vs SNR and MACs per packet."""
+    p = bc.path("results", "blind_ber.json")
+    res = json.load(open(p)) if os.path.exists(p) else []
+    P = _premf_split()
+    for rate in BEST_RATES:
+        fig, (a1, a3) = plt.subplots(1, 2, figsize=(17, 7))
+        lo = SMALL_SNR_MIN.get(rate, -99)
+        hi = -99.0
+        for src, lab, c, ls, mk, est in BEST_REF:
+            pts = sorted((float(d["esn0"]), d["bler"], est + PREMF_DEROT + (1 + (d.get("extra_decodes_per_frame") or 0))
+                          * DEC_MACS) for d in P if d["code"] == POLAR_CODE[rate] and d["src"] == src
+                         and float(d["esn0"]) >= lo)
+            if not pts:
+                continue
+            x, y, m = map(np.array, zip(*pts))
+            sty = dict(ls=ls, color=c, marker=mk, ms=5, lw=2.2, label=lab)
+            a1.semilogy(x, np.where(y > 0, y, np.nan), **sty)
+            a3.semilogy(x, m, **sty)
+        what, pts = _blind_pts(res, rate, lo)
+        if pts:
+            _draw_blind(a1, what, pts)
+            q = [p_ for p_ in pts if p_[2]]
+            a3.semilogy([p_[0] for p_ in q], [p_[2] for p_ in q], ls="-", color="#d62728", marker="o", ms=6, lw=2.8,
+                        label=f"blind, 0 pilots: {what}")
+            hi = max(p_[0] for p_ in pts)
+        a1.set(xlabel="SNR (Es/N0) [dB]", ylabel="BLER", title="BLER (preamble inside the 1024-symbol packet)")
+        a3.set(xlabel="SNR (Es/N0) [dB]", ylabel="MACs per packet (CFO estimation + all decodes)",
+               title="receiver cost (total, all cores)")
+        for ax in (a1, a3):
+            ax.grid(True, which="both", ls=":", alpha=0.6)
+            ax.legend(fontsize=9, loc="best")
+        if hi > -99:
+            a1.set_xlim(right=hi + 0.25)
+            a3.set_xlim(right=hi + 0.25)
+        fig.suptitle(f"Blind vs the best preamble estimators (split NN, M&M), {RATE_LABEL[rate]}, CFO in "
+                     f"[-{bc.MAX_CFO:g}, {bc.MAX_CFO:g}], CRC-16, {bc.N_SYM}-symbol packet", fontsize=13,
+                     fontweight="bold")
+        fig.tight_layout()
+        _save(fig, "best", f"best_R{rate.replace('/', '_')}.png")
+
+
+def modern():
+    """bench/modern_R*.png: the modern preamble / pilot estimators (BENCH_SRC, 128 known symbols, phase estimated)
+    against the blind receiver only, BLER vs SNR (preamble inside the 1024-symbol packet)."""
+    p = bc.path("results", "blind_ber.json")
+    res = json.load(open(p)) if os.path.exists(p) else []
+    P = _premf_split()
+    for rate in BEST_RATES:
+        fig, a1 = plt.subplots(figsize=(11, 8.5))
+        lo = SMALL_SNR_MIN.get(rate, -99)
+        for src, lab, c, ls, mk in BENCH_SRC:
+            if src == TARGET:                                 # the genie-phase reference: not a real receiver
+                continue
+            pts = sorted((float(d["esn0"]), d["bler"]) for d in P if d["code"] == POLAR_CODE[rate] and d["src"] == src
+                         and float(d["esn0"]) >= lo and d["bler"] > 0)
+            if pts:
+                x, y = map(np.array, zip(*pts))
+                sty = dict(ls=ls, color=c, marker=mk, ms=5, lw=1.8, label=f"128 pilots: {lab}")
+                a1.semilogy(x, y, **sty)
+        what, pts = _blind_pts(res, rate, lo)
+        if pts:
+            _draw_blind(a1, what, pts)
+        a1.set(xlabel="SNR (Es/N0) [dB]", ylabel="BLER", title="preamble inside the 1024-symbol packet")
+        a1.grid(True, which="both", ls=":", alpha=0.6)
+        h, l = a1.get_legend_handles_labels()
+        fig.legend(h, l, fontsize=9, loc="lower center", ncol=2, frameon=False)
+        fig.suptitle(f"Blind vs modern preamble / pilot CFO estimators (phase estimated), {RATE_LABEL[rate]}\nCFO in "
+                     f"[-{bc.MAX_CFO:g}, {bc.MAX_CFO:g}], CRC-16, {bc.N_SYM}-symbol packet", fontsize=13,
+                     fontweight="bold")
+        fig.tight_layout(rect=(0, 0.2, 1, 1))
+        _save(fig, "bench", f"modern_R{rate.replace('/', '_')}.png")
 
 
 def small():
@@ -593,8 +695,6 @@ def small():
         f1, a1 = plt.subplots(figsize=(10, 6.5))
         f2, a2 = plt.subplots(figsize=(10, 6.5))
         f3, a3 = plt.subplots(figsize=(10, 6.5))
-        f4, a4 = plt.subplots(figsize=(10, 6.5))
-        ebn0 = lambda x, n_p: np.asarray(x) + 10 * np.log10((bc.N_SYM + n_p) / bc.CODES[rate])   # pilots' energy counted
         K = bc.CODES[rate] + 16
         lp_dec = DEC_MACS / 8 + 6144 / 8 + K * 16 * 4         # a CA-SCL-8 decode with its 8 paths on 8 cores (+ sort)
         drawn = False
@@ -610,7 +710,6 @@ def small():
                 a1.semilogy(x, np.where(y > 0, y, np.nan), **sty)
                 a2.semilogy(x, m, **sty)
                 a3.semilogy(x, est + PREMF_DEROT + (m - est - PREMF_DEROT) / DEC_MACS * lp_dec, **sty)
-                a4.semilogy(ebn0(x, SMALL_PILOTS), np.where(y > 0, y, np.nan), **sty)
                 drawn = True
         for lab, n_p, per, c, ls, mk in SMALL_RX:
             pts = []
@@ -626,7 +725,6 @@ def small():
             q = [p_ for p_ in pts if p_[1] > 0]
             if q:
                 a1.semilogy(*zip(*[(p_[0], p_[1]) for p_ in q]), **sty)
-                a4.semilogy(ebn0([p_[0] for p_ in q], n_p), [p_[1] for p_ in q], **sty)
             q = [p_ for p_ in pts if p_[2]]
             if q:
                 a2.semilogy(*zip(*[(p_[0], p_[2]) for p_ in q]), **sty)
@@ -635,15 +733,13 @@ def small():
                 a3.semilogy(*zip(*[(p_[0], p_[3]) for p_ in q]), **sty)
             drawn = True
         if not drawn:
-            plt.close(f1), plt.close(f2), plt.close(f3), plt.close(f4)
+            plt.close(f1), plt.close(f2), plt.close(f3)
             continue
         a1.set(xlabel="SNR (Es/N0) [dB]", ylabel="BLER")
         a2.set(xlabel="SNR (Es/N0) [dB]", ylabel="MACs per packet (CFO estimation + decoding)")
         a3.set(xlabel="SNR (Es/N0) [dB]", ylabel="MACs per core (critical path, list paths of a decode in parallel)")
-        a4.set(xlabel="Eb/N0 [dB] (energy of the pilot symbols included)", ylabel="BLER")
         for fig, ax, what, kind, fn in ((f1, a1, "BLER", "bler", "bler_vs_snr"), (f2, a2, "Receiver cost", "macs", "macs_vs_snr"),
-                                        (f3, a3, "Receiver latency (critical path)", "macs", "macs_per_core_vs_snr"),
-                                        (f4, a4, "BLER with the pilot overhead", "bler", "bler_vs_ebn0")):
+                                        (f3, a3, "Receiver latency (critical path)", "macs", "macs_per_core_vs_snr")):
             ax.grid(True, which="both", ls=":", alpha=0.6)
             _legend(ax, 1)
             fig.suptitle(f"{what}, {RATE_LABEL[rate]}, {tail}", fontsize=13, fontweight="bold")
