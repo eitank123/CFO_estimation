@@ -19,11 +19,11 @@ OUT = os.path.dirname(os.path.abspath(__file__))
 
 EQ = {
     # signal model
-    "model": r"$r_n = g\,e^{\,j(2\pi f n+\theta)}\,s_n + w_n,\qquad s_n\in\{e^{\,j(\pi/4+k\pi/2)}\},\quad |f|\leq 0.03$",
+    "model": r"$r_n = s_n\,e^{\,j(2\pi f n+\theta)} + w_n,\qquad s_n\in\{e^{\,j(\pi/4+k\pi/2)}\},\quad |f|\leq 0.03$",
     # 4th power
     "s4": r"$s_n^4 = e^{\,j4(\pi/4+k\pi/2)} = e^{\,j\pi}\,e^{\,j2\pi k} = -1$",
-    "y4": r"$y_n=-r_n^4=-g^4e^{\,j(2\pi\cdot 4f n+4\theta)}\,s_n^4+\varepsilon_n=g^4e^{\,j(2\pi\,\nu n+4\theta)}+\varepsilon_n$",
-    "nu": r"$\nu = 4f,\qquad |\nu|\leq 0.12 < 1/2\ \Rightarrow\ \mathrm{no\ aliasing}$",
+    "y4": r"$y_n=-r_n^4=-s_n^4\,e^{\,j(2\pi\cdot 4f\cdot n+4\theta)}+\varepsilon_n=e^{\,j(2\pi\cdot 4f\cdot n+4\theta)}+\varepsilon_n$",
+    "nu": r"$|4f|\leq 4\cdot 0.03=0.12 < 1/2\ \Rightarrow\ \mathrm{no\ aliasing}$",
     # FFT
     "fft": r"$Y[k]=\sum_{n=0}^{1023} y_n\,e^{-j2\pi kn/4096}$",
     "kb": r"$k_b=\arg\max_{|k|/4096\,\leq\,0.12}\ |Y[k]|$",
@@ -50,6 +50,18 @@ EQ = {
     "rho_right": r"$\rho_{\mathrm{right}}\approx\sqrt{\dfrac{\mathrm{SNR}}{1+\mathrm{SNR}}}\ \ (0.49\ \mathrm{at}\ -5\ \mathrm{dB})$",
     "rho_wrong": r"$P(\rho_{\mathrm{wrong}}>t)\approx e^{-Nt^2}\ \ (4\cdot 10^{-7}\ \mathrm{at}\ t=0.12)$",
     "rho_th": r"$\rho>\max\!\left(0.12,\ c(\mathrm{SNR})\sqrt{\dfrac{s}{1+s}}\right)$",
+    # LLRs and the metric of one hypothesis
+    "llr_y": r"$y_n(f,\theta)=r^{\prime}_n\,e^{-j(2\pi f n+\theta)}$",
+    "llr_l": r"$L_{2n}=2\sqrt{2}\,\mathrm{SNR}\cdot\mathrm{Re}\{y_n\},\qquad L_{2n+1}=2\sqrt{2}\,\mathrm{SNR}\cdot\mathrm{Im}\{y_n\}$",
+    "mdef": r"$M(\mathbf{L})=\sum_{i=0}^{N-1}\ln\!\left(1+e^{-(1-2\hat u_i)\lambda_i(\mathbf{L})}\right)$",
+    # z-test details
+    "mad": r"$\mathrm{MAD}(M)=\mathrm{median}_c\left|M_c-\mathrm{median}(M)\right|,\qquad 1.4826\cdot\mathrm{MAD}\approx\sigma$",
+    "tail": r"$P(z_c>6\mid \mathrm{wrong\ cell})\approx Q(6)\approx 10^{-9}$",
+    # stage 3, readable
+    "ref": r"$f=f_c+o\cdot\Delta,\ \ o\in\{-\dfrac{k}{2},\dots,\dfrac{k}{2}\},\qquad \theta=\theta_c+\{-\dfrac{\pi}{12},\,0,\,+\dfrac{\pi}{12}\}$",
+    "zdd2": r"$z_n=r^{\prime}_n\cdot\hat s_n^{\,*}\ \approx\ e^{\,j(2\pi f n+\theta)}+\mathrm{noise}$",
+    "fdd": r"$\hat f=\arg\max_f\ \left|\sum_n z_n\,e^{-j2\pi f n}\right|^2$",
+    "thdd2": r"$\hat\theta=\mathrm{angle}\left(\sum_n z_n\,e^{-j2\pi \hat f n}\right)$",
 }
 
 
