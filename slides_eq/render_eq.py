@@ -90,6 +90,32 @@ EQ = {
     "jvalid": r"$M_h\approx-\ln P(\hat{\mathbf{u}}\mid\mathbf{y}^{\prime},\,h)\ :\ \mathrm{same\ samples,\ same\ code}\ \Rightarrow\ \mathrm{comparable\ across}\ h$",
 }
 
+EQ.update({
+    "premf": r"$y^{\prime}_n=\left[\left(y_8[m]\,e^{-j2\pi\hat f_0 m/8}\right)\star h\right]_{m=80+8n}\;e^{\,j2\pi\hat f_0 (n+5)}$",
+    "nc": r"$n_c=n-511.5,\qquad y_n=s_n\,e^{\,j(2\pi f n_c+\theta)}+w_n\quad(\theta:\ \mathrm{phase\ at\ the\ packet\ centre})$",
+    "ph1": r"$\sum_{n} v_n\,e^{-j2\pi\cdot 4\hat f_0 n_c}=e^{\,j4\theta}\sum_n e^{\,j2\pi\cdot 4(f-\hat f_0)n_c}+\mathrm{noise}\ \approx\ 1024\,e^{\,j4\theta}$",
+    "theta0": r"$\hat\theta_0=\dfrac{1}{4}\,\arg\sum_{n} v_n\,e^{-j2\pi\cdot 4\hat f_0 n_c}$",
+    "xh": r"$x_n(f,\theta)=y^{\prime}_n\,e^{-j(2\pi f n_c+\theta)}\ \ \rightarrow\ \ \mathbf{L}=\mathrm{channel\ LLRs\ of}\ x_n$",
+    "mm4": r"$\hat f=\dfrac{1}{2\pi}\sum_{m=1}^{D} w(m)\,\arg\!\left[R(m)\,R^*(m-1)\right],\qquad R(0)\equiv 1$",
+    "crcs": r"$f_k=\hat f+k\,\Delta,\quad k=0,-1,+1,-2,+2,\ldots,\quad |k|\leq\left\lceil 5.2\sqrt{\mathrm{CRB}_{128}}/\Delta\right\rceil\ (=34\ \mathrm{at}\ -5\,\mathrm{dB})$",
+    "refph": r"$\theta_o=\hat\theta_0(f_c+o\Delta)+\mathrm{round}\!\left(\dfrac{\theta_c-\hat\theta_0(f_c+o\Delta)}{\pi/2}\right)\dfrac{\pi}{2}$",
+    "dd": r"$d_n=y^{\prime}_n\,\hat s_n^{\,*}\ \approx\ e^{\,j(2\pi f n_c+\theta)}+\mathrm{noise}\quad(\hat s:\ \mathrm{SC\ hard\ decisions})$",
+    "newton": r"$\Lambda(f)=\left|\sum_n d_n\,e^{-j2\pi f n_c}\right|^2,\qquad f_{t+1}=f_t-\dfrac{\Lambda^{\prime}(f_t)}{\Lambda^{\prime\prime}(f_t)},\quad t=0,1$",
+    "thdd": r"$\hat\theta=\arg\sum_n d_n\,e^{-j2\pi f_2 n_c}$",
+    "re0": r"$y^{\prime}_n\,\tilde s_n^{\,*}\,e^{-j2\pi\hat f n_c}\ \approx\ e^{\,j\theta}+\tilde w_n\quad(\tilde s=s),\qquad N_s=1024$",
+    "rho": r"$\rho=\dfrac{\left|\sum_n y^{\prime}_n\,\tilde s_n^{\,*}\,e^{-j2\pi\hat f n_c}\right|}{\sqrt{N_s\sum_n|y^{\prime}_n|^2}}\ \in[0,1]$",
+    "rho_right": r"$\rho_{\mathrm{right}}\approx\dfrac{N_s}{\sqrt{N_s\cdot N_s(1+1/s)}}=\sqrt{\dfrac{s}{1+s}}\ \ (0.49\ \mathrm{at}\ -5\ \mathrm{dB})$",
+    "rho_wrong": r"$P(\rho_{\mathrm{wrong}}>t)\approx e^{-N_s t^2}\ \ (4\cdot 10^{-7}\ \mathrm{at}\ t=0.12,\ \mathrm{one\ test})$",
+    "rho_th": r"$\rho>\max\!\left(0.12,\ \dfrac{1}{2}\sqrt{\dfrac{s}{1+s}},\ c_R(s)\sqrt{\dfrac{s}{1+s}}\right)=c_R(s)\sqrt{\dfrac{s}{1+s}}$",
+    "ci": r"$0\ \mathrm{events\ in}\ n\ \mathrm{trials}:\quad p<-\ln(0.05)/n\approx 3/n\quad(95\,\%\ \mathrm{one\ sided})$",
+    "crit": r"$W_{\mathrm{crit}}=W_{\mathrm{serial}}+\sum_{\mathrm{passes}\ p}\ \max_{\mathrm{core}}\ W_{p,\mathrm{core}}$",
+    "tot": r"$W_{\mathrm{total}}=\sum_{\mathrm{all\ work}}W\qquad(\mathrm{energy})$",
+    "test": r"$T_{\mathrm{est}}\approx\dfrac{W_{\mathrm{crit}}}{F_{\mathrm{MAC}}}+T_{\mathrm{overhead}}\qquad(\mathrm{model,\ not\ measured})$",
+    "tdec": r"$W_{\mathrm{dec}}=\dfrac{8N\log_2 N}{8}+6144+K\cdot 2L\log_2(2L)$",
+    "tput": r"$\eta=\dfrac{A\,(1-\mathrm{BLER})}{N_{\mathrm{tx}}}\ \ \mathrm{bits/symbol},\qquad N_{\mathrm{tx}}=1024\ (\mathrm{blind}),\ \ 1152\ (128+1024)$",
+    "tgain": r"$\dfrac{\eta_{\mathrm{blind}}}{\eta_{\mathrm{pilot}}}=\dfrac{1152}{1024}\cdot\dfrac{1-\mathrm{BLER}_b}{1-\mathrm{BLER}_p}\approx 1.125$",
+})
+
 
 def render(name, tex):
     fig = plt.figure(figsize=(0.01, 0.01))
