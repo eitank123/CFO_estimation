@@ -114,6 +114,9 @@ EQ.update({
     "tdec": r"$W_{\mathrm{dec}}=\dfrac{8N\log_2 N}{8}+6144+K\cdot 2L\log_2(2L)$",
     "tput": r"$\eta=\dfrac{A\,(1-\mathrm{BLER})}{N_{\mathrm{tx}}}\ \ \mathrm{bits/symbol},\qquad N_{\mathrm{tx}}=1024\ (\mathrm{blind}),\ \ 1152\ (128+1024)$",
     "tgain": r"$\dfrac{\eta_{\mathrm{blind}}}{\eta_{\mathrm{pilot}}}=\dfrac{1152}{1024}\cdot\dfrac{1-\mathrm{BLER}_b}{1-\mathrm{BLER}_p}\approx 1.125$",
+    "fft_s": r"$V[k]=\sum_{n=0}^{1023} v_n\,e^{-j2\pi kn/4096},\qquad v_n\approx e^{\,j(2\pi\cdot 4f\cdot n+4\theta)}$",
+    "kb_s": r"$k_b=\arg\max_{k}\ |V[k]|\ \approx\ 4096\cdot 4f$",
+    "f0_s": r"$\hat f_0=\dfrac{k_b+\delta}{4\cdot 4096}$",
 })
 
 
