@@ -117,6 +117,10 @@ EQ.update({
     "fft_s": r"$V[k]=\sum_{n=0}^{1023} v_n\,e^{-j2\pi kn/4096},\qquad v_n\approx e^{\,j(2\pi\cdot 4f\cdot n+4\theta)}$",
     "kb_s": r"$k_b=\arg\max_{k}\ |V[k]|\ \approx\ 4096\cdot 4f$",
     "f0_s": r"$\hat f_0=\dfrac{k_b+\delta}{4\cdot 4096}$",
+    # complexity model with the serial steps split over the 32 cores (07_complexity.md section 7.5)
+    "crit_p": r"$W_{\mathrm{crit}}=W_{\mathrm{seq}}+\dfrac{W_{\mathrm{split}}}{32}+\sum_{\mathrm{passes}\ p}\ \max_{\mathrm{core}}\ W_{p,\mathrm{core}}$",
+    "tdec_p": r"$W_{\mathrm{dec}}=\dfrac{8N\log_2 N}{8}+\dfrac{6144}{32}+K\cdot\dfrac{1}{2}\log_2(2L)\,(\log_2(2L)+1)$",
+    "tdec2_p": r"$R=1/10:\ \ 22.5\mathrm{k}+0.2\mathrm{k}+2.2\mathrm{k}\approx 25\mathrm{k}\ \ \mathrm{vs}\ \ 200\mathrm{k}\ \mathrm{on\ one\ core}$",
 })
 
 
