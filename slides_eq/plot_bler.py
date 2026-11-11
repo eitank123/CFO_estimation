@@ -3,7 +3,8 @@
 Benchmark: ML direct (FFT 512 + 2 Newton) on 128 contiguous pilots, with the same CRC-16 search and the same
 re-encoding check as blind (study est3/).  Blind: the final receivers of the |f| <= 0.03 study.
 Each point is the measured BLER = errors / packets. Points with 0 errors cannot be drawn on a log axis and are
-left out; lines join only adjacent simulated SNRs that both had errors.
+left out; lines join adjacent simulated SNRs that both had errors. Isolated points (an SNR with errors whose
+neighbouring simulated SNRs had none) are not drawn.
 
 Usage:  python slides_eq/plot_bler.py <dir with est3 bler_k*.json and blind_ber.json>
 """
@@ -38,20 +39,23 @@ for ax, (rate, (lo, hi)) in zip(axs, RANGE.items()):
                 if x["rate"] == rate and x["rx"] == BLIND_RX[rate] and lo <= x["snr"] <= hi)
     for pts, lab, c, mk, ls, dx in ((bl, "blind, 0 pilots", NAVY, "o", "-", 0.0),
                                     (ml, "ML + same search/check, 128 pilots", ORANGE, "^", "--", 0.0)):
-        e = [p for p in pts if p[1]]
-        x = [p[0] + dx for p in e]
-        y = [p[1] / p[2] for p in e]
-        ax.plot(x, y, color=c, ls="none", marker=mk, ms=7, label=lab)
-        run = []                                      # lines only between adjacent SNRs that both had errors
+        runs, run = [], []                            # runs of adjacent simulated SNRs that all had errors
         for p in pts + [(None, 0, 1)]:
             if p[1]:
-                run.append((p[0] + dx, p[1] / p[2]))
+                run.append((p[0], p[1] / p[2]))
                 continue
-            if len(run) > 1:
-                ax.plot(*zip(*run), color=c, ls=ls, lw=2.2)
+            if run:
+                runs.append(run)
             run = []
+        for r in runs:
+            if len(r) > 1:                            # isolated points (one error-bearing SNR alone) are not drawn
+                ax.plot(*zip(*r), color=c, ls=ls, lw=2.2, marker=mk, ms=7)
+            else:
+                print("  not drawn (isolated):", rate, lab, r)
         print(rate, lab, [(p[0], p[1], p[2]) for p in pts])
     ax.set_yscale("log")
+    pad = 0.05 * (hi - lo)
+    ax.set_xlim(lo - pad, hi + pad)                   # keep the full simulated SNR span
     ax.set_xlabel("SNR (Es/N0) [dB]")
     ax.set_title(f"R = {rate}", fontweight="bold")
     ax.grid(True, which="both", ls=":", alpha=0.5)
