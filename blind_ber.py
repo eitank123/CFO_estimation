@@ -42,6 +42,7 @@ import zlib
 import numpy as np
 
 import blind_cfo as bc
+import part_filter
 from polar import PolarCode
 
 GENIE = "Genie (known CFO and phase)"
@@ -673,6 +674,7 @@ def simulate(task):
     st = {k: dict(frames=0, frame_err=0, bit_err=0, undetected=0, decodes=0, metric_evals=0, se_coarse=0.0,
                   se_final=0.0, se_dd=0.0, n_dd=0, time=0.0, timed_frames=0) for k in names}
     running = lambda k: st[k]["frame_err"] < min_errors and st[k]["frames"] < max_frames
+    dacc = {}                                        # (measurement) small_rx decode dump accumulators per receiver
     B = 100
     while any(running(k) for k in names):
         data, cw, r, rx, f, th = bc.frames(B, code, snr, rng, noise_only=noise)
@@ -709,6 +711,10 @@ def simulate(task):
                 spec = {**RX[k], "sps": {**RX[k]["sps"], "rate": rate}}
                 if RX[k]["kind"] == "small":                 # the true data, only to count the CRC-only undetected
                     spec["sps"]["truth"] = data              # errors and the checks' catches (small_rx._truth)
+                    spec["sps"]["truth_f"], spec["sps"]["truth_th"] = f, th   # (measurement: testing/ dumps)
+                    if spec["sps"].get("dec_dump"):          # (measurement) decode dump: one file per chunk, packets
+                        spec["sps"]["dec_acc"] = dacc.setdefault(k, {})          # by (chunk_seed, index in chunk)
+                        spec["sps"]["dec_id"] = (seed, s["frames"])
                 fn = {"sps": blind_fast.sps_receive, "sps2": blind_fast.sps2_receive,
                       "sps3": blind_fast.sps3_receive, "small": small_rx.small_receive}[RX[k]["kind"]]
                 sym = (((1 - 2.0 * cw[:, 0::2]) + 1j * (1 - 2.0 * cw[:, 1::2])) / np.sqrt(2)
@@ -737,6 +743,9 @@ def simulate(task):
             s["out_coarse_1e3"] = s.get("out_coarse_1e3", 0) + int(np.sum(~(np.abs(fc - f) <= 1e-3)))
             s["out_frames"] = s.get("out_frames", 0) + B
             errs = dec != data
+            fe_ = errs.any(1)                                # (measurement) packet indices within the chunk of the
+            s.setdefault("fe_idx", []).extend((s["frames"] + np.where(fe_)[0]).tolist())          # frame errors and
+            s.setdefault("ud_idx", []).extend((s["frames"] + np.where(fe_ & ok)[0]).tolist())     # undetected errors
             s["frames"] += B
             s["frame_err"] += int(errs.any(1).sum())
             s["bit_err"] += int(errs.sum())
@@ -753,7 +762,14 @@ def simulate(task):
                 f_out[good] = fd
             s["out_final"] = s.get("out_final", 0) + int(np.sum(~ok | ~(np.abs(f_out - f) <= bc.TOL)))
             s["se_final_all"] = s.get("se_final_all", 0.0) + float(np.sum((f_out - f) ** 2))
-    return [{"rate": rate, "snr": snr, "rx": k + (" [noise only]" if noise else ""), **v} for k, v in st.items()]
+    for k, acc in dacc.items():                      # (measurement) the chunk's decode dump, one file per receiver
+        import re
+        import small_rx
+        slug = lambda x: re.sub(r"[^0-9A-Za-z.+-]+", "_", str(x)).strip("_")
+        small_rx.dec_save(acc, os.path.join(RX[k]["sps"]["dec_dump"], f"dec_{slug(k)}_R{slug(rate)}_{snr:+.1f}_{seed}"
+                          f"{'_noise' if noise else ''}.npz"), rate=rate, snr=snr, rx=k, chunk_seed=seed)
+    return [{"rate": rate, "snr": snr, "rx": k + (" [noise only]" if noise else ""), "chunk_seed": seed, **v}
+            for k, v in st.items()]                          # chunk_seed + fe_idx / ud_idx: paired fixed / broken counts
 
 
 def run(a):
@@ -778,6 +794,7 @@ def run(a):
 
 
 OLD_DD_PARTS = ("a", "b", "c", "d")       # turbo runs made with the Newton-only dd_refine (capture +-2e-4)
+PER_CHUNK = ("chunk_seed", "fe_idx", "ud_idx")   # per-chunk row fields, dropped by the merge
 
 
 def merge():
@@ -786,13 +803,15 @@ def merge():
         if p.endswith("blind_ber.json"):
             continue
         part = os.path.basename(p)[len("blind_ber_"):-len(".json")]
-        if "smoke" in part:              # smoke tests reuse the paired seeds: their packets would be counted twice
-            continue
+        if part_filter.test_part(part):  # smoke tests reuse the paired seeds: their packets would be counted twice;
+            continue                     # testing parts (t-*, *tst*) stay out too (part_filter.py)
         for r in json.load(open(p)):
             if r["rx"] == "4th power + turbo (DD) + CRC" and part in OLD_DD_PARTS:
                 r = {**r, "rx": r["rx"] + " [Newton-only DD]"}   # run before the DD scan fix (dd_refine), kept apart
             k = (r["rate"], r["snr"], r["rx"])
-            if k not in tot:
+            r = {f: v for f, v in r.items() if f not in PER_CHUNK}                            # (not summed)
+            r = {**r, "par_frames": r.get("mac_frames", 0) if "crit_par_macs" in r else 0}   # the parts with the
+            if k not in tot:                                                                   # standard per-core MACs
                 tot[k] = dict(r)
             else:
                 for f in r:
@@ -810,6 +829,7 @@ def merge():
                  passes_per_frame=r["passes"] / r["mac_frames"] if r.get("passes") else None,
                  crit_macs_per_frame=r["crit_macs"] / r["mac_frames"] if r.get("crit_macs") else None,
                  crit_lp_macs_per_frame=r["crit_lp_macs"] / r["mac_frames"] if r.get("crit_lp_macs") else None,
+                 crit_par_macs_per_frame=r["crit_par_macs"] / r["par_frames"] if r.get("par_frames") else None,
                  crc_undetected_bler=r["crc_undetected"] / n if "crc_undetected" in r else None,
                  outage_coarse=r["out_coarse"] / r["out_frames"] if r.get("out_frames") else None,
                  outage_coarse_1e3=r["out_coarse_1e3"] / r["out_frames"] if r.get("out_frames") else None,

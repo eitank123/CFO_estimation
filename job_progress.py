@@ -520,11 +520,29 @@ for _k in ("cnn-cr", "cnn-reg", "cluster"):
 for _p in ("base", "nn"):
     JOBS[f"est3_est_{_p}"] = (f"est3 CFO accuracy sweep ({_p})", "count",
                               (f"run_est3-est-{_p}.out", os.path.join(_E3, f"est_{_p}.progress")))
-for _p in ("kb10", "kb25", "kb2", "kn10", "kn25", "kn2", "m10", "m25", "m2", "m15"):
+for _p in ("kb10", "kb25", "kb2", "kn10", "kn25", "kn2", "m10", "m25", "m2", "m15", "j15", "c15", "x10"):
     JOBS[f"est3_bler_{_p}"] = (f"est3 BLER {_p}", "count",
                                (f"run_est3-bler-{_p}.out", os.path.join(_E3, f"bler_{_p}.progress")))
+for _p in ("y10a", "y10b", "y15a", "y15b"):              # more packets for bler_more R = 1/10, 0.15 (2026-11-11)
+    JOBS[f"est3_bler_{_p}"] = (f"est3 BLER {_p}", "count",
+                               (f"run_est3-{_p}.out", os.path.join(_E3, f"bler_{_p}.progress")))
+for _j, _p in (("est3-crb15", "crb15"), ("est3-crbhi", "crb25"), ("est3-crbhi", "crb2")):   # CRB-limited receiver
+    JOBS[f"est3_{_p}"] = (f"est3 BLER {_p}", "count", (f"run_{_j}.out", os.path.join(_E3, f"bler_{_p}.progress")))
 for _j, _p in (("more-10a", "more-10a"), ("more-10b", "more-10b"), ("more-10c", "more-10c"), ("more-hi", "more-25"),
-               ("more-hi", "more-2"), ("cap-25", "cap-25"), ("b15a", "b15a"), ("b15b", "b15b"), ("b15c", "b15c")):              # more blind statistics for the est3 comparison (small_cfo study)
+               ("more-hi", "more-2"), ("cap-25", "cap-25"), ("b15a", "b15a"), ("b15b", "b15b"), ("b15c", "b15c"), ("cpar", "cpar-15"), ("cpar", "cpar-25"),
+               ("cpar", "cpar-2"), ("cpar10", "cpar-10"),
+               ("miss15a", "miss-15a"), ("miss15b", "miss-15b"), ("miss-hi", "miss-25"), ("miss-hi", "miss-2"),
+               ("miss10a", "miss-10a"), ("miss10b", "miss-10b"), ("t-dump10", "t-dump10"), ("t-dump15a", "t-dump15a"),
+               ("t-dump15b", "t-dump15b"), ("bm15a", "bm15a"), ("bm15b", "bm15b"), ("bm10", "bm10"),
+               ("stg10", "stg10"), ("stg15", "stg15"), ("stg25", "stg25"), ("stg2", "stg2"), ("nph15a", "nph15a"), ("nph15b", "nph15b"), ("srch10", "srch10"), ("srch15", "srch15"), ("srch25", "srch25"), ("srch2", "srch2"),
+               ("nf10a", "nf10a"), ("nf10b", "nf10b"), ("nf15a", "nf15a"), ("nf15b", "nf15b"), ("nf15b", "nf15c"),
+               ("nn15a", "nn15a"), ("nn15b", "nn15b"), ("nn15b", "nn15c"),
+               ("acct-smoke", "t-acct-smoke-a"), ("acct-smoke", "t-acct-smoke-b"),
+               ("cnf10a", "t-cnf10a"), ("cnf10b", "t-cnf10b"), ("cnf10c", "t-cnf10c"), ("cnf10c", "t-cnf10d"), ("cnf15a", "t-cnf15a"),
+               ("cnf15b", "t-cnf15b"), ("cnf15c", "t-cnf15c"), ("cnf15c", "t-cnf15e"), ("cnf15d", "t-cnf15d"), ("cnf15d", "t-cnf15f"),
+               ("cnf15d", "t-cnf25"), ("cnf15d", "t-cnf2"),
+               ("dec-smoke", "t-dec-smoke-a"), ("dec-smoke", "t-dec-smoke-b"), ("dec-smoke", "t-dec-smoke-c"), ("ddq-smoke", "t-ddq-smoke-a"), ("ddq-smoke", "t-ddq-smoke-b"), ("ddq-smoke", "t-ddq-smoke-c"), ("ddq25", "t-ddq25"), ("ddq25", "t-ddq2"), ("ddq10", "t-ddq10"),
+               ("qfx10", "t-qfx10"), ("qfx25", "t-qfx25"), ("qfx25", "t-qfx2"), ("dec-a", "t-deca"), ("dec-b", "t-decb25"), ("dec-b", "t-decb2"), ("dec-b", "t-decbn")):              # more blind statistics for the est3 comparison (small_cfo study)
     JOBS[f"blind_{_p}"] = (f"blind more packets {_p}", "count",
                            (f"run_{_j}.out", os.path.join("small_cfo", "blind", "logs", f"blind_ber_{_p}.progress")))
 JOBS["snr_chain"] =("SNR-aware NN retraining (full chain)", "train", ("run_snr-chain.out",))
@@ -640,9 +658,15 @@ def count_row(name, log_name, prog_name):
     log = read_lines(where(log_name))
     if log is not None and any(l.startswith("Traceback") for l in log):
         return f"{name:<30} {bar(0)}  FAILED (see {log_name})", True
-    if log is not None and any(l.startswith(("EVAL DONE", "TRAIN DONE")) for l in log):
-        return f"{name:<30} {bar(1.0)}  done", True
     prog = read_lines(where(prog_name))
+    if log is not None and any(l.startswith("ALL DONE") for l in log):
+        return f"{name:<30} {bar(1.0)}  done", True
+    if prog:                                              # several parts can share one log: a part is done when its
+        v = [float(x) for x in prog[-1].split()]          # own progress file says so, not at the log's first EVAL DONE
+        if len(v) == 3 and v[1] and v[0] >= v[1]:
+            return f"{name:<30} {bar(1.0)}  done", True
+    elif "blind_ber_" not in prog_name and log is not None and any(l.startswith(("EVAL DONE", "TRAIN DONE")) for l in log):
+        return f"{name:<30} {bar(1.0)}  done", True
     if not prog:
         return f"{name:<30} {bar(0)}  {'starting' if log is not None else 'waiting'}", False
     v = [float(x) for x in prog[-1].split()]

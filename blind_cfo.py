@@ -315,6 +315,7 @@ class PiCode(PolarCode):
         flip = np.zeros(self.C, np.uint8)
         flip[-1] = 1
         ok = np.all(calc == crc, axis=2) | np.all(calc == crc ^ flip, axis=2)
+        self.last_list = (data, ok, self._pm)               # (measurement, testing/) every surviving list path
         score = np.where(ok, self._pm, np.inf)
         best = np.where(ok.any(1), score.argmin(1), self._pm.argmin(1))
         if return_info:

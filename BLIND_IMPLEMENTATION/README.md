@@ -10,8 +10,9 @@ This folder explains the final blind (zero-pilot) receiver of the small-CFO stud
 | [04_search.md](04_search.md) | Stage 2: the CFO × phase grid, checkpoints and the robust z-test, coarse start, batches on 32 cores, the checkpoint NN |
 | [05_decoding.md](05_decoding.md) | Stage 3: refinement, CA-SCL-8, joint list decoding, code-aided retry, rescue |
 | [06_acceptance.md](06_acceptance.md) | CRC-16 with PiCode, the re-encoding check, false-alarm maths |
-| [07_complexity.md](07_complexity.md) | MAC model, critical path on 32 cores, measured MACs |
-| [08_parameters_results.md](08_parameters_results.md) | Every parameter per rate, and the results |
+| [07_complexity.md](07_complexity.md) | MAC model, MACs per core (the standard 32-core model), measured MACs, where they go, the 128-pilot comparison, a hard MAC cap |
+| [08_parameters_results.md](08_parameters_results.md) | Every parameter per rate; BLER of blind, the genie and the 128-pilot receivers per rate; undetected errors; throughput |
+| [presentation/](presentation/) | The presentation figures (BLER, MACs, BLER vs MAC cap, stages) per rate |
 
 ## Block diagram
 

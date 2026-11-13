@@ -23,6 +23,11 @@ The phase hypotheses are θ_c + q·π/4:
 - **below −1 dB:** q = 0, 1, 2, 3. That covers the π/2 branch and the half-steps between, because the 4th-power phase is noisy there;
 - **from −1 dB up:** q ∈ {0, 2}, i.e. θ_c and θ_c + π/2.
 
+**Known issue (R = 0.15):** R = 0.15 uses the R = 1/10 settings, including this switch. Its BLER rises from 0 in
+780k packets at −2 dB to 1.6·10⁻⁴ at −1 dB, exactly where the phases drop from 4 to 2; in 10 of 11 analysed
+failures the true CFO region never reached the candidates. A version with 4 phases at every SNR fixed it in a
+paired test (same 400k packets at −1 dB: 0 errors vs 72 with the switch).
+
 Each (cell, phase) pair is one **hypothesis**.
 
 ## 4.2 Robust z-score

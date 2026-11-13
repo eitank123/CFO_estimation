@@ -37,3 +37,18 @@ If the CRC fails, the receiver uses the SC hard-decision codeword ĉ (from `metr
 
 ## 5.6 Delivered CFO
 The delivered CFO is the accepted hypothesis's CFO. After a pass, a decision-directed refinement over all 1024 re-encoded symbols (`blind_cfo.dd_refine`: ±10⁻³ scan + Newton) gives the final estimate. Its error statistics are reported as "final" CFO RMSE.
+
+## 5.7 Which stage delivers a packet
+For the statistics, every right decode is tagged with the stage that accepted it (`small_rx`, counters
+`stage_1` … `stage_5`):
+
+| Tag | Stage |
+|---|---|
+| 1 | the fast path (02) |
+| 2 | a decode inside the grid search: an early win (z > 6) or a candidate after the last checkpoint (04) |
+| 3 | the final candidates (best 32 by path metric) |
+| 4 | the rescue over the next 256 cells (5.5, step 1) |
+| 5 | the fine-grid rescue (5.5, step 2) |
+
+The share of packets still undecoded after each stage, vs SNR, is plotted per rate in `est3/plots/stages_R*.png`
+(also in [presentation/](presentation/)).

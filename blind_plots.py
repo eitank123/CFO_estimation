@@ -15,8 +15,8 @@ import numpy as np
 import blind_cfo as bc
 import config as cfg
 
-RATE_LABEL = {"1/10": "R = 1/10", "1/4": "R = 1/4", "1/3": "R = 1/3", "2/5": "R = 2/5", "1/2": "R = 1/2", "3/5": "R = 3/5", "2/3": "R = 2/3", "3/4": "R = 3/4"}
-POLAR_CODE = {"1/10": "R=0.1,C16", "1/4": "R=1/4,C16", "1/3": "R=1/3,C16", "2/5": "R=2/5,C16", "1/2": "R=1/2,C16", "3/5": "R=3/5,C16", "2/3": "R=2/3,C16", "3/4": "R=3/4,C16"}
+RATE_LABEL = {"1/10": "R = 1/10", "0.15": "R = 0.15", "1/4": "R = 1/4", "1/3": "R = 1/3", "2/5": "R = 2/5", "1/2": "R = 1/2", "3/5": "R = 3/5", "2/3": "R = 2/3", "3/4": "R = 3/4"}
+POLAR_CODE = {"1/10": "R=0.1,C16", "0.15": "R=0.15,C16", "1/4": "R=1/4,C16", "1/3": "R=1/3,C16", "2/5": "R=2/5,C16", "1/2": "R=1/2,C16", "3/5": "R=3/5,C16", "2/3": "R=2/3,C16", "3/4": "R=3/4,C16"}
 PLOT_RATES = ("1/10", "1/3", "2/5", "1/2", "3/5", "2/3", "3/4")             # R = 1/4 dropped (BLER already at the CRC floor): R = 1/3 instead
 
 
@@ -375,7 +375,9 @@ FINAL = {"blind": ("blind", {r: [("v3 eco7, rescue, rho_n + CRC", -99, 99)]
 TARGET = "Split pilots NN, quarter, pre-MF correction + CRC search (first pass)"
 SPLIT = "Split pilots NN, quarter + CRC search (first pass)"
 GENIE_P = "Genie (known CFO), pre-MF correction"
-BEST_RATES = ("1/10", "2/5", "1/2")          # the rates of the current receivers (R = 1/3 was stopped before them)
+BEST_RATES = ("2/5", "1/2")                  # bench / best: the rates of the older pilot benchmarks (no R = 0.15 runs)
+MAIN_RATES = ("1/10", "0.15", "2/5", "1/2")  # the main rates, one figure per rate (user 2026-11-11)
+KP = 32                                      # decoder cores: MACs per core = the standard critical path (crit_par)
 NN_MACS, DEC_MACS, PREMF_DEROT = 132_932, 186_368, 33_792    # split NN; CA-SCL decode + LLRs; pre-MF de-rotation
 
 
@@ -494,6 +496,7 @@ _J8 = ", coarse start, join top 16, phase hand-off, keep 2 phases, join top 8, r
 # per rate: (description, receiver) in order of preference, newest first; the first with full-statistics results is
 # drawn (smoke tests are never merged)
 SMALL_RX = (("best blind (0 pilots)", 0, {
+                "0.15": (("32 cores, R = 1/10 settings", "S blind final v2"),),
                 "1/10": (("32 cores, batches of 32, coarse start + keep 2 phases", "S blind final v2"),
                          # "S blind final" (+ join top 8 / hand-off) held back: 1.0e-3 at -5 dB vs 1.8e-4 (diag-b, -c)
                          ("coarse start + join top 8 + phase hand-off + rescue", _BL + _J8),
@@ -521,7 +524,7 @@ SMALL_REF = ((TARGET, "128 pilots (12.5 %): split NN + pre-MF", "#1f77b4", "-", 
              ("Split pilots ML, est. phase, pre-MF + CRC search (first pass) + re-encode check",   # + the blind
               "128 pilots (12.5 %): split ML + re-encoding check", "#006400", "-", "^"))           # receivers' check
 SPLIT_ML_MACS = 35_000                                        # split-pilot ML (polar_ber_experiment EST_MACS)
-SMALL_SNR_MIN = {"1/10": -5.0}                                # user: R = 1/10 only from -5 dB
+SMALL_SNR_MIN = {"1/10": -5.0, "0.15": -4.5}                  # user: R = 1/10 only from -5 dB
 MM_MACS = 24_704                                              # M&M on 128 known symbols (polar_ber_experiment EST_MACS)
 PG_MACS = 2 * 1024 * 10 + 4 * 128 + 2 * 2 * 12 * 128 + 4 * 128   # FFT-1024 + 2 AM iterations + phase (BENCH_EST_MACS)
 
@@ -654,35 +657,12 @@ def best():
 
 
 def modern():
-    """bench/modern_R*.png: the modern preamble / pilot estimators (BENCH_SRC, 128 known symbols, phase estimated)
-    against the blind receiver only, BLER vs SNR (preamble inside the 1024-symbol packet)."""
-    p = bc.path("results", "blind_ber.json")
-    res = json.load(open(p)) if os.path.exists(p) else []
-    P = _premf_split()
-    for rate in BEST_RATES:
-        fig, a1 = plt.subplots(figsize=(11, 8.5))
-        lo = SMALL_SNR_MIN.get(rate, -99)
-        for src, lab, c, ls, mk in BENCH_SRC:
-            if src == TARGET:                                 # the genie-phase reference: not a real receiver
-                continue
-            pts = sorted((float(d["esn0"]), d["bler"]) for d in P if d["code"] == POLAR_CODE[rate] and d["src"] == src
-                         and float(d["esn0"]) >= lo and d["bler"] > 0)
-            if pts:
-                x, y = map(np.array, zip(*pts))
-                sty = dict(ls=ls, color=c, marker=mk, ms=5, lw=1.8, label=f"128 pilots: {lab}")
-                a1.semilogy(x, y, **sty)
-        what, pts = _blind_pts(res, rate, lo)
-        if pts:
-            _draw_blind(a1, what, pts)
-        a1.set(xlabel="SNR (Es/N0) [dB]", ylabel="BLER", title="preamble inside the 1024-symbol packet")
-        a1.grid(True, which="both", ls=":", alpha=0.6)
-        h, l = a1.get_legend_handles_labels()
-        fig.legend(h, l, fontsize=9, loc="lower center", ncol=2, frameon=False)
-        fig.suptitle(f"Blind vs modern preamble / pilot CFO estimators (phase estimated), {RATE_LABEL[rate]}\nCFO in "
-                     f"[-{bc.MAX_CFO:g}, {bc.MAX_CFO:g}], CRC-16, {bc.N_SYM}-symbol packet", fontsize=13,
-                     fontweight="bold")
-        fig.tight_layout(rect=(0, 0.2, 1, 1))
-        _save(fig, "bench", f"modern_R{rate.replace('/', '_')}.png")
+    """bench/modern_R*.png: blind against the best modern pilot estimator (ML, 128 pilots) and M&M, both from est3 with
+    the blind receiver's re-encoding check (RHO_N), BLER vs SNR; points without an error are not drawn."""
+    import est3.plots as E3
+    for rate in MAIN_RATES:
+        E3._bler_fig(rate, E3.MORE_SRC[:2], None, save=lambda fig, r=rate: _save(fig, "bench",
+                                                                                f"modern_R{r.replace('/', '_')}.png"))
 
 
 def small():
@@ -691,12 +671,13 @@ def small():
     res = json.load(open(p)) if os.path.exists(p) else []
     P = _premf_split()
     tail = f"CFO in [-{bc.MAX_CFO:g}, {bc.MAX_CFO:g}], CRC-16, {bc.N_SYM}-symbol packet"
-    for rate in BEST_RATES:
+    for rate in MAIN_RATES:
         f1, a1 = plt.subplots(figsize=(10, 6.5))
         f2, a2 = plt.subplots(figsize=(10, 6.5))
         f3, a3 = plt.subplots(figsize=(10, 6.5))
         K = bc.CODES[rate] + 16
-        lp_dec = DEC_MACS / 8 + 6144 / 8 + K * 16 * 4         # a CA-SCL-8 decode with its 8 paths on 8 cores (+ sort)
+        lp_dec = DEC_MACS / 8 + 6144 / KP + K * 10            # one decode on the critical path (standard model: one
+                                                              # list path per core, LLRs / KP, bitonic 16 -> 8 sort)
         drawn = False
         for src, lab, c, ls, mk in SMALL_REF:
             est = (NN_MACS if "NN" in src else PG_MACS if "periodogram" in src
@@ -709,12 +690,12 @@ def small():
                 sty = dict(ls=ls, color=c, marker=mk, ms=5, lw=2.2, label=lab)
                 a1.semilogy(x, np.where(y > 0, y, np.nan), **sty)
                 a2.semilogy(x, m, **sty)
-                a3.semilogy(x, est + PREMF_DEROT + (m - est - PREMF_DEROT) / DEC_MACS * lp_dec, **sty)
+                a3.semilogy(x, (est + PREMF_DEROT) / KP + (m - est - PREMF_DEROT) / DEC_MACS * lp_dec, **sty)
                 drawn = True
         for lab, n_p, per, c, ls, mk in SMALL_RX:
             pts = []
             for what, rx in per.get(rate, ()):
-                pts = sorted((x["snr"], x["bler"], x.get("macs_per_frame"), x.get("crit_lp_macs_per_frame")) for x in res
+                pts = sorted((x["snr"], x["bler"], x.get("macs_per_frame"), x.get("crit_par_macs_per_frame")) for x in res
                              if x["rate"] == rate and x["rx"] == rx and x["snr"] >= SMALL_SNR_MIN.get(rate, -99))
                 if pts:
                     lab = f"{lab}: {what}"
@@ -737,7 +718,7 @@ def small():
             continue
         a1.set(xlabel="SNR (Es/N0) [dB]", ylabel="BLER")
         a2.set(xlabel="SNR (Es/N0) [dB]", ylabel="MACs per packet (CFO estimation + decoding)")
-        a3.set(xlabel="SNR (Es/N0) [dB]", ylabel="MACs per core (critical path, list paths of a decode in parallel)")
+        a3.set(xlabel="SNR (Es/N0) [dB]", ylabel=f"MACs per core (critical path, {KP} cores)")
         for fig, ax, what, kind, fn in ((f1, a1, "BLER", "bler", "bler_vs_snr"), (f2, a2, "Receiver cost", "macs", "macs_vs_snr"),
                                         (f3, a3, "Receiver latency (critical path)", "macs", "macs_per_core_vs_snr")):
             ax.grid(True, which="both", ls=":", alpha=0.6)

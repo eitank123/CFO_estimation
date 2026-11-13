@@ -34,19 +34,26 @@ from est3 import estimators as E
 SEARCH_STEP = 1.5e-4 * 512 / C.N_SYM
 # source: (pilot layout used by the receiver, estimator)
 SOURCES = {
-    "Genie CFO": "contig", "M&M": "contig", "ML direct": "contig", "Joint ML Lh=3": "contig",
+    "Genie CFO": "contig", "CRB 128 pilots": "contig", "M&M": "contig", "ML direct": "contig", "Joint ML Lh=3": "contig",
     "Jacobsen-Candan": "contig", "cluster": "contig", "cnn-cr": "contig", "cnn-reg": "contig",
     "Schmidl-Cox / Moose": "periodic", "BLUE MM99": "periodic",
     "Distributed ML 2x64": "split2x64", "Distributed ML 4x32": "dist4x32", "DVB-S2 blocks 4x32": "dist4x32",
     "DVB-S2 blocks 8x16": "dist8x16"}
 
 
-def estimate(src, r, s, rp, snr, f):
-    """CFO (B,) of a source: r, s at its pilot positions; rp the periodic preamble burst (periodic sources)."""
+# the seed's rate index as the runs before R = 0.15 was added (packets stay paired with them)
+RATE_IDX = {"1/10": 0, "0.15": 1, "2/5": 1, "1/2": 2}
+
+
+def estimate(src, r, s, rp, snr, f, rcrb=None):
+    """CFO (B,) of a source: r, s at its pilot positions; rp the periodic preamble burst (periodic sources); rcrb the
+    separate generator of the CRB source (the shared one must not move: identical packets for every source)."""
     lay = SOURCES[src]
     pos = C.LAYOUTS[lay]
     if src == "Genie CFO":
         return f.copy()
+    if src == "CRB 128 pilots":                          # an ideal efficient estimator: f + N(0, CRB of 128 pilots)
+        return f + np.sqrt(C.crb_awgn(snr)) * rcrb.standard_normal(len(f))
     if src == "M&M":
         return E.mm(r, s, snr)
     if src == "ML direct":
@@ -71,7 +78,8 @@ def work(task):
     rate, snr, chunk, frames, min_err, sources, seed = task
     from blind_fast import premf, rho_min
     from polar import PolarCode
-    rng = np.random.default_rng([5, seed, list(C.CODES).index(rate), int(round(10 * snr)) + 1000, chunk])
+    rng = np.random.default_rng([5, seed, RATE_IDX[rate], int(round(10 * snr)) + 1000, chunk])
+    rcrb = np.random.default_rng([6, seed, RATE_IDX[rate], int(round(10 * snr)) + 1000, chunk])
     A = C.CODES[rate]
     code = PolarCode(C.N_BITS, A, 16, 8)
     s2 = 10 ** (-snr / 10)                                 # complex noise variance at the MF output
@@ -96,7 +104,7 @@ def work(task):
             pos = C.LAYOUTS[SOURCES[src]] if SOURCES[src] != "periodic" else C.LAYOUTS["contig"]
             sp = sym[:, pos]
             t0 = time.perf_counter()
-            fh = estimate(src, r[:, pos], sp, rper, snr, f)
+            fh = estimate(src, r[:, pos], sp, rper, snr, f, rcrb)
             S["time_est"] += time.perf_counter() - t0
             rp = premf(r, rx, fh)
 

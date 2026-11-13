@@ -25,7 +25,8 @@ $$P(\rho > t) \approx e^{-N t^2}\qquad(t = 0.12:\; e^{-14.7} = 4\cdot10^{-7}).$$
 
 $$\rho > \max\!\Big(0.12,\;\tfrac12\sqrt{\tfrac{s}{1+s}},\;\mathrm{RHO\_N}(\mathrm{SNR})\sqrt{\tfrac{s}{1+s}}\Big),$$
 
-- RHO_N is a per-rate table that tightens the threshold to a fraction of the expected right-packet value (R = 1/10: 0.775 at −5 dB down to 0.553 at 0 dB; R = 2/5: 0.928 to 0.883; R = 1/2: 0.934 to 0.903).
+- RHO_N is a per-rate table that tightens the threshold to a fraction of the expected right-packet value (R = 1/10: 0.775 at −5 dB down to 0.553 at 0 dB; R = 0.15: 0.873 at −4.5 dB down to 0.655 at +1 dB; R = 2/5: 0.928 to 0.883; R = 1/2: 0.934 to 0.903). Each table is calibrated per code from the false passes of wrong-CFO hypotheses (R = 0.15: runs `fp15a/b`).
+- The 128-pilot comparison receivers (est3) use the same threshold, so the comparison is fair.
 - Option `re_margin`: the threshold uses SNR + margin. Then an SNR estimate that is too low cannot lower it; a margin of 1 dB fixes the −1 dB SNR-error case.
 
 **Measured effect:**

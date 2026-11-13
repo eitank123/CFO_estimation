@@ -1,7 +1,7 @@
 # 1. Signal model and conventions
 
 ## Transmitter
-- **Data:** A data bits with A = 205 / 819 / 1024 for R = 1/10, 2/5, 1/2. CRC-16 is appended, so the encoder takes K = A + 16 information bits.
+- **Data:** A data bits with A = 205 / 307 / 819 / 1024 for R = 1/10, 0.15, 2/5, 1/2 (R = 0.15 is the main low-SNR rate; R = 1/10 is kept as a second low-SNR rate). CRC-16 is appended, so the encoder takes K = A + 16 information bits.
 - **Polar code:** N = 2048. The information set is chosen by the polarization-weight (PW) reliability order, and the frozen bits are 0.
   - In u, the CRC bits follow the data in the same order (`polar.PolarCode`).
   - Codeword: x = u·G_N, with G_N = F^{⊗11} and F = [[1,0],[1,1]].
