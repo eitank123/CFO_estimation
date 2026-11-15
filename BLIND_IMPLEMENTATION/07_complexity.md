@@ -109,6 +109,17 @@ With the parallel CRC search the pilot receivers need 0.03–0.07 M MACs per cor
 at R = 1/10 and 0.15 (every SNR), 6.6× at R = 2/5 0.5 dB, and about 1.6× above the waterfall at R = 2/5 and 1/2. Blind's own serial decodes (the fast path's decode + code-aided retry, the
 candidate decodes at R = 1/10 and 0.15) are still counted one at a time; at R = 2/5 and 1/2 its joint decode already
 runs 4 cells at once. The CNN estimator (classification + refinement) alone costs about 9 M MACs in total.
+With the fair (metric-ordered) CRC search adopted as the pilot reference on 2026-11-13 (08, 8.2; `testing/results/expected_fair.md`)
+the pilot receivers need 0.04–0.09 M per core (+8 … +36 %: the metric pass over the neighbours of failing packets),
+so the per-core gap to blind narrows by about that much but stays 2–6× at R = 1/10 and 0.15.
+
+## 7.5a Standard count from 2026-11-13: scheduled MACs per core
+From 2026-11-13 the standard "MACs per core" is the scheduled critical path: at R = 1/10 and 0.15 one core per (cell,
+phase) hypothesis in the grid plus 4 CA-SCL-8 decodes at once; at R = 2/5 and 1/2 (joint decode already) 4 decodes at
+once. Same decisions, BLER and total MACs; the pilot receivers were already costed with 4 decodes at once. The per-core
+numbers in the sections above use the earlier count (one core per cell, decodes one at a time); the testing results
+(`testing/README.md`, `cmp_macs_R*.png`) give both. Testing receiver: -16 ... -21 % at 1/10, -20 ... -31 % at 0.15,
+-36 % at 2/5 0.5 dB, 0 at 1/2.
 
 ## 7.6 A hard cap on the MACs of a packet
 The search stops at its first accepted decode, so a cap C on the MACs of a packet turns exactly the right decodes

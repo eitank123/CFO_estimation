@@ -36,3 +36,27 @@
 **Overall prediction.** With q_fix, the refinement already lands on the right pi/2 branch. So dd's code-aided step has little left to fix:
 - the earlier dd conclusion ("no gain") stays;
 - dd is not adopted.
+
+## Measured (2026-11-13)
+
+Source: `py BLIND_IMPLEMENTATION/testing/agg_qfix.py`. The full tables are in `report_qfix_ddq.md`. Parts t-ddq10 / t-ddq25 / t-ddq2:
+- 64k paired packets per arm and point;
+- all logs `EVAL DONE` + `ALL DONE`, no Traceback, no duplicated chunk;
+- 0 undetected errors in every arm.
+
+| Point | dd_qfix vs base_qfix: errors (fixed / broken) | dd_qfix per core | dd_win4_qfix per core | Verdict | hit / miss (errors, dd core, win4 core, verdict) |
+|---|---|---|---|---|---|
+| 2/5 0.5 dB | 143 -> 186, +30 % (8 / 51, p = 9e-9) | +11.2 % | +10.3 % (errors 186, same packets as dd) | dd not adopted | miss (worse than +25 %), miss (+11.2 vs <= +10), miss (+10.3 vs <= +5), hit |
+| 2/5 1 dB | 3 -> 3 (0 / 0) | +0.7 % | +0.8 % | dd not adopted | hit, hit, hit, hit |
+| 1/2 2 dB | 9 -> 9 (0 / 0) | +0.6 % | +0.4 % | no gain | hit, hit, miss (+0.4 +- 0.4 vs -10 ... 0, marginal), hit (no gain) |
+| 1/2 2.5 dB | 0 -> 0 | +0.0 % | -0.0 % | no gain | hit, hit, hit, hit |
+| 1/10 -1 dB | 0 -> 0 | +2.1 % | +9.3 % | no gain | hit, hit, miss (+9.3 vs <= +8), hit |
+| 0.15 -1 dB | 4 -> 4 (0 / 0) | +1.5 % | +6.6 % | no gain | hit, hit, hit, hit |
+| 0.15 0 dB | 0 -> 0 | +1.7 % | +6.3 % | no gain | hit, hit, hit, hit |
+
+- **Score.** 23 of 28 marks hit. The overall prediction holds: with q_fix, dd fixes nothing at any point.
+- **2/5 0.5 dB.** dd was worse than predicted: 51 packets broken, a significant BLER loss.
+- **dd_win4 at 1/10 and 0.15.** Per core +6 ... +9 %, but total -2 ... +2 %. Decodes per packet are 3.14 vs 2.70 at 1/10 -1 dB.
+- **dd at 1/10 and 0.15.** Per core +1.5 ... +2 %, total about -1 %.
+- **Few errors.** All points except 2/5 0.5 dB have <= 9 errors per arm. There, only "no packet fixed or broken" is
+  supported, not a BLER difference.

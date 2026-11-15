@@ -38,7 +38,18 @@ SOURCES = {
     "Jacobsen-Candan": "contig", "cluster": "contig", "cnn-cr": "contig", "cnn-reg": "contig",
     "Schmidl-Cox / Moose": "periodic", "BLUE MM99": "periodic",
     "Distributed ML 2x64": "split2x64", "Distributed ML 4x32": "dist4x32", "DVB-S2 blocks 4x32": "dist4x32",
-    "DVB-S2 blocks 8x16": "dist8x16"}
+    "DVB-S2 blocks 8x16": "dist8x16",
+    # 2026-11-13: the same estimators with a PATH-METRIC-ORDERED CRC search (as the blind receiver ranks its
+    # hypotheses): every candidate f_hat + k STEP (k = 0, +-1 ... +-M) scored by the list-1 Fast-SSC metric (in
+    # parallel), then CA-SCL-8 on the best PM_T of them in metric order, stopping at the first accepted pass
+    "ML direct PM": "contig", "M&M PM": "contig",
+    # 2026-11-13 (after fair15 / fair10 / fair25 / fair2): " PM" skips the decode at f_hat when the metric ranks it
+    # outside the best PM_T -> 3-4x BLER in the waterfall. " PM+T": decode at f_hat FIRST (as the fixed order); only if
+    # it is not accepted, score the 2M neighbours by the list-1 metric and decode at most T of them in metric order
+    # (" PM+all": all of them), stopping at the first accepted pass
+    "ML direct PM+3": "contig", "M&M PM+3": "contig", "ML direct PM+all": "contig", "M&M PM+all": "contig"}
+PM_T = 3                                                    # decodes at most, in metric order (PM sources)
+KP = 32                                                     # cores: the neighbour metrics run KP at a time
 
 
 # the seed's rate index as the runs before R = 0.15 was added (packets stay paired with them)
@@ -48,6 +59,7 @@ RATE_IDX = {"1/10": 0, "0.15": 1, "2/5": 1, "1/2": 2}
 def estimate(src, r, s, rp, snr, f, rcrb=None):
     """CFO (B,) of a source: r, s at its pilot positions; rp the periodic preamble burst (periodic sources); rcrb the
     separate generator of the CRB source (the shared one must not move: identical packets for every source)."""
+    src = src.split(" PM")[0]
     lay = SOURCES[src]
     pos = C.LAYOUTS[lay]
     if src == "Genie CFO":
@@ -89,7 +101,12 @@ def work(task):
     M =int(np.ceil(4.0 * 1.3 * np.sqrt(C.crb_awgn(snr)) / SEARCH_STEP))
     ks = sorted([k for k in range(-M, M + 1) if k], key=lambda k: (abs(k), k))
     st = {s: dict(frames=0, frame_err=0, undetected=0, extra_decodes=0, se_first=0.0, se_final=0.0, crc_pass=0,
-                  crc_pass_wrong=0, re_caught=0, re_lost=0, time_est=0.0) for s in sources}
+                  crc_pass_wrong=0, re_caught=0, re_lost=0, time_est=0.0, metric_evals=0, metric_rounds=0)
+          for s in sources}
+    fsc = None
+    if any(" PM" in s_ for s_ in sources):
+        from blind_fast import fast_sc
+        fsc = fast_sc(A)
     B = 100
     while st[sources[0]]["frames"] < frames and min(v["frame_err"] for v in st.values()) < min_err:
         data = rng.integers(0, 2, (B, A), dtype=np.uint8)
@@ -127,9 +144,69 @@ def work(task):
                     ok[j] = acc
                 return d, ok
 
+            if src.endswith(" PM"):                         # metric-ordered search: score every candidate, decode
+                kk = np.array([0] + ks)                     # the best PM_T in metric order
+                Mt = np.empty((B, len(kk)))
+                for q, k in enumerate(kk):
+                    fq = fh + k * SEARCH_STEP
+                    g = C.gain_phase(rp, sp, pos, fq)
+                    llr, _ = C.llrs(rp, fq, g, s2)
+                    Mt[:, q] = fsc.metric(llr)
+                S["metric_evals"] += B * len(kk)
+                S["metric_rounds"] += B * int(np.ceil(len(kk) / KP))
+                order = np.argsort(Mt, 1)[:, :PM_T]
+                dec = np.zeros((B, A), np.uint8)
+                ok = np.zeros(B, bool)
+                ffin = fh.copy()
+                for t in range(PM_T):
+                    idx = np.arange(B) if t == 0 else np.where(~ok)[0]
+                    if not len(idx):
+                        break
+                    fk = fh[idx] + kk[order[idx, t]] * SEARCH_STEP
+                    d, okk = attempt(idx, fk)
+                    if t == 0:
+                        dec[:] = d
+                    else:
+                        S["extra_decodes"] += len(idx)
+                    w = idx[okk]
+                    dec[w], ok[w], ffin[w] = d[okk], True, fk[okk]
+                errs = (dec != data).any(1)
+                S["frames"] += B
+                S["frame_err"] += int(errs.sum())
+                S["undetected"] += int((errs & ok).sum())
+                S["se_first"] += float(np.sum((fh - f) ** 2))
+                S["se_final"] += float(np.sum((ffin - f) ** 2))
+                continue
             dec, ok = attempt(np.arange(B), fh)
             ffin = fh.copy()
-            for k in ks:
+            if " PM+" in src:                               # metric-ordered neighbours after the decode at f_hat
+                tmax = len(ks) if src.endswith("+all") else int(src.rsplit("+", 1)[1])
+                bad = np.where(~ok)[0]
+                if len(bad):
+                    ka = np.array(ks)
+                    Mt = np.empty((len(bad), len(ka)))
+                    for q, k in enumerate(ka):
+                        fq = fh[bad] + k * SEARCH_STEP
+                        g = C.gain_phase(rp[bad], sp[bad], pos, fq)
+                        llr, _ = C.llrs(rp[bad], fq, g, s2)
+                        Mt[:, q] = fsc.metric(llr)
+                    S["metric_evals"] += len(bad) * len(ka)
+                    S["metric_rounds"] += len(bad) * int(np.ceil(len(ka) / KP))
+                    order = np.argsort(Mt, 1)[:, :tmax]
+                    for t in range(order.shape[1]):
+                        sub = np.where(~ok[bad])[0]
+                        if not len(sub):
+                            break
+                        idx = bad[sub]
+                        fk = fh[idx] + ka[order[sub, t]] * SEARCH_STEP
+                        d, okk = attempt(idx, fk)
+                        S["extra_decodes"] += len(idx)
+                        w = idx[okk]
+                        dec[w], ok[w], ffin[w] = d[okk], True, fk[okk]
+                ks_ = []
+            else:
+                ks_ = ks
+            for k in ks_:
                 bad = np.where(~ok)[0]
                 if not len(bad):
                     break

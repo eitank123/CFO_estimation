@@ -74,6 +74,48 @@ for _b, _s in (("base25", "25"), ("base2", "2")):                      # the sam
 for _k in ("dd", "dd_win4"):                                            # R = 1/10 / 0.15 at >= -1 dB (2 phases)
     VARIANTS[f"{_k}_qfix"] = (VARIANTS[_k][0], {**VARIANTS[_k][1], "q_fix": True})
 
+# 2026-11-13: the retry gate (head B, nn_b_export.py): the CA retry of a failed main decode runs only if its logistic
+# score >= thr[frac]; nnb1 = the 1 % point, nnb01 = the 0.1 % point; paired with the q_fix baselines (q_fix adopted)
+NNB_JSON = os.path.join(HERE, "results", "nn_b_gate.json")
+for _k in ("nofast15_qfix", "base25_qfix", "base2_qfix"):
+    for _t, _f in (("nnb1", 0.01), ("nnb01", 0.001)):
+        VARIANTS[f"{_k}_{_t}"] = (VARIANTS[_k][0], {**VARIANTS[_k][1], "nn_b": (NNB_JSON, _f)})
+
+# 2026-11-13: speculative early decode on the testing receiver (+ q_fix): win_spec = 4 (one CA-SCL decode, no retry, for
+# 4 < z <= 6), and with the speculative acceptance at 1.1 x the re-encoding threshold (nofast_spec_t: 2 undetected / 400k
+# at 1/10 -5 dB, both with rho / thr in [1.0, 1.1))
+VARIANTS["nofast15_qfix_spec"] = ("base10", {**VARIANTS["nofast15_qfix"][1], "win_spec": 4.0})
+VARIANTS["nofast15_qfix_spec11"] = ("base10", {**VARIANTS["nofast15_qfix"][1], "win_spec": 4.0, "spec_rho": 1.1})
+
+# 2026-11-13: hard cap on the MACs per core (small_rx cap_core, "no packet" at the cap); caps from the cap plots
+# (1/10, 0.15: 2 M; 2/5, 1/2: 1 M)
+VARIANTS["nofast15_qfix_cap2"] = ("base10", {**VARIANTS["nofast15_qfix"][1], "cap_core": 2e6})
+VARIANTS["base25_qfix_cap1"] = ("base25", {**VARIANTS["base25_qfix"][1], "cap_core": 1e6})
+VARIANTS["base2_qfix_cap1"] = ("base2", {**VARIANTS["base2_qfix"][1], "cap_core": 1e6})
+# 2026-11-13: the retry gate (1 % point) + the stricter speculative decode together
+VARIANTS["nofast15_qfix_nnb1_spec11"] = ("base10", {**VARIANTS["nofast15_qfix_nnb1"][1], "win_spec": 4.0,
+                                                    "spec_rho": 1.1})
+
+# 2026-11-13: phase-equivariant receiver (small_rx equiv, bc.PiCode4; lit_checks equiv): without the bit interleaver a pi/2
+# rotation is a polar automorphism + a codeword, so the cells keep their phases mod pi/2 (half the metric passes) and
+# CA-SCL accepts the packet at any pi/2 branch. These MUST run with BLIND_NOINT=1 (asserted); their packets are then NOT
+# paired with any interleaved run (another bit mapping, other noise realisations): the comparison arm is the same
+# receiver without equiv in the same BLIND_NOINT=1 job (nofast15_qfix / base25_qfix / base2_qfix there; in AWGN with
+# Gray QPSK the interleaver itself does not change the BLER)
+for _k in ("nofast15_qfix", "base25_qfix", "base2_qfix"):
+    VARIANTS[f"{_k}_eq"] = (VARIANTS[_k][0], {**VARIANTS[_k][1], "equiv": True})
+
+# 2026-11-13 (user decision): R = 0.15 back to 2 phases from +1 dB; 4 phases only below 0.5 dB. THE TESTING RECEIVER
+# from now on (at +1 dB it equals base10_qfix: fast path on, 2 phases; at <= 0 dB it equals nofast15_qfix)
+VARIANTS["testing"] = ("base10", {"s0_snr": 0.5, "nph": {"0.15": (4, 0.5)}, "q_fix": True})
+# 2026-11-13: spec11 adopted (expected_spec1m.md: 1e6 paired at 1/10 -5 dB, 0 discordant, undetected = base, 0 noise false
+# alarms). THE TESTING RECEIVER at 1/10 and 0.15 from now on. Measured only at <= -3 dB (fast path off); at +1 dB, with the
+# fast path on, not run yet.
+VARIANTS["testing_spec11"] = ("base10", {**VARIANTS["testing"][1], "win_spec": 4.0, "spec_rho": 1.1})
+# 2026-11-14 (expected_s11.md): spec11 costs +3 ... +4 % per core above the waterfall (1/10 from -3 dB, 0.15 from -2 dB), so it
+# runs only below 1/10 -3.5 dB, 0.15 -2.5 dB. At each SNR this receiver is exactly `testing_spec11` or `testing`.
+VARIANTS["testing_s11g"] = ("base10", {**VARIANTS["testing_spec11"][1], "spec_snr": {"1/10": -3.5, "0.15": -2.5}})
+
 DEC_DUMP = ("nofast15", "base25", "base2", "nofast15_qfix", "base25_qfix")   # decode dump receivers registered by
                                                                               # default (<key>_dump; any key on request)
 

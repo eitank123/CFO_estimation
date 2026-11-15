@@ -70,6 +70,13 @@ is the ML estimator (FFT 512 + 2 Newton), "CRB" an ideal estimator whose CFO err
   try 1–6 extra decodes at neighbouring CFOs; each can pass CRC-16 with wrong data, the re-encoding check stops
   ~93 % of those, the rest form the floor. Blind has no such floor at R = 1/10, 2/5, 1/2 (0 errors in 160k–1M
   packets above the waterfall).
+- **A fairer pilot search (2026-11-13, `testing/results/expected_fair.md`).** The floor is mostly the search ORDER
+  (neighbours tried in |k| order, so wrong passes come before the right CFO). With the order set by the list-1 SC
+  metric ("PM+all": decode at the estimate, then every neighbour best-first), on the same 480k packets per SNR the
+  waterfall BLER is unchanged, the floor falls 2–5× to 2–10·10⁻⁶ (undetected 3–5× fewer) and per core rises 8–36 %
+  (0.04–0.09 M, still 2–6× below blind; totals −8 … +15 %). The `cmp_*` plots now use this search as the pilot
+  reference. Blind still has 0 errors above the waterfall at the same packet counts, so its edge there shrinks to
+  ~5·10⁻⁶ BLER plus the 12.5 % pilot overhead (8.3); its MAC cost per core stays 2–6× higher.
 - **Blind vs pilots in the waterfall.** At the lowest SNRs blind loses to the pilot receivers: R = 1/10 −5 dB
   (2.1·10⁻⁴ vs 6.5·10⁻⁵) and R = 0.15 −4 … −3 dB (3–9×); at R = 2/5 and 1/2 blind is equal or better, because its
   retries and joint list decoding add decoding diversity (it even beats the one-decode genie).

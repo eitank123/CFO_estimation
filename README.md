@@ -50,6 +50,16 @@ Part A, so the switch back is instant. Those AWGN runs are reported in Part A an
   (blind). At R = 1/10 a last-stage "rescue" of the
   packets the search loses cut the 24-pilot BLER at −5 dB **4×** (1.1e-3 → 2.8e-4, target 2.5e-4) for +4 % MACs;
   from −4 dB the BLER beats the target, but the CFO search costs 5–8× the target with pilots and up to 33× blind.
+* **Blind receiver testing round (2026-11-12 … 11-14, `BLIND_IMPLEMENTATION/testing/`).** The adopted testing receiver
+  (`testing_s11g`: fast path off at ≤ 0 dB, 4 phases at R = 0.15, a phase-index fix, a stricter speculative decode in
+  the waterfall) cuts MACs per core vs the presentation receiver by 36–45 % at R = 1/10, 25–38 % at R = 0.15,
+  2–6 % at R = 2/5, at the same or lower BLER (paired runs, up to 1e6 packets). Dropped: code-aided refinement, the
+  retry-gate NN, coarser grids, the phase-equivariant format at low rates (all in `BLIND_IMPLEMENTATION/DEAD_ENDS.md`).
+  The 128-pilot references now use a **fair CRC search** (metric order): same waterfall, 2–5× lower floor. Against
+  them blind is equal at R = 2/5, better at R = 1/2 2 dB (1.6e-4 vs 3.5e-4), 0.5–0.7 dB worse in the R = 1/10 and 0.15
+  waterfall, error-free above it (the pilots keep a ~5e-6 floor), and costs 2–6× more MACs per core (total 1.5–4×
+  at the low rates, less than the pilots at R = 1/2). Wiener phase noise of 1e-4 · Ts breaks R = 2/5 (BLER ×36):
+  phase tracking is the main open real-world item.
 
 ---
 
@@ -1712,6 +1722,9 @@ blind receiver is unusable; with it the undetected error rate is 0 in every full
   the checkpoint NN at R = 1/10, a cut-size NN (predicting how many cells to keep): no gain or lost BLER.
 * The joint CA-SCL: correct but small (−5 to −9 % critical path at R = 2/5 only).
 
+**All dropped ideas, in one list:** [BLIND_IMPLEMENTATION/DEAD_ENDS.md](BLIND_IMPLEMENTATION/DEAD_ENDS.md) (check it before
+retrying anything).
+
 ### A.17.7 Conclusions
 
 1. **Blind and 3 × 8 match the 128-pilot receivers at the same SNR** and, with the pilots sent as extra symbols,
@@ -1726,6 +1739,19 @@ blind receiver is unusable; with it the undetected error rate is 0 in every full
    for a battery receiver 3 × 8 is the better trade (≈ 0.4 dB of the 0.5 dB, 1.4–2.3 × the split NN at R = 2/5, 1/2).
 5. **Open:** a worst-case budget (noise-only packets), the threshold margin in the full runs, timing / burst detection
    without a preamble, CFO drift and phase noise, fixed-point arithmetic.
+
+### A.17.7a Update (2026-11-13): testing receiver and next steps
+
+The receivers above are the presentation versions. `BLIND_IMPLEMENTATION/testing/` (see its README) pairs variants
+against them on the same packets:
+- **Testing receiver** (fast path off at <= 0 dB at R = 1/10 and 0.15, 4 phases at R = 0.15): MACs per core -25 ... -37 %
+  at 1/10 and -13 ... -32 % at 0.15 at the same BLER; the R = 0.15 -1 dB error bump removed (0 / 400k); total MACs at
+  0.15 +10 ... +33 % from -1 dB up.
+- **Phase-index fix (`q_fix`) adopted:** -14 % per core at 2/5 0.5 dB with fewer errors (21 fixed / 8 broken).
+- **Dropped:** code-aided refinement (`dd`), the NN grid stop (loses packets), replacing the re-encoding check by the
+  path metric (accepts wrong CRC passes and noise).
+- **Next:** the logistic retry gate (offline -21 % per core at 0.15 -4 dB, -24 % at 2/5 0.5 dB, 0 packets lost) as an
+  online paired test.
 
 ### A.17.8 How to run, files
 

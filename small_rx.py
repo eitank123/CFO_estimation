@@ -42,6 +42,22 @@ DEFAULT = dict(s0_snr=-99.0, nph=None, z0=4.0, T=2, ncand=4, final=32, rho_n=Non
                q_fix=False,   # True: a candidate's phase th + qs[qb] pi/4 (the phase offset its metric was scored at);
                               # False (baseline): th + qb pi/4 (qb the index: with nph = 2, qs = [0, 2], index 1
                               # gives pi/4 instead of pi/2, on the rounding edge of the pi/2 branch)
+               equiv=False,   # phase-equivariant receiver (needs BLIND_NOINT=1 and a bc.PiCode4 code): the pi/2
+                              # branches have the same list-1 metric and PiCode4 decodes any of them, so the cell phases
+                              # are kept mod pi/2 (nph 2 -> 1, 4 -> 2; phase_keep / beam counts halved), the fast path
+                              # decodes th0 without scoring both branches, final_post only b = 0; each decode is charged
+                              # the un-rotation check of its list paths (PiCode4.rot_macs; st macs_rot)
+               cap_core=None,  # hard cap on a packet's MACs per core (crit_par): a packet whose search needs more
+                               # is stopped at the cap and declared "no packet" (an erasure; emulated after the run:
+                               # the search stops at its first accept, so decisions before the cap are identical);
+                               # every cost counter of a capped packet is scaled to end at the cap (None = no cap)
+               spec_rho=None,  # speculative decodes (win_spec) accepted only if rho > spec_rho x the re-encoding
+                               # threshold (None = the threshold itself, the baseline)
+               spec_snr=None,  # win_spec only below this SNR (dB), a number or {code rate: dB}; a missing rate or
+                               # None = win_spec at every SNR (the spec11 sweep: it saves MACs only in the waterfall)
+               nn_b=None,     # retry gate (BLIND_IMPLEMENTATION/testing/nn_b_export.py): (gate json, frac): the CA
+                              # retry of a failed main decode runs only when the logistic score of its decoder-list /
+                              # LLR features >= the json's thr[frac] for the CODE rate (missing rate: no gate)
                dec_dump=None, dec_acc=None, dec_id=None)   # (measurement) BLIND_IMPLEMENTATION/testing/ decode dump:
                                 # dec_dump a directory (None = off): one row per decode attempt + one per packet
                                 # (dec_save); dec_acc / dec_id (set by blind_ber.simulate): the chunk's accumulator
@@ -214,6 +230,62 @@ def _rz(x):
 
 DEC_TAGS = {"fast": 0, "win": 1, "spec": 2, "s2cand": 3, "final32": 4, "post": 5, "fine_last": 6, "early_z": 7}
 DEC_LMAX = 16                  # (measurement) list PMs padded to 16 (joint decodes: 16 paths, CA-SCL-8: 8 + inf)
+_GATES = {}
+
+
+def gate_load(path, frac, rate):
+    """The retry gate of code rate `rate` from nn_b_export.py's json (cached): (mu, sd, w, b, thr) or None."""
+    if path not in _GATES:
+        import json
+        _GATES[path] = json.load(open(path))
+    g = _GATES[path].get(rate)
+    if g is None:
+        return None
+    assert g["features"] == list(GATE_F), g["features"]
+    return (np.array(g["mu"]), np.array(g["sd"]), np.array(g["w"]), float(g["b"]), float(g["thr"][str(frac)]))
+
+
+GATE_F = ("pm0", "pm_gap", "pm_spread", "pm_meanex", "syn_w", "n_rem", "n_agree", "agree_bits",
+          "l_sum", "l_mean", "l_lt1", "pm_norm", "sgn_agree")
+
+
+
+def GATE_MACS(code, L):
+    """Retry gate cost per failed decode (total MACs): CRC of L list paths (K bits each), 3 N for the LLR sums and the
+    sign agreement, N / 2 log2 N for the best path's polar transform, 2 x 13 for the logistic score."""
+    return L * code.K + 3 * code.N + code.N / 2 * np.log2(code.N) + 2 * len(GATE_F)
+
+def gate_feats(code, info, pmL, Lc):
+    """The retry gate's features of n failed decodes (as the decode dump's _stats + nn_offline.prep): info (n, L, K)
+    the list paths' bits, pmL (n, L) their path metrics, Lc (n, N) the channel LLRs. Returns (n, 13)."""
+    n_, Ls_ = pmL.shape
+    A_, ar = code.A, np.arange(n_)
+    dl = info[..., :A_]
+    syn = (code.crc(dl.reshape(-1, A_)).reshape(n_, Ls_, code.C) ^ info[..., A_:]).astype(np.uint8)
+    if isinstance(code, bc.PiCode):
+        syn[..., -1] = 0
+    fin = np.isfinite(pmL)
+    ib = pmL.argmin(1)
+    db = dl[ar, ib]
+    pms = np.sort(pmL, 1)
+    pm0 = pms[:, 0]
+    pmf = np.where(np.isfinite(pms), pms, np.nan)
+    u = np.zeros((n_, code.N), np.uint8)
+    u[:, code.info_pos] = info[ar, ib]
+    cwb = polar_transform(u)
+    aL = np.abs(Lc)
+    l_sum = aL.sum(1).astype(np.float32)                     # dtypes as the dump (_stats) stores them
+    F = dict(pm0=pm0, pm_gap=np.where(np.isfinite(pms[:, 1]), pms[:, 1] - pm0, 0.0) if Ls_ > 1 else np.zeros(n_),
+             pm_spread=np.nanmax(pmf, 1) - pm0, pm_meanex=np.nanmean(pmf, 1) - pm0,
+             syn_w=syn[ar, ib].sum(1), n_agree=(dl == db[:, None]).all(2).sum(1),
+             agree_bits=(((info == info[ar, ib][:, None]).mean(2).sum(1) - 1) / max(Ls_ - 1, 1)).astype(np.float16),
+             n_rem=np.array([len(np.unique(syn[q][fin[q]], axis=0)) for q in range(n_)]),
+             l_sum=l_sum, l_mean=aL.mean(1).astype(np.float16), l_lt1=(aL < 1).mean(1).astype(np.float16),
+             pm_norm=pm0 / l_sum,
+             sgn_agree=((Lc < 0) == cwb).mean(1).astype(np.float16))
+    X = np.stack([np.asarray(F[k], np.float64) for k in GATE_F], 1)
+    X[~np.isfinite(X)] = np.nan                              # as the training (nn_b_export.X_of): nan -> 0 after scaling
+    return X
 
 
 def dec_save(acc, path, **meta):
@@ -239,11 +311,24 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
             p[key] = p[key].get(p["rate"])
     if isinstance(p["nph"], dict):                            # nph per CODE rate ({"0.15": 4}); missing -> the SNR rule
         p["nph"] = p["nph"].get(p["code_rate"])
+        if isinstance(p["nph"], tuple):                       # (phases, snr_hi): that many phases below snr_hi dB,
+            p["nph"] = p["nph"][0] if snr < p["nph"][1] else None   # the default SNR rule (2 phases) from there on
+    if p["spec_snr"] is not None and p["win_spec"] is not None:
+        th = p["spec_snr"].get(p["code_rate"]) if isinstance(p["spec_snr"], dict) else p["spec_snr"]
+        if th is not None and snr >= th:
+            p["win_spec"] = None                              # = the receiver without the speculative decode
+    gate = gate_load(p["nn_b"][0], p["nn_b"][1], p["code_rate"]) if p["nn_b"] else None
     B = len(r)
     k = p["kstep"] or bf.grid_step(p["rate"], snr)          # kstep: a fixed grid step (STEP units) at every SNR
     g = bf.grid(k)["f"]
     nph = p["nph"] or (4 if snr < -1 else 2)
     qs = np.arange(nph) * (2 if nph == 2 else 1)              # phase offsets of a cell (pi/4 units)
+    nph0 = nph                                                # (the candidates' sub-offsets follow the unhalved count)
+    if p["equiv"]:                                            # phase-equivariant: offsets mod pi/2 only (q pi/4 < pi/2)
+        assert bc.NOINT and isinstance(code, bc.PiCode4), "equiv needs BLIND_NOINT=1 and a bc.PiCode4 code"
+        assert not p["nn_b"], "equiv: the retry gate's features assume the interleaved PiCode list"
+        qs = qs[qs < 2]
+        nph = len(qs)
     qph = qs if p["q_fix"] else np.arange(nph)                # phase of a cell's best index qb (pi/4 units): q_fix the
                                                               # scored offset qs[qb]; False (baseline) qb itself
     fs_ = bf.fast_sc(code.A)
@@ -312,6 +397,8 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
 
     def _lst(Lc):                                             # (measurement) every list path of the last decode (code's
         pm_ = code._pm.copy()                                 # traceback state): info bits (n, Ls, K), PMs, channel LLRs
+        if p["equiv"]:                                        # PiCode4: each path un-rotated by its accepted rotation
+            return code.last_info.copy(), pm_, Lc
         n_, Ls_ = pm_.shape
         info = np.empty((n_, Ls_, code.K), np.uint8)
         path = np.broadcast_to(np.arange(Ls_), (n_, Ls_))
@@ -487,6 +574,17 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
         lg = np.log2(2 * L)                                   # bitonic sort of 2L metrics: lg (lg + 1) / 2 stages
         np.add.at(dcritp, fr, vp.MAC["decode"] / 8 * np.ceil(L / Kc) + vp.MAC["llr"] * H / KP
                   + code.K * lg * (lg + 1) / 2)
+        if p["equiv"]:                                        # PiCode4: the un-rotation check of every list path, each
+            rm = code.rot_macs()                              # path on its own core
+            np.add.at(macs, fr, L * rm)
+            np.add.at(dmac, fr, L * rm)
+            np.add.at(dcrit, fr, rm * np.ceil(L / Kc))
+            np.add.at(dcritp, fr, rm * np.ceil(L / Kc))
+            st["macs_rot"] = st.get("macs_rot", 0.0) + float(L * rm * len(fr))
+
+    def _rotst(q_):                                           # (measurement) equiv: CRC passes per accepted rotation
+        for v_, n_ in zip(*np.unique(q_, return_counts=True)):
+            st[f"rot_{v_}"] = st.get(f"rot_{v_}", 0) + int(n_)
 
     def _truth(fr, d, ok_crc, ok):                            # (measurement only) CRC passes with wrong data: the
         if p["truth"] is None:                                # first CRC pass of a packet is what a CRC-only receiver
@@ -516,6 +614,8 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
                 rc = r[fr]
             Lm_ = bc.llrs(rc, fh, th, sigma2)
             d, ok, _ = code.decode(Lm_, return_info=True)
+            if p["equiv"]:                                    # (measurement) PiCode4's accepted rotations (CRC passes)
+                _rotst(code.last_rot[ok])
             if dd:
                 lm_ = _lst(Lm_)
             st["decodes"] += len(fr)
@@ -525,8 +625,20 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
         if dd:                                                # (measurement) the main decodes before the retry edits
             dm_, okm_, fhm_ = d.copy(), ok.copy(), fh.copy()  # d / ok / fh in place
         rtry = np.zeros(len(fr), bool)                        # (measurement) CRC failed -> the CA retry ran
-        if p["ca_retry"] and not ok.all():                    # code-aided CFO / phase from the SC hard decisions
-            j = np.where(~ok)[0]
+        j = np.where(~ok)[0] if p["ca_retry"] else np.zeros(0, int)
+        if gate is not None and len(j):                       # retry gate: features of the failed main decodes
+            lg_ = lm_ if lm_ is not None else (ctx["jl"] if pre is not None else _lst(Lm_))
+            mu_, sd_, w_, b_, t_ = gate
+            Xg = np.clip(np.nan_to_num((gate_feats(code, lg_[0][j], lg_[1][j], lg_[2][j]) - mu_) / sd_, nan=0.0),
+                         -20, 20)
+            sg = Xg @ w_ + b_
+            # cost: the list paths' CRCs, the LLR sums, the best path's re-encoding (N/2 log2 N XORs), the score;
+            # the parallel serial steps (crit_par: / KP)
+            np.add.at(macs, fr[j], GATE_MACS(code, lg_[1].shape[1]))
+            st["gate_calls"] = st.get("gate_calls", 0) + len(j)
+            st["gate_skip"] = st.get("gate_skip", 0) + int((sg < t_).sum())
+            j = j[sg >= t_]
+        if len(j):                                            # code-aided CFO / phase from the SC hard decisions
             rtry[j] = True
             c1_ = _cpar(fr[j]) if dd else None                # (measurement) cost so far, before the retry
             u_, n_ = np.unique(fr[j], return_counts=True)     # (measurement) d4a: the retries' SC passes in
@@ -553,7 +665,7 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
             thr = bf.rho_min(s_re)
             if tab:
                 thr = max(thr, float(np.interp(s_re, *zip(*tab))) * np.sqrt(s_rl / (1 + s_rl)))
-            ok_re[j] = rho > thr
+            ok_re[j] = rho > (thr * p["spec_rho"] if p["spec_rho"] and ctx["tag"] == "spec" else thr)
             if p["truth"] is not None and ctx["tag"] in ("spec", "win"):   # (measurement) rho / threshold of the
                 wr_ = (d[j] != p["truth"][fr[j]]).any(1)                     # right / wrong CRC passes
                 b_ = np.clip(np.floor(rho / thr / (3.0 / RHO_B)), 0, RHO_B - 1).astype(int)
@@ -607,7 +719,9 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
             rc = r[fr]
         Lj_ = bc.llrs(rc, fh, th, sigma2)
         d, ok, _, h = code.decode_joint(Lj_, Lj)
-        if dd:                                                # (measurement) the shared list, the chosen hypothesis'
+        if p["equiv"] and ok:                                 # (measurement) PiCode4's accepted rotation
+            _rotst(code.last_rot)
+        if dd or gate is not None:                            # the shared list, the chosen hypothesis' LLRs (decode
             ctx["jl"] = _lst(Lj_[h:h + 1])                    # LLRs (decode dump)
         st["decodes"] += Lj / 8                               # in CA-SCL-8 decode equivalents
         st["joint_decodes"] = st.get("joint_decodes", 0) + 1
@@ -836,7 +950,13 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
             rows = np.where(live[:, q])[0] if q else np.arange(B)
             if not len(rows):
                 continue
-            if q == 0 or live[:, q].any():
+            if (q == 0 or live[:, q].any()) and p["equiv"]:   # equiv: one branch (both have the same metric)
+                thq = bc.phase4(r[rows], fp[rows, q])
+                Ml[rows, q] = fsl.metric_left(bc.llrs(r[rows], fp[rows, q], thq, sigma2))
+                macs[rows] += vp.MAC["phase4"] + bf._left_macs(code.A) + vp.MAC["cmul"] * bc.N_SYM
+                seqm[rows] += bf._left_macs(code.A)
+                seqc[rows] += bf._left_macs(code.A)
+            elif q == 0 or live[:, q].any():
                 thq = bc.phase4(r[rows], fp[rows, q])
                 L = np.concatenate([bc.llrs(r[rows], fp[rows, q], thq, sigma2),
                                     bc.llrs(r[rows], fp[rows, q], thq + np.pi / 2, sigma2)])
@@ -869,6 +989,8 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
             rel = ((np.angle(zz) - th0) / (np.pi / 2)) % 2
             br = (np.abs(rel - 1) < np.minimum(rel, 2 - rel)).astype(int)
             macs += vp.MAC["cmul"] * 3 * len(pos)
+        elif p["equiv"]:                                      # equiv: both branches have the same metric and PiCode4
+            br = np.zeros(B, int)                             # decodes either: th0 directly, no metric pass
         else:                                                 # by the full metric of both branches
             M2 = score(np.tile(fr, 2), np.tile(f0, 2), np.concatenate([th0, th0 + np.pi / 2])).reshape(2, B)
             br = M2.argmin(0)
@@ -895,7 +1017,7 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
     # 1 fast path, 2 the grid search's own decodes, 3 the final candidates, 4 rescue (final_post), 5 rescue (fine_last)
     # 2. search over the whole small grid, cell by cell for each remaining packet
     roffs = np.arange(-(k // 2), k // 2 + 1)
-    sub = (-np.pi / 12, 0.0, np.pi / 12) if (nph == 4 or p["sub3"]) else (0.0,)   # phase sub-offsets of a candidate
+    sub = (-np.pi / 12, 0.0, np.pi / 12) if (nph0 == 4 or p["sub3"]) else (0.0,)   # phase sub-offsets of a candidate
     H_s = 1 if p["s3_dd"] else len(roffs) * len(sub)          # (measurement) d4b: hypotheses scored per candidate
     T_s = min(p["T"], 2) if p["s3_dd"] else p["T"]            # and decodes per candidate (refine_dd: <= 2)
     b4 = np.round(((4 * g) % 1.0) * nf).astype(int) % nf
@@ -1074,7 +1196,8 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
                     sc_ = np.where(qal, Pq[:, :, j].T, np.inf)
                     if new_acct:                              # (accounting) every cell's phases up to here
                         qcut.setdefault(sh[j], qal.sum(1))
-                    qal &= np.argsort(np.argsort(sc_, 1), 1) < pk_[1]
+                    nk_ = max(1, pk_[1] // 2) if p["equiv"] else pk_[1]   # equiv: halved (pi/2 twins = one phase)
+                    qal &= np.argsort(np.argsort(sc_, 1), 1) < nk_
                     P_ = np.where(qal.T[:, :, None], Pq, np.inf)
                     pm, qb = P_.min(0) + adj, P_.argmin(0)
                     z = np.where(alive, _rz(np.where(alive, pm[:, j], np.nan)), -np.inf)
@@ -1089,7 +1212,9 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
                 bm = p["beam"]
                 if bm is not None and (f_ >= bm[0] or (p["keep_early"] and f_ == p["keep_early"][0])):
                     H = alive[:, None] & qal                  # beam: the best hypotheses by path metric (+ the
-                    if f_ >= bm[0]:                            # cell's other score terms) continue
+                    if f_ >= bm[0] and p["equiv"]:             # cell's other score terms) continue; equiv: half
+                        K = max(2, (bm[1] // 2) >> int(np.sum((frac >= bm[0]) & (frac < f_))))   # as many (no
+                    elif f_ >= bm[0]:                          # pi/2 twins)
                         K = max(4, bm[1] >> int(np.sum((frac >= bm[0]) & (frac < f_))))
                     else:
                         K = int(np.ceil(p["keep_early"][1] * H.sum()))
@@ -1184,7 +1309,8 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
                         for n_ in np.where(new)[0]:           # centre) is common to adjacent CFO hypotheses: a
                             c = par[n_]                       # joining cell decodes only its join_nph phases
                             tp = th[c] + qph[qb[c, j]] * np.pi / 4  # nearest to its parent's best one (mod pi)
-                            d = np.abs((tp - (th[n_] + qs * np.pi / 4) + np.pi / 2) % np.pi - np.pi / 2)
+                            md_ = np.pi / 2 if p["equiv"] else np.pi   # (equiv: mod pi/2)
+                            d = np.abs((tp - (th[n_] + qs * np.pi / 4) + md_ / 2) % md_ - md_ / 2)
                             qal[n_] = False
                             qal[n_, np.argsort(d)[:p["join_nph"]]] = True
                             for s_ in qcut:                   # (accounting) its phases chosen before it is paid:
@@ -1270,11 +1396,12 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
         # edges x pi/16 phases with more decodes
         if not passed[i] and p["final_post"]:
             cs = [c for c in np.argsort(-zf) if np.isfinite(zf[c]) and c not in tried][:p["final_post"]]
+            bs_ = (0,) if p["equiv"] else (0, 1)              # equiv: one pi/2 branch (PiCode4 decodes both)
             if dd:                                            # (measurement) decode dump: grid state (q + 4 b)
                 pmeta = [_gm(c, qb[c, -1] + 4 * b, len(frac) - 1, zf, pm, alive, paid,
-                             len((tried | spec_tried) - {c})) for c in cs for b in (0, 1)]
+                             len((tried | spec_tried) - {c})) for c in cs for b in bs_]
             tried.update(cs)
-            cand = [(i, g[c], th[c] + qph[qb[c, -1]] * np.pi / 4 + b * np.pi / 2) for c in cs for b in (0, 1)]
+            cand = [(i, g[c], th[c] + qph[qb[c, -1]] * np.pi / 4 + b * np.pi / 2) for c in cs for b in bs_]
             ctx["tag"] = "post"
             for a in range(0, len(cand), 8):
                 if dd:
@@ -1300,6 +1427,19 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
             if len(cs):
                 _d4b(i, l4, len(cs), p["T_fine"], len(fine) * len(subf), solo)
             stg[i] = 5 if passed[i] else 0
+    if p["cap_core"]:                                         # hard MAC cap per core (see DEFAULT)
+        cp_ = crit + dcritp + seqc + (macs - pmac - dmac - seqm) / KP
+        over = cp_ > p["cap_core"]
+        st["cap_hit"] = st.get("cap_hit", 0) + int(over.sum())
+        st["cap_hit_passed"] = st.get("cap_hit_passed", 0) + int((over & passed).sum())
+        if p["truth"] is not None:
+            st["cap_hit_right"] = st.get("cap_hit_right", 0) + int((over & passed & (out == p["truth"]).all(1)).sum())
+        sc_ = np.where(over, p["cap_core"] / np.maximum(cp_, 1.0), 1.0)
+        for v_ in (macs, pmac, crit, crit_g, crit_gh, dmac, dcrit, dcritp, seqc, seqm, d4a, d4b, m_fast):
+            v_ *= sc_
+        passed[over] = False                                  # no packet: never equal to the data (2 is not a bit)
+        out[over] = 2
+        f_fin[over] = np.nan
     st["macs"] = st.get("macs", 0.0) + float(macs.sum())
     if p["truth"] is not None:                                # (measurement) right decodes per accepting stage
         okr = passed & (out == p["truth"]).all(1)

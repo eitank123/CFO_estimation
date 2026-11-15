@@ -669,6 +669,8 @@ def simulate(task):
     rng = np.random.default_rng(seed)
     code = PolarCode(bc.N_BITS, bc.CODES[rate], 16, 8)
     pi_code = bc.PiCode(bc.N_BITS, bc.CODES[rate], 16, 8)      # the blind receivers (phase known only mod pi)
+    pi_code4 = (bc.PiCode4(bc.N_BITS, bc.CODES[rate], 16, 8)   # small_rx equiv (BLIND_NOINT=1): any pi/2 branch
+                if any(RX[k].get("sps", {}).get("equiv") for k in rx_names) else None)
     sigma2 = 1.0 / (2.0 * 10 ** (snr / 10))
     names = [GENIE] + list(rx_names)
     st = {k: dict(frames=0, frame_err=0, bit_err=0, undetected=0, decodes=0, metric_evals=0, se_coarse=0.0,
@@ -719,8 +721,9 @@ def simulate(task):
                       "sps3": blind_fast.sps3_receive, "small": small_rx.small_receive}[RX[k]["kind"]]
                 sym = (((1 - 2.0 * cw[:, 0::2]) + 1j * (1 - 2.0 * cw[:, 1::2])) / np.sqrt(2)
                        if spec["sps"].get("pilots") else None)
-                dec, ok, ff, f_top = (fn(r, rx, snr, pi_code, sigma2, s, spec, sym) if sym is not None
-                                      else fn(r, rx, snr, pi_code, sigma2, s, spec))
+                pc_ = pi_code4 if spec["sps"].get("equiv") else pi_code   # equiv: the rotation-aware PiCode4
+                dec, ok, ff, f_top = (fn(r, rx, snr, pc_, sigma2, s, spec, sym) if sym is not None
+                                      else fn(r, rx, snr, pc_, sigma2, s, spec))
                 s["se_coarse"] += float(np.sum((f_top - f) ** 2))
                 fc = f_top
             else:

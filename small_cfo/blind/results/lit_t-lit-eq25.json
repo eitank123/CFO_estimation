@@ -1,0 +1,28 @@
+{
+ "check": "equiv",
+ "rate": "2/5",
+ "snr": 1.0,
+ "n": 2000,
+ "metric_diff_no_interleaver": {
+  "max_abs": 0.0001220703125,
+  "mean_abs": 8.138020833333333e-08
+ },
+ "metric_diff_interleaver": {
+  "max_abs": 575.6158447265625,
+  "mean_abs": 295.00152945963544,
+  "median_abs": 416.969970703125
+ },
+ "ok_standard_branch0": 2000,
+ "ok_rotation_aware": [
+  2000,
+  2000,
+  2000,
+  2000
+ ],
+ "wrong_rotation_aware": [
+  0,
+  0,
+  0,
+  0
+ ]
+}

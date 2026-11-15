@@ -80,6 +80,13 @@ Spreading the pilots lowers the CRB by up to about 8× (dist8x16), because the C
    3. CA-SCL-8 (N = 2048, CRC-16);
    4. the **same acceptance as the blind receiver**: re-encoding check ρ > max(0.12, ½√(s/(1+s)), RHO_N(rate, SNR)·√(s/(1+s))).
 4. Run the CRC search "first pass": f̂ + k·7.5·10⁻⁵, k = ±1, ±2, …, |k| ≤ ⌈4·1.3·√CRB_contig / step⌉, stopping at the first accepted pass.
+5. **Fair search order ("PM+all", sources `ML direct PM+all`, `M&M PM+all`; 2026-11-13).** Decode at f̂ first; for a packet
+   it does not accept, score the same neighbours by the list-1 Fast-SSC path metric (32 at a time, charged as
+   `metric_rounds`) and decode them in metric order, best first. Same hypotheses as step 4, only the order changes. On
+   480k packets per SNR at all four rates (R = 1/10, 0.15, 2/5, 1/2): the waterfall BLER is unchanged, the
+   false-accept floor of the |k| order falls 2–5× (to 2–10·10⁻⁶), undetected errors 3–5× fewer, MACs per core +8 … +36 %,
+   total −8 … +15 %. Decoding only the 3 best (" PM", " PM+3") loses 2–4.7× in the waterfall (dropped). Details:
+   `BLIND_IMPLEMENTATION/testing/results/expected_fair.md`; jobs `fair*`, `fairb*` (`results/bler_fairb*.json`).
 
 **Genie CFO** uses the true CFO with the same estimated gain and phase.
 
@@ -214,6 +221,8 @@ Blind costs more in total. Its latency on 32 cores is comparable to a pilot rece
 ## 8. Limitations
 
 - AWGN only, with a static CFO over the packet and ideal timing and SNR knowledge.
+- The 128 pilots are not charged in BLER (the same N = 2048 code; see the next item). Phase noise was tested only on the
+  blind receiver (`BLIND_IMPLEMENTATION/testing/results/expected_cap_pn_comb.md`), not on these receivers.
 - The pilot receivers use the same N = 2048 code as blind. A real pilot system with 896 data symbols would need a higher code rate (or a punctured code) for the same data bits, which this simulation does not charge.
 - The MAC counts are analytic for the classical estimators and per layer for the NNs. The BLER back-end's decodes are not part of the estimator MACs.
 

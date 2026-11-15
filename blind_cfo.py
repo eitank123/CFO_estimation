@@ -51,6 +51,8 @@ else:
 N_SYM, N_BITS = 1024, 2048
 MAX_CFO = STUDIES[STUDY]["max_cfo"] if STUDY else cfg.MAX_CFO
 SPS, SPAN = cfg.SPS, cfg.FILTER_SPAN
+PHASE_NOISE = float(os.environ.get("BLIND_PN", "0"))   # (impairment) Wiener phase noise, linewidth x symbol time
+                                                         # (0 = off: no extra random draws, results unchanged)
 DELAY_SYM = SPAN / 2
 CENTRE = (N_SYM - 1) / 2
 NC = np.arange(N_SYM) - CENTRE                             # centred symbol index
@@ -63,6 +65,12 @@ CODES = {"1/10": 205, "0.15": 307, "1/4": 512, "1/3": 683, "2/5": 819, "1/2": 10
 # RHO_N stays per code): R = 0.15 runs the R = 1/10 blind receiver (user, 2026-11-10)
 PROFILE = {"0.15": "1/10"}
 INTERLEAVER = np.random.default_rng(12345).permutation(N_BITS)  # the same fixed interleaver as polar_ber_experiment
+# BLIND_NOINT=1: no bit interleaver (identity), the whole chain (frames, llrs, re-encoding, blind_fast) switches with it;
+# symbol k then carries (c_2k, c_2k+1) of the natural-order codeword, so a pi/2 rotation is a polar automorphism plus a
+# codeword (PiCode4, small_rx equiv). Read at import: the blind_ber workers inherit the environment
+NOINT = os.environ.get("BLIND_NOINT", "") == "1"
+if NOINT:
+    INTERLEAVER = np.arange(N_BITS)
 
 
 def path(kind, name):
@@ -91,6 +99,11 @@ def transmit_full(sym, f, phase, snr_db, rng, beta=cfg.BETA, noise_only=False):
     m = np.arange(tx.shape[1])
     rx = tx * np.exp(1j * (2 * np.pi * np.asarray(f, float).reshape(-1, 1) * m / SPS
                            + np.asarray(phase, float).reshape(-1, 1)))
+    if PHASE_NOISE > 0:                                       # Wiener oscillator phase noise, linewidth x symbol time
+        inc = rng.standard_normal(rx.shape) * np.sqrt(2 * np.pi * PHASE_NOISE / SPS)   # = PHASE_NOISE; per sample
+        phi = np.cumsum(inc, axis=1)
+        phi -= phi[:, [phi.shape[1] // 2]]                    # zero at the packet centre (the true phase is there)
+        rx = rx * np.exp(1j * phi)
     es = np.sum(np.abs(tx) ** 2, axis=1, keepdims=True) / K
     sigma = np.sqrt(es / (10 ** (np.asarray(snr_db, float).reshape(-1, 1) / 10)) / 2)
     if noise_only:
@@ -349,6 +362,116 @@ class PiCode(PolarCode):
             ok = np.all(calc == crc, axis=1) | np.all(calc == crc ^ flip, axis=1)
             pm = self._pm[0]
             best = np.where(ok, pm, np.inf).argmin() if ok.any() else pm.argmin()
+            return data[best], bool(ok.any()), pm[best], int(path[0, best])   # path: the starting path = hypothesis
+        finally:
+            self.list_size = L0
+
+
+def unrot(cw, q):
+    """Undo q pi/2 rotations of Gray QPSK on natural-order codewords cw (..., N): one rotation maps the pair (b0, b1)
+    of a symbol to (not b1, b0), its inverse (b0', b1') to (b1', not b0')."""
+    x = cw.copy()
+    for _ in range(q % 4):
+        b0, b1 = x[..., 0::2].copy(), x[..., 1::2].copy()
+        x[..., 0::2], x[..., 1::2] = b1, b0 ^ 1
+    return x
+
+
+class PiCode4(PiCode):
+    """CA-SCL that accepts the packet at any pi/2 branch (Geiselhart et al. 2023; needs BLIND_NOINT=1). Without the
+    interleaver a pi/2 rotation of Gray QPSK is a polar automorphism (index translation) plus the codeword "ones at
+    even positions", so the list at a wrong branch holds the rotated codeword: each list path's codeword cw' = u' G is
+    un-rotated q = 0..3 times, u = unrot(cw', q) G, and the path is accepted if u's frozen bits are 0 and its CRC
+    passes (or fails only in the last bit: PiCode's pi complement; q = 2, 3 repeat q = 0, 1 through it). Returns the
+    UN-ROTATED data; last_rot (B,) the accepted rotation of the chosen path (-1: none), last_info (B, Ls, K) every path's
+    info bits un-rotated by its first accepted q (as decoded if none). Phase then needed only mod pi/2."""
+
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self._check()
+
+    @staticmethod
+    def _check():
+        assert NOINT and np.array_equal(INTERLEAVER, np.arange(N_BITS)), "PiCode4 needs BLIND_NOINT=1 (no interleaver)"
+
+    def rot_macs(self):
+        """Cost of the un-rotation check per list path, done on the decoded u directly: the pi/2 rotation is the
+        translation of index bit 0 (u_{2m+1} ^= u_{2m}, one XOR per information bit at an even index) plus a fixed
+        codeword (2 bits), then its CRC (K); q = 1 only (q = 2, 3 are the pi complement of q = 0, 1, already tested
+        by PiCode's last-bit rule). The simulation un-rotates through the codeword (same result)."""
+        ip = np.zeros(self.N, bool)
+        ip[self.info_pos] = True
+        return int(ip[0::2].sum()) + 2 + self.K
+
+    def _accept(self, info, pm):
+        """info (B, Ls, K) the list paths' bits -> data (B, Ls, A) un-rotated, ok (B, Ls), rotation (B, Ls), info
+        un-rotated (B, Ls, K)."""
+        B, Ls = pm.shape
+        u = np.zeros((B, Ls, self.N), np.uint8)
+        u[..., self.info_pos] = info
+        cwp = polar_transform(u)
+        flip = np.zeros(self.C, np.uint8)
+        flip[-1] = 1
+        ok = np.zeros((B, Ls), bool)
+        rot = np.full((B, Ls), -1)
+        uinfo = info.copy()
+        for q in range(4):
+            uu = polar_transform(unrot(cwp, q)) if q else u
+            iq = uu[..., self.info_pos]
+            d, c = iq[..., :self.A], iq[..., self.A:]
+            calc = self.crc(d.reshape(-1, self.A)).reshape(B, Ls, self.C)
+            okq = ~uu[..., self.frozen].any(-1) & (np.all(calc == c, axis=-1) | np.all(calc == c ^ flip, axis=-1)) & ~ok
+            uinfo[okq], rot[okq] = iq[okq], q
+            ok |= okq
+        return uinfo[..., :self.A], ok, rot, uinfo
+
+    def decode(self, llr, return_info=False):
+        self._check()
+        B, Ls = llr.shape[0], self.list_size
+        self._pm = np.full((B, Ls), np.inf, dtype=np.float32)
+        self._pm[:, 0] = 0.0
+        self._bits, self._parents = [], []
+        alpha = np.repeat(llr[:, None, :].astype(np.float32), Ls, axis=1)
+        self._rec(alpha, 0, self.N)
+        info = np.empty((B, Ls, self.K), dtype=np.uint8)
+        path = np.broadcast_to(np.arange(Ls), (B, Ls))
+        rows = np.arange(B)[:, None]
+        for k in range(self.K - 1, -1, -1):
+            info[:, :, k] = self._bits[k][rows, path]
+            path = self._parents[k][rows, path]
+        data, ok, rot, self.last_info = self._accept(info, self._pm)
+        self.last_list = (data, ok, self._pm)               # (measurement, testing/) every surviving list path
+        score = np.where(ok, self._pm, np.inf)
+        best = np.where(ok.any(1), score.argmin(1), self._pm.argmin(1))
+        self.last_rot = np.where(ok.any(1), rot[np.arange(B), best], -1)
+        if return_info:
+            return data[np.arange(B), best], ok.any(1), self._pm[np.arange(B), best]
+        return data[np.arange(B), best]
+
+    def decode_joint(self, llr_h, Ls):
+        """PiCode.decode_joint with the rotation-aware acceptance (one packet's H hypotheses in one list of Ls paths)."""
+        self._check()
+        H = len(llr_h)
+        assert H <= Ls
+        L0, self.list_size = self.list_size, Ls
+        try:
+            self._pm = np.full((1, Ls), np.inf, dtype=np.float32)
+            self._pm[0, :H] = 0.0
+            self._bits, self._parents = [], []
+            alpha = np.repeat(llr_h[:1, None, :].astype(np.float32), Ls, axis=1)
+            alpha[0, :H] = llr_h
+            self._rec(alpha, 0, self.N)
+            info = np.empty((1, Ls, self.K), dtype=np.uint8)
+            path = np.arange(Ls)[None]
+            for k in range(self.K - 1, -1, -1):
+                info[:, :, k] = self._bits[k][0, path]
+                path = self._parents[k][0, path]
+            data, ok, rot, self.last_info = self._accept(info, self._pm)
+            data, ok, rot = data[0], ok[0], rot[0]
+            self.last_list = (data[None], ok[None], self._pm)
+            pm = self._pm[0]
+            best = np.where(ok, pm, np.inf).argmin() if ok.any() else pm.argmin()
+            self.last_rot = np.array([rot[best] if ok.any() else -1])
             return data[best], bool(ok.any()), pm[best], int(path[0, best])   # path: the starting path = hypothesis
         finally:
             self.list_size = L0

@@ -1,0 +1,1177 @@
+{
+ "1/10 | 0.5 M | presentation | -5": {
+  "packets": 64000,
+  "bler_no_cap": 0.000125,
+  "bler_cap": 0.2793125
+ },
+ "1/10 | 0.5 M | presentation | -4.5": {
+  "packets": 64000,
+  "bler_no_cap": 9.375e-05,
+  "bler_cap": 0.143015625
+ },
+ "1/10 | 0.5 M | presentation | -4": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.065078125
+ },
+ "1/10 | 0.5 M | presentation | -3": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.01978125
+ },
+ "1/10 | 0.5 M | presentation | -2": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.01553125
+ },
+ "1/10 | 0.5 M | presentation | -1": {
+  "packets": 128000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.007328125
+ },
+ "1/10 | 0.5 M | presentation | 0": {
+  "packets": 128000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.003515625
+ },
+ "1/10 | 0.5 M | testing | -5": {
+  "packets": 400000,
+  "bler_no_cap": 0.00022,
+  "bler_cap": 0.0181275
+ },
+ "1/10 | 0.5 M | testing | -4.5": {
+  "packets": 400000,
+  "bler_no_cap": 2.5e-05,
+  "bler_cap": 0.01
+ },
+ "1/10 | 0.5 M | testing | -4": {
+  "packets": 400000,
+  "bler_no_cap": 2.5e-06,
+  "bler_cap": 0.007765
+ },
+ "1/10 | 0.5 M | testing | -3": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.00649375
+ },
+ "1/10 | 0.5 M | testing | -2": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0059375
+ },
+ "1/10 | 0.5 M | testing | -1": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0009875
+ },
+ "1/10 | 0.5 M | testing | 0": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.00045
+ },
+ "1/10 | 1 M | presentation | -5": {
+  "packets": 64000,
+  "bler_no_cap": 0.000125,
+  "bler_cap": 0.000828125
+ },
+ "1/10 | 1 M | presentation | -4.5": {
+  "packets": 64000,
+  "bler_no_cap": 9.375e-05,
+  "bler_cap": 0.000265625
+ },
+ "1/10 | 1 M | presentation | -4": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 3.125e-05
+ },
+ "1/10 | 1 M | presentation | -3": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 1.5625e-05
+ },
+ "1/10 | 1 M | presentation | -2": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 1 M | presentation | -1": {
+  "packets": 128000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 1.5625e-05
+ },
+ "1/10 | 1 M | presentation | 0": {
+  "packets": 128000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 1 M | testing | -5": {
+  "packets": 400000,
+  "bler_no_cap": 0.00022,
+  "bler_cap": 0.0010325
+ },
+ "1/10 | 1 M | testing | -4.5": {
+  "packets": 400000,
+  "bler_no_cap": 2.5e-05,
+  "bler_cap": 0.0001025
+ },
+ "1/10 | 1 M | testing | -4": {
+  "packets": 400000,
+  "bler_no_cap": 2.5e-06,
+  "bler_cap": 1.5e-05
+ },
+ "1/10 | 1 M | testing | -3": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 6.25e-06
+ },
+ "1/10 | 1 M | testing | -2": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 6.25e-06
+ },
+ "1/10 | 1 M | testing | -1": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 1.25e-05
+ },
+ "1/10 | 1 M | testing | 0": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 2 M | presentation | -5": {
+  "packets": 64000,
+  "bler_no_cap": 0.000125,
+  "bler_cap": 0.000625
+ },
+ "1/10 | 2 M | presentation | -4.5": {
+  "packets": 64000,
+  "bler_no_cap": 9.375e-05,
+  "bler_cap": 0.000125
+ },
+ "1/10 | 2 M | presentation | -4": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 2 M | presentation | -3": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 2 M | presentation | -2": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 2 M | presentation | -1": {
+  "packets": 128000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 2 M | presentation | 0": {
+  "packets": 128000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 2 M | testing | -5": {
+  "packets": 400000,
+  "bler_no_cap": 0.00022,
+  "bler_cap": 0.0007575
+ },
+ "1/10 | 2 M | testing | -4.5": {
+  "packets": 400000,
+  "bler_no_cap": 2.5e-05,
+  "bler_cap": 6.5e-05
+ },
+ "1/10 | 2 M | testing | -4": {
+  "packets": 400000,
+  "bler_no_cap": 2.5e-06,
+  "bler_cap": 2.5e-06
+ },
+ "1/10 | 2 M | testing | -3": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 2 M | testing | -2": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 2 M | testing | -1": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 2 M | testing | 0": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 5 M | presentation | -5": {
+  "packets": 64000,
+  "bler_no_cap": 0.000125,
+  "bler_cap": 0.000359375
+ },
+ "1/10 | 5 M | presentation | -4.5": {
+  "packets": 64000,
+  "bler_no_cap": 9.375e-05,
+  "bler_cap": 0.000125
+ },
+ "1/10 | 5 M | presentation | -4": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 5 M | presentation | -3": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 5 M | presentation | -2": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 5 M | presentation | -1": {
+  "packets": 128000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 5 M | presentation | 0": {
+  "packets": 128000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 5 M | testing | -5": {
+  "packets": 400000,
+  "bler_no_cap": 0.00022,
+  "bler_cap": 0.000495
+ },
+ "1/10 | 5 M | testing | -4.5": {
+  "packets": 400000,
+  "bler_no_cap": 2.5e-05,
+  "bler_cap": 5.5e-05
+ },
+ "1/10 | 5 M | testing | -4": {
+  "packets": 400000,
+  "bler_no_cap": 2.5e-06,
+  "bler_cap": 2.5e-06
+ },
+ "1/10 | 5 M | testing | -3": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 5 M | testing | -2": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 5 M | testing | -1": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 5 M | testing | 0": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 10 M | presentation | -5": {
+  "packets": 64000,
+  "bler_no_cap": 0.000125,
+  "bler_cap": 0.000265625
+ },
+ "1/10 | 10 M | presentation | -4.5": {
+  "packets": 64000,
+  "bler_no_cap": 9.375e-05,
+  "bler_cap": 0.000109375
+ },
+ "1/10 | 10 M | presentation | -4": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 10 M | presentation | -3": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 10 M | presentation | -2": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 10 M | presentation | -1": {
+  "packets": 128000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 10 M | presentation | 0": {
+  "packets": 128000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 10 M | testing | -5": {
+  "packets": 400000,
+  "bler_no_cap": 0.00022,
+  "bler_cap": 0.0003875
+ },
+ "1/10 | 10 M | testing | -4.5": {
+  "packets": 400000,
+  "bler_no_cap": 2.5e-05,
+  "bler_cap": 4.5e-05
+ },
+ "1/10 | 10 M | testing | -4": {
+  "packets": 400000,
+  "bler_no_cap": 2.5e-06,
+  "bler_cap": 2.5e-06
+ },
+ "1/10 | 10 M | testing | -3": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 10 M | testing | -2": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 10 M | testing | -1": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/10 | 10 M | testing | 0": {
+  "packets": 160000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 0.5 M | presentation | -4": {
+  "packets": 64000,
+  "bler_no_cap": 0.004265625,
+  "bler_cap": 0.389953125
+ },
+ "0.15 | 0.5 M | presentation | -3.5": {
+  "packets": 64000,
+  "bler_no_cap": 0.000640625,
+  "bler_cap": 0.214328125
+ },
+ "0.15 | 0.5 M | presentation | -3": {
+  "packets": 64000,
+  "bler_no_cap": 0.000109375,
+  "bler_cap": 0.099359375
+ },
+ "0.15 | 0.5 M | presentation | -2.5": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.043296875
+ },
+ "0.15 | 0.5 M | presentation | -2": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.021734375
+ },
+ "0.15 | 0.5 M | presentation | -1": {
+  "packets": 192000,
+  "bler_no_cap": 0.00015104166666666667,
+  "bler_cap": 0.01428125
+ },
+ "0.15 | 0.5 M | presentation | 0": {
+  "packets": 128000,
+  "bler_no_cap": 1.5625e-05,
+  "bler_cap": 0.007296875
+ },
+ "0.15 | 0.5 M | presentation | 1": {
+  "packets": 128000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0015546875
+ },
+ "0.15 | 0.5 M | testing | -4": {
+  "packets": 64000,
+  "bler_no_cap": 0.004296875,
+  "bler_cap": 0.232875
+ },
+ "0.15 | 0.5 M | testing | -3.5": {
+  "packets": 128000,
+  "bler_no_cap": 0.000625,
+  "bler_cap": 0.1126640625
+ },
+ "0.15 | 0.5 M | testing | -3": {
+  "packets": 400000,
+  "bler_no_cap": 0.000115,
+  "bler_cap": 0.04954
+ },
+ "0.15 | 0.5 M | testing | -2.5": {
+  "packets": 400000,
+  "bler_no_cap": 1e-05,
+  "bler_cap": 0.0198625
+ },
+ "0.15 | 0.5 M | testing | -2": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0099075
+ },
+ "0.15 | 0.5 M | testing | -1": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.00659
+ },
+ "0.15 | 0.5 M | testing | 0": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0031475
+ },
+ "0.15 | 0.5 M | testing | 1": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.001734375
+ },
+ "0.15 | 1 M | presentation | -4": {
+  "packets": 64000,
+  "bler_no_cap": 0.004265625,
+  "bler_cap": 0.023546875
+ },
+ "0.15 | 1 M | presentation | -3.5": {
+  "packets": 64000,
+  "bler_no_cap": 0.000640625,
+  "bler_cap": 0.003109375
+ },
+ "0.15 | 1 M | presentation | -3": {
+  "packets": 64000,
+  "bler_no_cap": 0.000109375,
+  "bler_cap": 0.00028125
+ },
+ "0.15 | 1 M | presentation | -2.5": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 4.6875e-05
+ },
+ "0.15 | 1 M | presentation | -2": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 4.6875e-05
+ },
+ "0.15 | 1 M | presentation | -1": {
+  "packets": 192000,
+  "bler_no_cap": 0.00015104166666666667,
+  "bler_cap": 0.000890625
+ },
+ "0.15 | 1 M | presentation | 0": {
+  "packets": 128000,
+  "bler_no_cap": 1.5625e-05,
+  "bler_cap": 0.00015625
+ },
+ "0.15 | 1 M | presentation | 1": {
+  "packets": 128000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 7.8125e-06
+ },
+ "0.15 | 1 M | testing | -4": {
+  "packets": 64000,
+  "bler_no_cap": 0.004296875,
+  "bler_cap": 0.021796875
+ },
+ "0.15 | 1 M | testing | -3.5": {
+  "packets": 128000,
+  "bler_no_cap": 0.000625,
+  "bler_cap": 0.002703125
+ },
+ "0.15 | 1 M | testing | -3": {
+  "packets": 400000,
+  "bler_no_cap": 0.000115,
+  "bler_cap": 0.0002925
+ },
+ "0.15 | 1 M | testing | -2.5": {
+  "packets": 400000,
+  "bler_no_cap": 1e-05,
+  "bler_cap": 2.5e-05
+ },
+ "0.15 | 1 M | testing | -2": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 5e-06
+ },
+ "0.15 | 1 M | testing | -1": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 5e-06
+ },
+ "0.15 | 1 M | testing | 0": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 5e-06
+ },
+ "0.15 | 1 M | testing | 1": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 2 M | presentation | -4": {
+  "packets": 64000,
+  "bler_no_cap": 0.004265625,
+  "bler_cap": 0.01690625
+ },
+ "0.15 | 2 M | presentation | -3.5": {
+  "packets": 64000,
+  "bler_no_cap": 0.000640625,
+  "bler_cap": 0.002265625
+ },
+ "0.15 | 2 M | presentation | -3": {
+  "packets": 64000,
+  "bler_no_cap": 0.000109375,
+  "bler_cap": 0.00015625
+ },
+ "0.15 | 2 M | presentation | -2.5": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 2 M | presentation | -2": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 2 M | presentation | -1": {
+  "packets": 192000,
+  "bler_no_cap": 0.00015104166666666667,
+  "bler_cap": 0.0006875
+ },
+ "0.15 | 2 M | presentation | 0": {
+  "packets": 128000,
+  "bler_no_cap": 1.5625e-05,
+  "bler_cap": 0.0001171875
+ },
+ "0.15 | 2 M | presentation | 1": {
+  "packets": 128000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 2 M | testing | -4": {
+  "packets": 64000,
+  "bler_no_cap": 0.004296875,
+  "bler_cap": 0.016828125
+ },
+ "0.15 | 2 M | testing | -3.5": {
+  "packets": 128000,
+  "bler_no_cap": 0.000625,
+  "bler_cap": 0.0021796875
+ },
+ "0.15 | 2 M | testing | -3": {
+  "packets": 400000,
+  "bler_no_cap": 0.000115,
+  "bler_cap": 0.0002225
+ },
+ "0.15 | 2 M | testing | -2.5": {
+  "packets": 400000,
+  "bler_no_cap": 1e-05,
+  "bler_cap": 1.25e-05
+ },
+ "0.15 | 2 M | testing | -2": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 2 M | testing | -1": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 2 M | testing | 0": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 2 M | testing | 1": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 5 M | presentation | -4": {
+  "packets": 64000,
+  "bler_no_cap": 0.004265625,
+  "bler_cap": 0.011765625
+ },
+ "0.15 | 5 M | presentation | -3.5": {
+  "packets": 64000,
+  "bler_no_cap": 0.000640625,
+  "bler_cap": 0.00165625
+ },
+ "0.15 | 5 M | presentation | -3": {
+  "packets": 64000,
+  "bler_no_cap": 0.000109375,
+  "bler_cap": 0.000140625
+ },
+ "0.15 | 5 M | presentation | -2.5": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 5 M | presentation | -2": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 5 M | presentation | -1": {
+  "packets": 192000,
+  "bler_no_cap": 0.00015104166666666667,
+  "bler_cap": 0.000546875
+ },
+ "0.15 | 5 M | presentation | 0": {
+  "packets": 128000,
+  "bler_no_cap": 1.5625e-05,
+  "bler_cap": 8.59375e-05
+ },
+ "0.15 | 5 M | presentation | 1": {
+  "packets": 128000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 5 M | testing | -4": {
+  "packets": 64000,
+  "bler_no_cap": 0.004296875,
+  "bler_cap": 0.011796875
+ },
+ "0.15 | 5 M | testing | -3.5": {
+  "packets": 128000,
+  "bler_no_cap": 0.000625,
+  "bler_cap": 0.0016015625
+ },
+ "0.15 | 5 M | testing | -3": {
+  "packets": 400000,
+  "bler_no_cap": 0.000115,
+  "bler_cap": 0.0001775
+ },
+ "0.15 | 5 M | testing | -2.5": {
+  "packets": 400000,
+  "bler_no_cap": 1e-05,
+  "bler_cap": 1e-05
+ },
+ "0.15 | 5 M | testing | -2": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 5 M | testing | -1": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 5 M | testing | 0": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 5 M | testing | 1": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 10 M | presentation | -4": {
+  "packets": 64000,
+  "bler_no_cap": 0.004265625,
+  "bler_cap": 0.009421875
+ },
+ "0.15 | 10 M | presentation | -3.5": {
+  "packets": 64000,
+  "bler_no_cap": 0.000640625,
+  "bler_cap": 0.001234375
+ },
+ "0.15 | 10 M | presentation | -3": {
+  "packets": 64000,
+  "bler_no_cap": 0.000109375,
+  "bler_cap": 0.000125
+ },
+ "0.15 | 10 M | presentation | -2.5": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 10 M | presentation | -2": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 10 M | presentation | -1": {
+  "packets": 192000,
+  "bler_no_cap": 0.00015104166666666667,
+  "bler_cap": 0.0004427083333333333
+ },
+ "0.15 | 10 M | presentation | 0": {
+  "packets": 128000,
+  "bler_no_cap": 1.5625e-05,
+  "bler_cap": 5.46875e-05
+ },
+ "0.15 | 10 M | presentation | 1": {
+  "packets": 128000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 10 M | testing | -4": {
+  "packets": 64000,
+  "bler_no_cap": 0.004296875,
+  "bler_cap": 0.009453125
+ },
+ "0.15 | 10 M | testing | -3.5": {
+  "packets": 128000,
+  "bler_no_cap": 0.000625,
+  "bler_cap": 0.0012109375
+ },
+ "0.15 | 10 M | testing | -3": {
+  "packets": 400000,
+  "bler_no_cap": 0.000115,
+  "bler_cap": 0.00016
+ },
+ "0.15 | 10 M | testing | -2.5": {
+  "packets": 400000,
+  "bler_no_cap": 1e-05,
+  "bler_cap": 1e-05
+ },
+ "0.15 | 10 M | testing | -2": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 10 M | testing | -1": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 10 M | testing | 0": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "0.15 | 10 M | testing | 1": {
+  "packets": 64000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "2/5 | 0.5 M | presentation | 0.5": {
+  "packets": 360800,
+  "bler_no_cap": 0.0021646341463414636,
+  "bler_cap": 0.07039634146341463
+ },
+ "2/5 | 0.5 M | presentation | 1": {
+  "packets": 360800,
+  "bler_no_cap": 6.097560975609756e-05,
+  "bler_cap": 0.013528270509977828
+ },
+ "2/5 | 0.5 M | presentation | 1.5": {
+  "packets": 200800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.00201195219123506
+ },
+ "2/5 | 0.5 M | presentation | 2": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.00026785714285714287
+ },
+ "2/5 | 0.5 M | presentation | 2.5": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 7.936507936507937e-05
+ },
+ "2/5 | 0.5 M | presentation | 3": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 9.92063492063492e-06
+ },
+ "2/5 | 0.5 M | testing | 0.5": {
+  "packets": 384000,
+  "bler_no_cap": 0.015713541666666667,
+  "bler_cap": 0.1203125
+ },
+ "2/5 | 0.5 M | testing | 1": {
+  "packets": 192000,
+  "bler_no_cap": 4.6875e-05,
+  "bler_cap": 0.0126875
+ },
+ "2/5 | 0.5 M | testing | 1.5": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0018825
+ },
+ "2/5 | 1 M | presentation | 0.5": {
+  "packets": 360800,
+  "bler_no_cap": 0.0021646341463414636,
+  "bler_cap": 0.010343680709534368
+ },
+ "2/5 | 1 M | presentation | 1": {
+  "packets": 360800,
+  "bler_no_cap": 6.097560975609756e-05,
+  "bler_cap": 0.0004434589800443459
+ },
+ "2/5 | 1 M | presentation | 1.5": {
+  "packets": 200800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 4.980079681274901e-06
+ },
+ "2/5 | 1 M | presentation | 2": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "2/5 | 1 M | presentation | 2.5": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "2/5 | 1 M | presentation | 3": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "2/5 | 1 M | testing | 0.5": {
+  "packets": 384000,
+  "bler_no_cap": 0.015713541666666667,
+  "bler_cap": 0.031002604166666666
+ },
+ "2/5 | 1 M | testing | 1": {
+  "packets": 192000,
+  "bler_no_cap": 4.6875e-05,
+  "bler_cap": 0.0003125
+ },
+ "2/5 | 1 M | testing | 1.5": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 7.5e-06
+ },
+ "2/5 | 2 M | presentation | 0.5": {
+  "packets": 360800,
+  "bler_no_cap": 0.0021646341463414636,
+  "bler_cap": 0.008021064301552106
+ },
+ "2/5 | 2 M | presentation | 1": {
+  "packets": 360800,
+  "bler_no_cap": 6.097560975609756e-05,
+  "bler_cap": 0.00034645232815964526
+ },
+ "2/5 | 2 M | presentation | 1.5": {
+  "packets": 200800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 4.980079681274901e-06
+ },
+ "2/5 | 2 M | presentation | 2": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "2/5 | 2 M | presentation | 2.5": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "2/5 | 2 M | presentation | 3": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "2/5 | 2 M | testing | 0.5": {
+  "packets": 384000,
+  "bler_no_cap": 0.015713541666666667,
+  "bler_cap": 0.026966145833333333
+ },
+ "2/5 | 2 M | testing | 1": {
+  "packets": 192000,
+  "bler_no_cap": 4.6875e-05,
+  "bler_cap": 0.00025
+ },
+ "2/5 | 2 M | testing | 1.5": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "2/5 | 5 M | presentation | 0.5": {
+  "packets": 360800,
+  "bler_no_cap": 0.0021646341463414636,
+  "bler_cap": 0.007037139689578714
+ },
+ "2/5 | 5 M | presentation | 1": {
+  "packets": 360800,
+  "bler_no_cap": 6.097560975609756e-05,
+  "bler_cap": 0.0002799334811529934
+ },
+ "2/5 | 5 M | presentation | 1.5": {
+  "packets": 200800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 4.980079681274901e-06
+ },
+ "2/5 | 5 M | presentation | 2": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "2/5 | 5 M | presentation | 2.5": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "2/5 | 5 M | presentation | 3": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "2/5 | 5 M | testing | 0.5": {
+  "packets": 384000,
+  "bler_no_cap": 0.015713541666666667,
+  "bler_cap": 0.025557291666666666
+ },
+ "2/5 | 5 M | testing | 1": {
+  "packets": 192000,
+  "bler_no_cap": 4.6875e-05,
+  "bler_cap": 0.00022395833333333333
+ },
+ "2/5 | 5 M | testing | 1.5": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "2/5 | 10 M | presentation | 0.5": {
+  "packets": 360800,
+  "bler_no_cap": 0.0021646341463414636,
+  "bler_cap": 0.006388580931263858
+ },
+ "2/5 | 10 M | presentation | 1": {
+  "packets": 360800,
+  "bler_no_cap": 6.097560975609756e-05,
+  "bler_cap": 0.0002328159645232816
+ },
+ "2/5 | 10 M | presentation | 1.5": {
+  "packets": 200800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 4.980079681274901e-06
+ },
+ "2/5 | 10 M | presentation | 2": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "2/5 | 10 M | presentation | 2.5": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "2/5 | 10 M | presentation | 3": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "2/5 | 10 M | testing | 0.5": {
+  "packets": 384000,
+  "bler_no_cap": 0.015713541666666667,
+  "bler_cap": 0.0243515625
+ },
+ "2/5 | 10 M | testing | 1": {
+  "packets": 192000,
+  "bler_no_cap": 4.6875e-05,
+  "bler_cap": 0.000171875
+ },
+ "2/5 | 10 M | testing | 1.5": {
+  "packets": 400000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 0.5 M | presentation | 2": {
+  "packets": 424800,
+  "bler_no_cap": 0.00012476459510357815,
+  "bler_cap": 0.0015089453860640302
+ },
+ "1/2 | 0.5 M | presentation | 2.5": {
+  "packets": 424800,
+  "bler_no_cap": 2.3540489642184557e-06,
+  "bler_cap": 5.885122410546139e-05
+ },
+ "1/2 | 0.5 M | presentation | 3": {
+  "packets": 200800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 1.4940239043824702e-05
+ },
+ "1/2 | 0.5 M | presentation | 3.5": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 0.5 M | presentation | 4": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 0.5 M | presentation | 5": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 0.5 M | testing | 2": {
+  "packets": 256000,
+  "bler_no_cap": 0.000140625,
+  "bler_cap": 0.00084375
+ },
+ "1/2 | 0.5 M | testing | 2.5": {
+  "packets": 320000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 9.375e-06
+ },
+ "1/2 | 1 M | presentation | 2": {
+  "packets": 424800,
+  "bler_no_cap": 0.00012476459510357815,
+  "bler_cap": 0.0003225047080979284
+ },
+ "1/2 | 1 M | presentation | 2.5": {
+  "packets": 424800,
+  "bler_no_cap": 2.3540489642184557e-06,
+  "bler_cap": 2.3540489642184557e-06
+ },
+ "1/2 | 1 M | presentation | 3": {
+  "packets": 200800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 1 M | presentation | 3.5": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 1 M | presentation | 4": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 1 M | presentation | 5": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 1 M | testing | 2": {
+  "packets": 256000,
+  "bler_no_cap": 0.000140625,
+  "bler_cap": 0.00027734375
+ },
+ "1/2 | 1 M | testing | 2.5": {
+  "packets": 320000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 2 M | presentation | 2": {
+  "packets": 424800,
+  "bler_no_cap": 0.00012476459510357815,
+  "bler_cap": 0.0002565913370998117
+ },
+ "1/2 | 2 M | presentation | 2.5": {
+  "packets": 424800,
+  "bler_no_cap": 2.3540489642184557e-06,
+  "bler_cap": 2.3540489642184557e-06
+ },
+ "1/2 | 2 M | presentation | 3": {
+  "packets": 200800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 2 M | presentation | 3.5": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 2 M | presentation | 4": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 2 M | presentation | 5": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 2 M | testing | 2": {
+  "packets": 256000,
+  "bler_no_cap": 0.000140625,
+  "bler_cap": 0.0002265625
+ },
+ "1/2 | 2 M | testing | 2.5": {
+  "packets": 320000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 5 M | presentation | 2": {
+  "packets": 424800,
+  "bler_no_cap": 0.00012476459510357815,
+  "bler_cap": 0.00017419962335216572
+ },
+ "1/2 | 5 M | presentation | 2.5": {
+  "packets": 424800,
+  "bler_no_cap": 2.3540489642184557e-06,
+  "bler_cap": 2.3540489642184557e-06
+ },
+ "1/2 | 5 M | presentation | 3": {
+  "packets": 200800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 5 M | presentation | 3.5": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 5 M | presentation | 4": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 5 M | presentation | 5": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 5 M | testing | 2": {
+  "packets": 256000,
+  "bler_no_cap": 0.000140625,
+  "bler_cap": 0.00016015625
+ },
+ "1/2 | 5 M | testing | 2.5": {
+  "packets": 320000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 10 M | presentation | 2": {
+  "packets": 424800,
+  "bler_no_cap": 0.00012476459510357815,
+  "bler_cap": 0.00016713747645951036
+ },
+ "1/2 | 10 M | presentation | 2.5": {
+  "packets": 424800,
+  "bler_no_cap": 2.3540489642184557e-06,
+  "bler_cap": 2.3540489642184557e-06
+ },
+ "1/2 | 10 M | presentation | 3": {
+  "packets": 200800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 10 M | presentation | 3.5": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 10 M | presentation | 4": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 10 M | presentation | 5": {
+  "packets": 100800,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ },
+ "1/2 | 10 M | testing | 2": {
+  "packets": 256000,
+  "bler_no_cap": 0.000140625,
+  "bler_cap": 0.00016015625
+ },
+ "1/2 | 10 M | testing | 2.5": {
+  "packets": 320000,
+  "bler_no_cap": 0.0,
+  "bler_cap": 0.0
+ }
+}

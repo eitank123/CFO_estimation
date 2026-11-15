@@ -1,0 +1,192 @@
+{
+ "1/10 -5": {
+  "auc": 0.9748774509803921,
+  "auc_se": 0.015466835134744415,
+  "pos": 51,
+  "neg": 384,
+  "B 0.001": {
+   "saved_per_pk": 471.459,
+   "saved_pct": 0.170557889156684,
+   "lost": 0,
+   "lost_C": 0,
+   "lost_B": 0,
+   "packets": 8000,
+   "cpar_mean": 276421.6902138672,
+   "retries": 435,
+   "skipped": 79,
+   "refine_waste": 0.0
+  },
+  "full 0.001": {
+   "saved_pct": 0.185757763655495,
+   "lost": 0
+  },
+  "B 0.01": {
+   "saved_per_pk": 1113.69975,
+   "saved_pct": 0.4028988279242239,
+   "lost": 0,
+   "lost_C": 0,
+   "lost_B": 0,
+   "packets": 8000,
+   "cpar_mean": 276421.6902138672,
+   "retries": 435,
+   "skipped": 186,
+   "refine_waste": 0.0
+  },
+  "full 0.01": {
+   "saved_pct": 0.5331834664854612,
+   "lost": 0
+  }
+ },
+ "0.15 -4": {
+  "auc": 0.9887737146987896,
+  "auc_se": 0.006370619805455572,
+  "pos": 136,
+  "neg": 30271,
+  "B 0.001": {
+   "saved_per_pk": 79171.36225,
+   "saved_pct": 12.185981473492506,
+   "lost": 0,
+   "lost_C": 0,
+   "lost_B": 0,
+   "packets": 8000,
+   "cpar_mean": 649692.12715625,
+   "retries": 30407,
+   "skipped": 12424,
+   "refine_waste": 0.0
+  },
+  "full 0.001": {
+   "saved_pct": 9.194114643416972,
+   "lost": 0
+  },
+  "B 0.01": {
+   "saved_per_pk": 134559.5425,
+   "saved_pct": 20.711277984693606,
+   "lost": 0,
+   "lost_C": 0,
+   "lost_B": 0,
+   "packets": 8000,
+   "cpar_mean": 649692.12715625,
+   "retries": 30407,
+   "skipped": 21095,
+   "refine_waste": 0.0
+  },
+  "full 0.01": {
+   "saved_pct": 19.30825663519713,
+   "lost": 0
+  }
+ },
+ "0.15 -3": {
+  "auc": 0.9713920817369093,
+  "auc_se": 0.02261679172765137,
+  "pos": 27,
+  "neg": 290,
+  "B 0.001": {
+   "saved_per_pk": 17.182,
+   "saved_pct": 0.0073561400597465035,
+   "lost": 0,
+   "lost_C": 0,
+   "lost_B": 0,
+   "packets": 8000,
+   "cpar_mean": 233573.58425,
+   "retries": 317,
+   "skipped": 3,
+   "refine_waste": 0.0
+  },
+  "full 0.001": {
+   "saved_pct": 0.5625187686436763,
+   "lost": 0
+  },
+  "B 0.01": {
+   "saved_per_pk": 100.22275,
+   "saved_pct": 0.042908426619308514,
+   "lost": 0,
+   "lost_C": 0,
+   "lost_B": 0,
+   "packets": 8000,
+   "cpar_mean": 233573.58425,
+   "retries": 317,
+   "skipped": 16,
+   "refine_waste": 0.0
+  },
+  "full 0.01": {
+   "saved_pct": 0.5625187686436763,
+   "lost": 0
+  }
+ },
+ "2/5 0.5": {
+  "auc": 0.9886962526805511,
+  "auc_se": 0.011112299162743098,
+  "pos": 45,
+  "neg": 21399,
+  "B 0.001": {
+   "saved_per_pk": 53476.1805,
+   "saved_pct": 13.880879564955398,
+   "lost": 0,
+   "lost_C": 0,
+   "lost_B": 0,
+   "packets": 8000,
+   "cpar_mean": 385250.662609375,
+   "retries": 21444,
+   "skipped": 7038,
+   "refine_waste": 0.0
+  },
+  "full 0.001": {
+   "saved_pct": 13.655476578204281,
+   "lost": 2
+  },
+  "B 0.01": {
+   "saved_per_pk": 93017.32525,
+   "saved_pct": 24.14462433885933,
+   "lost": 0,
+   "lost_C": 0,
+   "lost_B": 0,
+   "packets": 8000,
+   "cpar_mean": 385250.662609375,
+   "retries": 21444,
+   "skipped": 12229,
+   "refine_waste": 0.0
+  },
+  "full 0.01": {
+   "saved_pct": 15.53778923949431,
+   "lost": 2
+  }
+ },
+ "1/2 2": {
+  "auc": 0.953125,
+  "auc_se": 0.10471937320227663,
+  "pos": 2,
+  "neg": 192,
+  "B 0.001": {
+   "saved_per_pk": 1413.335,
+   "saved_pct": 1.7307822722626436,
+   "lost": 0,
+   "lost_C": 0,
+   "lost_B": 0,
+   "packets": 8000,
+   "cpar_mean": 81658.74025,
+   "retries": 194,
+   "skipped": 179,
+   "refine_waste": 0.0
+  },
+  "full 0.001": {
+   "saved_pct": 1.7985245614905259,
+   "lost": 1
+  },
+  "B 0.01": {
+   "saved_per_pk": 1413.335,
+   "saved_pct": 1.7307822722626436,
+   "lost": 0,
+   "lost_C": 0,
+   "lost_B": 0,
+   "packets": 8000,
+   "cpar_mean": 81658.74025,
+   "retries": 194,
+   "skipped": 179,
+   "refine_waste": 0.0
+  },
+  "full 0.01": {
+   "saved_pct": 1.7985245614905259,
+   "lost": 1
+  }
+ }
+}

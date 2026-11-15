@@ -252,7 +252,7 @@ CRB_SRC = ("CRB 128 pilots", "CFO error at the CRB (ideal 128-pilot estimator)",
 EST_NAME = {"ML direct": "ML direct fft512 + newton x2", "M&M": "M&M", "Joint ML Lh=3": "Joint ML Lh=3 (taps -1..1)",
             "cnn-cr": "CNN classification + refinement"}
 KP = 32                                              # decoder cores (the standard MACs-per-core model)
-_SUM = ("frames", "frame_err", "undetected", "extra_decodes", "se_first", "se_final", "crc_pass", "crc_pass_wrong",
+_SUM = ("frames", "frame_err", "undetected", "extra_decodes", "metric_evals", "metric_rounds", "se_first", "se_final", "crc_pass", "crc_pass_wrong",
         "re_caught", "re_lost", "time_est")
 
 
@@ -375,7 +375,7 @@ def bler_more():
 PAR_DEC = KP // 8                                    # CA-SCL-8 decodes that fit on the cores at once
 
 
-def pilot_macs(rate, src, x_dec, par=True):
+def pilot_macs(rate, src, x_dec, par=True, m_evals=0.0, m_rounds=None):
     """(total MACs, MACs per core) per packet of a 128-pilot receiver: estimator, pre-MF correction, LS gain / phase
     on the pilots, (1 + x_dec) CA-SCL-8 decodes (each with LLRs and the gain / phase at its hypothesis) and one
     re-encoding check; per core the standard model: every sample-wise step / KP, one list path per core, bitonic
@@ -385,7 +385,13 @@ def pilot_macs(rate, src, x_dec, par=True):
     rounds (from the mean extra decodes; per-packet counts are not stored, so the rounding up of a packet's last round
     is not modelled). Running 4 at once also decodes up to 3 hypotheses beyond the accepted one in the last round:
     total + min(x_dec, 1.5) decodes (an approximation: 1.5 = the mean waste of a round of 4, at most x_dec).
-    par=False: the one-at-a-time model."""
+    par=False: the one-at-a-time model.
+    m_evals (the " PM" sources, metric-ordered CRC search): list-1 metric passes per packet, each with its LLRs and gain
+    / phase; total m_evals (metric + llr + gain), per core the passes in parallel: ceil(m_evals / KP) metric passes +
+    the sample-wise LLR / gain work / KP. m_rounds (mean per packet of ceil(metric passes of the packet / KP), stored by
+    run_bler as metric_rounds) replaces ceil(mean m_evals / KP) when given: the " PM+T" sources score the neighbours
+    only for the packets whose decode at f_hat failed."""
+    src = src.split(" PM")[0]
     import blind_vp as vp
     d = json.load(open(C.path("results", "est.json")))
     rows = d["results"] if isinstance(d, dict) else d
@@ -397,6 +403,10 @@ def pilot_macs(rate, src, x_dec, par=True):
     rounds, n_dec = (1 + x_dec / PAR_DEC, 1 + x_dec + min(x_dec, 1.5)) if par else (1 + x_dec, 1 + x_dec)
     total = est + vp.PREMF_FAIR_MACS + n_dec * dec_t + vp.MAC["reencode"]
     core = (est + vp.PREMF_FAIR_MACS + vp.MAC["reencode"]) / KP + rounds * dec_c
+    if m_evals:
+        m_met = vp.metric_macs(C.CODES[rate])
+        total += m_evals * (m_met + vp.MAC["llr"] + gain)
+        core += (np.ceil(m_evals / KP) if m_rounds is None else m_rounds) * m_met + m_evals * (vp.MAC["llr"] + gain) / KP
     return total, core
 
 

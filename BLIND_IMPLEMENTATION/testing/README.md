@@ -11,6 +11,9 @@ The final receivers are the baselines and stay unchanged (`S blind final v2` for
 separate small_rx flag that defaults to the baseline behaviour; variants are compared on **paired packets** (same
 seed, points and therefore the same data, CFO, phase and noise).
 
+> **Before testing an idea, check [../DEAD_ENDS.md](../DEAD_ENDS.md)**: every dropped idea (search, acceptance, NN,
+> channel format) with its evidence and what would justify reopening it.
+
 ## Method
 
 **Step 1: instrument the baseline (measurement only).** `small_rx` flag `s3dump` (set by `BLIND_IMPLEMENTATION/testing/run.py --dump`)
@@ -43,7 +46,7 @@ errors are reported as a 95 % upper bound (3 / n).
 | `run.py` | runs baselines / variants through blind_ber on paired packets; `--dump` for Step 1 |
 | `analyze.py` | Step 2: failure classification, MAC breakdown, policy evaluation, plots |
 | `agg_variants.py` | sums `blind_ber_<part>.json` per (rate, SNR, receiver): BLER with 95 % interval, total MACs, MACs per core, scoring / fast-path / decode MACs, decodes per packet, stage shares, undetected (`py BLIND_IMPLEMENTATION/testing/agg_variants.py srch10 srch15 ...`) |
-| `plot_variants.py` | BLER and MACs plots of the R experiments and of K -> `results/plots/srch_*`, `k_nph4_*` (`py BLIND_IMPLEMENTATION/testing/plot_variants.py`) |
+| `plot_variants.py` | (not run since 2026-11-13: its plots `srch_*`, `k_nph4_*` were removed; the numbers are in the tables below) |
 | `results/` | dumps, tables, plots |
 
 ## Status
@@ -114,7 +117,7 @@ Predictions, written before the runs:
 ### Results vs predictions (srch10 / srch15 / srch25 / srch2, nph15a / nph15b; 2026-11-12)
 Errors / packets on paired packets (64k per point at 1/10, 0.15, 2/5; 128k at 1/2); MACs as mean total / mean per
 core (32 cores, crit_par), in M. Tables: `py BLIND_IMPLEMENTATION/testing/agg_variants.py srch10 srch15 srch25 srch2`;
-plots: `results/plots/srch_bler_R*.png`, `srch_macs_R*.png`, `k_nph4_*.png`. With 0-8 baseline errors at
+(plots removed 2026-11-13: experiments dropped / superseded; numbers below). With 0-8 baseline errors at
 1/10 -5 / -4 dB, 0.15 -3 dB, 2/5 1 dB and 1/2 2 / 2.5 dB, BLER differences of a few errors there are noise; the
 part files hold counts only, so fixed / broken packets cannot be separated for the R runs.
 
@@ -210,7 +213,7 @@ Paired with the R runs (seeds 7701 / 7702, same chunking): the baseline arm must
   +12 %, per core within +-3 %, 0 errors in both.
 
 ### S results vs predictions (analysis 2026-11-12)
-Full tables: `results/report_S.md` (`agg_S.py`, `plot_S.py`; plots `results/plots/s_*.png`). 64 000 paired packets per
+Full tables: `results/report_S.md` (`agg_S.py`; the `s_*` plots were removed 2026-11-13, superseded by the `cmp_*` plots). 64 000 paired packets per
 point and receiver; the baseline arm reproduces the R runs chunk by chunk (8 / 0 at 1/10 -5 / -4 dB, 273 / 7 at 0.15
 -4 / -3 dB, identical MACs). `frame_err` equals the count of packets without an accepted and right decode at every
 point, so the different "first decode" delivery rule under nofast changed nothing.
@@ -228,3 +231,66 @@ point, so the different "first decode" delivery rule under nofast changed nothin
 - **S3 nph15: hit.** Noise only 0 / 11 200 accepted in both arms at -1 and 0 dB (< 2.7e-4 each, 95 %; chunks of 625
   run to 700 packets); +1 dB total +10.1 %, per core +2.1 %, 0 / 64 000 errors in both. A noise-only packet costs
   237 M / 33.9 M per core (baseline) vs 288 M / 35.1 M (nph15).
+
+## 2026-11-13: the testing receiver, fixed accounting, q_fix, decode dump and the decode-feedback NN
+
+### Where it stands
+| Item | Status | Result | Report |
+|---|---|---|---|
+| Phase accounting fix | **done** | the old count undercharged cells joining after a phase pruning; `old_acct` reproduces it, decisions identical | `results/expected_cnf.md` |
+| Testing receiver `nofast15` (fast path off at <= 0 dB, 4 phases at R = 0.15) vs presentation, fixed accounting | **done** (t-cnf*) | 1/10: per core -25 ... -37 %, total -9 ... -18 %, BLER same. 0.15: per core -13 % (-4 dB) ... -32 %, +8 % at +1 dB; total -5 ... -13 % below -1 dB, +10 % / +33 % / +20 % at -1 / 0 / +1 dB; the -1 dB bump removed (0 / 400k; paired 12 fixed / 0 broken). Fast path off at 2/5, 1/2 is worse: kept there | `results/expected_cnf.md` (Measured) |
+| `q_fix` (a candidate's phase th + qs[qb] pi/4) | **done, ADOPTED (user, 2026-11-13)** | 2/5 0.5 dB per core -14 %, total -10 %, 21 fixed / 8 broken (p = 0.024); 1/10, 0.15 -1 ... -5 %; 1/2 ~0. Does not remove the 0.15 -1 dB bump (17 -> 17 / 128k): the 4 phases do | `results/report_qfix_ddq.md` |
+| `dd`, `dd_win4` with q_fix | **done, dropped** | 0 packets fixed at 7 points; 2/5 0.5 dB 8 fixed / 51 broken, per core +11 % | `results/report_qfix_ddq.md`, `results/expected_ddq.md` |
+| Decode dump (`<key>_dump`, small_rx `dec_dump`) | **done** (t-deca, t-decb25, t-decb2, t-decbn) | one row per decode attempt + one per packet, 32k packets per point, noise-only 5600 frames | `results/report_nn_offline.md` (P0) |
+| NN offline stage (heads A refine, B retry gate, C grid stop, D noise) | **done** | B is the only large win; A 2-4 %; C loses packets (not built); the path metric cannot replace rho (accepts 12 / 47 wrong CRC passes and 1046 / 1046 noise passes); logistic = MLP | `results/report_nn_offline.md`, `nn_offline.py` |
+| Deployable retry gate (13 decoder-list / LLR features, one logistic per code rate) | **offline done** | replay on the test chunks: 0.15 -4 dB -12 % (0.1 % point) / -21 % (1 % point) per core, 2/5 0.5 dB -14 % / -24 %, 0 lost of 8000 each; <= 2 % elsewhere; oracle -30 % / -42 % | `results/nn_b_export.json`, `plots/thresholds/thr_gate_*.png` |
+| Retry gate online (small_rx `nn_b`) | **done, NOT adopted** | 64k paired at 1/10 -5, 0.15 -4 / -3, 2/5 0.5, 1/2 2 dB. On the standard (scheduled) count: 1 % setting -9 % per core at 0.15 -4 and 2/5 0.5 dB, <= 2 % elsewhere, 0 fixed / 8 broken pooled (p = 0.008): rejected; 0.1 % setting <= 4.5 % per core, 0 / 3 broken: not worth it next to spec11 | `results/expected_nnb.md` (Measured) |
+| Stricter speculative decode `spec11` (accept at rho > 1.1 thr) | **ADOPTED in the waterfall** (1/10 below -3.5 dB, 0.15 below -2.5 dB: run.py `testing_s11g`) | Above those SNRs it costs +3 ... +4 % per core (64k sweep, `results/expected_s11.md`), so small_rx `spec_snr` turns it off there. 1/10 -5 dB 1e6 paired: 209 vs 209 errors, 0 discordant, undetected 2 vs 2, per core -14.5 %, total -19.4 %. 0.15 -4 / -3 dB 64k: per core -6.9 / -4.5 %, total -10 / -8 %, 0 discordant. Noise only: 0 false alarms in either arm | `results/expected_spec.md`, `results/expected_spec1m.md` |
+| Retry gate + spec11 together (comb10, comb15) | **done** | savings add (0.15 -4 dB: -16.3 % per core), but the gate is rejected, so not adopted | `results/expected_cap_pn_comb.md` |
+| Phase-equivariant receiver without the interleaver (`*_eq`, BLIND_NOINT=1) | **done** | 2/5, 1/2: same BLER, per core -30 ... -40 %. 1/10, 0.15: BLER x1.6-17, 4-11 undetected per 64k (the rho check cannot reject a wrong pi/2 rotation): dropped there | `results/expected_eq.md` |
+| Hard MAC cap (`*_cap2`, `*_cap1`) | **done** | +2 / 400k (0.15 -2.5 dB), +3 / 400k (2/5 1.5 dB), 0 / 128k (1/2 2.5 dB); mean MACs unchanged; noise-only packets stop at the cap, 0 false alarms | `results/expected_cap_pn_comb.md` |
+| Wiener phase noise (BLIND_PN) | **done** | 1e-5 harmless; 1e-4: x3-3.6 BLER at 1/10, 0.15, x36 at 2/5; 3e-4: x100-235. The genie (no tracking) is worse than blind: no bound | `results/expected_cap_pn_comb.md` |
+| Fair pilot reference (est3 CRC search in path-metric order, `PM+all`) | **done** | same waterfall BLER as the fixed order, floor 2-5x lower, undetected 3-5x fewer, per core +8 ... +36 %; top-3 / PM+3 variants lose x2-4.7 in the waterfall | `results/expected_fair.md` |
+
+### The retry gate (small_rx flag `nn_b`)
+- `nn_b = (path to results/nn_b_gate.json, frac)`, frac = 0.01 or 0.001; keyed by CODE rate (missing rate: no gate).
+- After a main decode fails the CRC, the CA retry runs only if the logistic score of 13 features of that failed
+  decode >= thr[frac]: pm0, pm_gap, pm_spread, pm_meanex (sorted list PMs), syn_w, n_rem, n_agree, agree_bits (CRC
+  syndromes / agreement of the list paths), l_sum, l_mean, l_lt1, pm_norm (LLR magnitudes), sgn_agree (LLR signs vs
+  the best path's codeword). No grid state, no re-encoding.
+- thr[frac]: at most frac of the TRAIN successful retries would be skipped (the "1 %" / "0.1 %" operating points). The
+  "perfect gate" in the plot is the oracle (skips exactly the failing retries): the upper bound.
+- Cost charged per gated decode (`small_rx.GATE_MACS`): L K (list CRCs) + 3 N + N/2 log2 N + 26, as parallel serial
+  work (/ 32 in crit_par). Counters `gate_calls`, `gate_skip`.
+- Weights: `py BLIND_IMPLEMENTATION/testing/nn_b_export.py` (train = first 6 of 8 chunks of the dumps); plot:
+  `plot_nnb.py`.
+
+### Open decisions / next (review 2026-11-15)
+1. Decided: spec11 in the waterfall (`testing_s11g`); 4 phases at 0.15 below 0.5 dB; the retry gate and `nofast_spec` (threshold 1.0) dropped.
+2. User decision: the phase-equivariant format at 2/5 and 1/2 (-30 ... -40 % per core; no interleaver, checkpoint NN retrain, 400k confirmation).
+3. Phase tracking / a segmented non-coherent metric: needed if the oscillators reach linewidth x Ts ~ 1e-4 (2/5 collapses). Also run the pilot receivers under the same phase noise (not done: the comparison under phase noise is one-sided).
+4. Fair comparison at equal throughput: the pilot receivers get their 128 pilots on top of the N = 2048 code (12.5 % overhead not charged, ~0.5-0.7 dB). A rate-matched pilot system and the 24-pilot hybrid (A.16) re-run with the current receiver and cost model.
+5. Still open from A.17.7: timing / burst sync, multipath, fixed point, noise-only false alarms at 1e6.
+
+## The plots (`results/plots/`, kept 2026-11-13; superseded plots removed, their numbers stay in the reports)
+| Plots | What they show | Script |
+|---|---|---|
+| `cmp_bler_R*.png` | BLER vs SNR per rate: testing model, presentation model, + q_fix, the 128-pilot receivers, the genies | `plot_cmp.py` |
+| `cmp_macs_R*.png` | MACs per core vs SNR, the STANDARD count (see below), with the earlier count dotted for this round | `plot_cmp.py` |
+| `cmp_macs_total_R*.png` | total MACs per packet vs SNR | `plot_cmp.py` |
+| `cap/cap_<C>_R*.png` | BLER vs SNR under a hard cap C = 0.5 / 1 / 2 / 5 / 10 M MACs per core, with and without the cap, vs the pilot receivers | `plot_cap_snr.py` |
+| `thresholds/thr_gate_*.png` | retry gate: MAC saving and BLER vs the share of retries skipped, the chosen settings | `plot_thresholds.py` |
+| `thresholds/thr_spec_rho.png` | speculative decode: why the acceptance factor is 1.1 | `plot_thresholds.py` |
+| `thresholds/thr_fastpath_*.png` | fast-path switch: MACs per core with it off vs on, per SNR | `plot_thresholds.py` |
+| `nn_auc_headB.png`, `nn_pm_vs_rho.png` | NN offline: the retry-gate AUC per feature set; why the path metric cannot replace the re-encoding check | `nn_offline.py` |
+
+## MACs per core: the standard count (user decision, 2026-11-13)
+MACs per core = the scheduled critical path on the 32 decoder cores:
+- R = 1/10, 0.15: one core per (cell, phase) hypothesis in the grid + 4 CA-SCL-8 decodes at once (32 cores / 8 paths)
+  (small_rx counter `crit_par_h_d4a_macs`);
+- R = 2/5, 1/2 (their joint decode already runs 4 cells at once): 4 decodes at once only (`crit_par_d4a_macs`).
+Decisions, BLER and total MACs are unchanged; the 128-pilot receivers were already costed with 4 decodes at once. The
+earlier count (`crit_par_macs`: one core per cell, decodes one at a time) is still logged and shown dotted for one round.
+Effect on the testing receiver: -16 ... -21 % at 1/10, -20 ... -31 % at 0.15 (-7 % at +1 dB), -36 % at 2/5 0.5 dB,
+-2 % at 2/5 1 dB, 0 at 1/2. The hard-cap runs (cap_core) still cap the earlier count (conservative: the same cap on the
+scheduled count would be looser).

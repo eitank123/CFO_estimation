@@ -16,6 +16,15 @@ Phase-accounting undercount (small_rx, phase_keep at 1/2): after the 1/2 checkpo
 rounds >= 2 and their neighbours) is charged 2 phases instead of 4: 2 * m_met * sh(1/2) too little per such cell, per
 core the same amount per such pass (one cell per core). Only with 4 phases (nph = 4: SNR < -1 dB, or nph4 / nph15 arms).
 bound_undercount() brackets it from the stored counters (passes, crit_grid, macs_par - macs_score), see its docstring.
+The tables below (__main__) are the pre-fix report_cmp.md numbers: pres_rows leaves the fixed-accounting parts out (POSTFIX).
+
+Fixed phase accounting (2026-11-13 runs, as agg_cnf.py / agg_qfix.py; used by plot_cmp.py): FIX_TEST, FIX_PRES, FIX_QFX
+  testing model      "T nofast15" (fast path off at <= 0 dB, 4 phases at 0.15), all packets of t-cnf10a/b/c, t-cnf15a...e.
+  presentation model "T base10" (rx "S blind final v2") in t-cnf10d, t-cnf15d + t-cnf15f (MACs only; BLER stays merged()).
+                     2/5, 1/2: the base arms of t-qfx25 + t-cnf25, t-qfx2 + t-cnf2 at their SNRs, pre-fix pres_macs
+                     elsewhere (2 phases there: the fix changes nothing, report_cmp.md).
+  q_fix              "T base10_qfix" (t-qfx10 + t-ddq10), "T base25_qfix" (t-qfx25 + t-ddq25), "T base2_qfix" (t-qfx2 + t-ddq2).
+  Parts of one receiver are pooled per SNR; their chunk seeds must be disjoint (asserted).
 """
 import collections
 import glob
@@ -41,7 +50,18 @@ TESTING = {"1/10": [(-5.0, "nf10a", "T nofast", "S blind final v2"), (-4.0, "nf1
                     (-1.0, "nf15c", "T nofast_nph4", "T nph4"), (0.0, "nf15c", "T nofast_nph4", "T nph4"),
                     (1.0, "nn15c", "T nph15", "S blind final v2")]}
 DUP = ("nf10a", "nf15a", "nf15b")      # baseline arms = srch10 / srch15 packets: left out of the presentation MACs
-PILOTS = ("ML direct", "Joint ML Lh=3", "cnn-cr")   # the 3 best 128-pilot receivers by BLER (rank_pilots)
+POSTFIX = ("t-cnf", "t-qfx", "t-ddq", "t-dec", "t-acct")    # fixed-accounting parts: never in the pre-fix pres_rows
+# fixed accounting: rate: (receiver, parts pooled per SNR)
+FIX_TEST = {"1/10": ("T nofast15", ["t-cnf10a", "t-cnf10b", "t-cnf10c"]),
+            "0.15": ("T nofast15", ["t-cnf15a", "t-cnf15b", "t-cnf15c", "t-cnf15d", "t-cnf15e"])}
+FIX_PRES = {"1/10": ("S blind final v2", ["t-cnf10d"]), "0.15": ("S blind final v2", ["t-cnf15d", "t-cnf15f"]),
+            "2/5": ("S blind final 2/5, 1/2, best-first 32", ["t-qfx25", "t-cnf25"]),
+            "1/2": ("S blind final 2/5, 1/2", ["t-qfx2", "t-cnf2"])}
+FIX_QFX = {"1/10": ("T base10_qfix", ["t-qfx10", "t-ddq10"]), "0.15": ("T base10_qfix", ["t-qfx10", "t-ddq10"]),
+           "2/5": ("T base25_qfix", ["t-qfx25", "t-ddq25"]), "1/2": ("T base2_qfix", ["t-qfx2", "t-ddq2"])}
+PILOTS = ("ML direct", "Joint ML Lh=3", "cnn-cr",        # the 3 best 128-pilot receivers by BLER (rank_pilots)
+          "ML direct PM+all", "M&M PM+all")   # fair CRC search: f_hat first, then all neighbours in metric order
+# (fairb*, expected_fair.md). " PM" (top 3 of all) and " PM+3" were dropped (waterfall BLER x2-4.5, DEAD_ENDS.md)
 MM = "M&M"
 GENIE_BLIND = "Genie (known CFO and phase)"
 PILOT_NAME = {"ML direct": "ML direct", "Joint ML Lh=3": "joint ML (Lh = 3)", "cnn-cr": "CNN class. + refinement",
@@ -75,12 +95,26 @@ def pres_rows(rate, exclude=DUP):
     out = collections.defaultdict(list)
     for p in sorted(glob.glob(os.path.join(EP.BLIND_DIR, "blind_ber_*.json"))):
         b = os.path.basename(p)[len("blind_ber_"):-len(".json")]
-        if b == "" or os.path.basename(p) == "blind_ber.json" or "smoke" in b or b in exclude:
+        if b == "" or os.path.basename(p) == "blind_ber.json" or "smoke" in b or b in exclude or b.startswith(POSTFIX):
             continue
         for r in json.load(open(p)):
             if r["rate"] == rate and r["rx"] == EP.BLIND_RX[rate] and "crit_par_macs" in r:
                 out[r["snr"]].append({**r, "_part": b})
     return out
+
+
+# THE STANDARD per-core count from 2026-11-13 (user decision): the scheduled critical path on the 32 cores. 1/10, 0.15:
+# one core per (cell, phase) hypothesis + 4 CA-SCL-8 decodes at once (small_rx crit_par_h_d4a); 2/5, 1/2 (joint decode
+# of 4 cells already): 4 decodes at once only (crit_par_d4a). Decisions, BLER and total MACs are unchanged; the
+# pilot receivers were already costed with 4 decodes at once. crit_par ("core") is the earlier count.
+SCHED = {"1/10": "crit_par_h_d4a_macs", "0.15": "crit_par_h_d4a_macs", "2/5": "crit_par_d4a_macs",
+         "1/2": "crit_par_d4a_macs"}
+
+
+def core_s(rows, rate):
+    """Mean scheduled MACs per core of rows (None if no row carries the counter)."""
+    rr = [r for r in rows if SCHED[rate] in r]
+    return A.tot(rr, SCHED[rate]) / A.tot(rr, "mac_frames") if rr else None
 
 
 def pres_macs(rate, exclude=DUP):
@@ -91,7 +125,7 @@ def pres_macs(rate, exclude=DUP):
         hr = [r for r in rows if "crit_par_h_macs" in r]
         out[s] = dict(n=m, macs=A.tot(rows, "macs") / m, core=A.tot(rows, "crit_par_macs") / m,
                       core_h=A.tot(hr, "crit_par_h_macs") / A.tot(hr, "mac_frames") if hr else None,
-                      parts=sorted({r["_part"] for r in rows}), rows=rows)
+                      core_s=core_s(rows, rate), parts=sorted({r["_part"] for r in rows}), rows=rows)
     return out
 
 
@@ -105,6 +139,54 @@ def testing(rate):
     return out
 
 
+def fixed(rate, rx, parts):
+    """{snr: summary (+ parts)} of rx pooled over the fixed-accounting parts; a chunk seed may appear once per SNR."""
+    rows = collections.defaultdict(list)
+    for p in parts:
+        for (r_, s, x), rs in A.load(p).items():
+            if r_ == rate and x == rx:
+                rows[s] += [{**r, "_part": p} for r in rs]
+    out = {}
+    for s, rs in rows.items():
+        seeds = [r["chunk_seed"] for r in rs]
+        assert len(seeds) == len(set(seeds)), f"duplicated chunk {rate} {s} {rx}"
+        out[s] = {**A.summary(rs), "core_s": core_s(rs, rate), "parts": sorted({r["_part"] for r in rs})}
+    return out
+
+
+def testing_fix(rate):
+    """The testing receiver. R = 0.15 from +1 dB uses 2 phases (user decision 2026-11-13, run.py variant `testing`):
+    there it is base10_qfix (fast path on, 2 phases), so those SNRs come from the q_fix runs."""
+    out = fixed(rate, *FIX_TEST[rate]) if rate in FIX_TEST else {}
+    if rate == "0.15":
+        out.update({s: v for s, v in qfix(rate).items() if s >= 0.5})
+    return out
+
+
+S11_PARTS = ["t-s11-10a", "t-s11-10b", "t-s11-15a", "t-s11-15b"]
+S11_SNR = {"1/10": -3.5, "0.15": -2.5}                  # run.py testing_s11g: spec11 below these SNRs
+
+
+def adopted(rate):
+    """The ADOPTED testing receiver (run.py testing_s11g, 2026-11-14), MACs from the 64k paired s11 sweep: at each SNR it
+    is exactly testing_spec11 (below S11_SNR) or testing (expected_s11.md: smoke s11g-smoke equal packet for packet)."""
+    if rate not in S11_SNR:
+        return {}
+    a, b = fixed(rate, "T testing_spec11", S11_PARTS), fixed(rate, "T testing", S11_PARTS)
+    return {s: (a if s < S11_SNR[rate] else b)[s] for s in b}
+
+
+def pres_fix_macs(rate):
+    """{snr: dict(core, macs, n, fix)}: fixed accounting where FIX_PRES has the SNR, else pre-fix pres_macs (2/5, 1/2)."""
+    out = {} if rate in ("1/10", "0.15") else {s: {**v, "fix": False} for s, v in pres_macs(rate).items()}
+    out.update({s: {**v, "fix": True} for s, v in fixed(rate, *FIX_PRES[rate]).items()})
+    return out
+
+
+def qfix(rate):
+    return fixed(rate, *FIX_QFX[rate])
+
+
 def pilots(rate):
     """{src: {snr: dict(err, n, bler, x, macs, core)}} of the est3 128-pilot receivers."""
     out = collections.defaultdict(dict)
@@ -113,7 +195,9 @@ def pilots(rate):
             continue
         d = dict(err=r["frame_err"], n=r["frames"], bler=r["bler"], x=r["extra_decodes_per_frame"])
         if r["src"] in PILOTS + (MM,):
-            d["macs"], d["core"] = EP.pilot_macs(rate, r["src"], r["extra_decodes_per_frame"], par=True)
+            d["macs"], d["core"] = EP.pilot_macs(rate, r["src"], r["extra_decodes_per_frame"], par=True,
+                                                 m_evals=r.get("metric_evals", 0) / r["frames"],
+                                                 m_rounds=r["metric_rounds"] / r["frames"] if r.get("metric_rounds") else None)
         out[r["src"]][r["snr"]] = d
     return out
 
