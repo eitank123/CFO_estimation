@@ -121,7 +121,7 @@ def macs_snr():
                 ax.set_xlabel("SNR (Es/N0) [dB]")
             xlim(ax, rate)
     fig.legend([line(NAVY, "-", "o"), line(ORANGE, "--", "^")],
-               ["blind, 0 pilots (measured MAC counts)", PILOT + ", 4 decodes at once (model estimate)"],
+               ["blind, 0 pilots", PILOT + ", 4 decodes at once"],
                loc="lower center", ncol=2, fontsize=12, frameon=False)
     fig.tight_layout(rect=(0, 0.06, 1, 1))
     fig.savefig(os.path.join(HERE, "macs_snr.png"), dpi=200, facecolor="white")
@@ -158,8 +158,8 @@ def macs_cap():
         print(rate, [(r[0], round(r[1] / 1e6, 3), round(r[2] / 1e6, 3), r[3], r[4]) for r in rows])
     axs[0].set_ylabel("mean MACs per core (32 cores)")
     finish(fig, axs, [line(NAVY, "--", "o", "white"), line(NAVY, "-", "o"), line(ORANGE, "--", "^")],
-           ["blind, no cap (measured)", "blind with the cap (from the measured histogram)",
-            "ML, 128 pilots (model estimate)"], ncol=3)
+           ["blind, no cap", "blind with the cap",
+            PILOT], ncol=3)
     fig.tight_layout(rect=(0, 0.08, 1, 1))
     fig.savefig(os.path.join(HERE, "macs_cap.png"), dpi=200, facecolor="white")
 
