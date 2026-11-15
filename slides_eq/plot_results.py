@@ -26,6 +26,15 @@ D = json.load(open(os.path.join(HERE, "data", "results_c90c5b7.json")))
 RATES = ("1/10", "2/5", "1/2")
 NAVY, ORANGE, GREY = "#003366", "#E07B39", "#777777"
 PILOT = "ML, 128 pilots, metric-ordered CRC search"
+# 128-pilot receivers (est3, same back-end as blind). ML and M&M use the metric-ordered ("fair") CRC search; the joint
+# ML and CNN runs exist only with the fixed |k|-order search. CRB: CFO error drawn at the CRB (ideal estimator). Genie:
+# known CFO and phase, one decode (no MACs curve).
+MODELS = (("ML direct PM+all", "ML (FFT + 2 Newton), metric-ordered search", ORANGE, "^", "--"),
+          ("M&M PM+all", "Mengali & Morelli, metric-ordered search", "#8c564b", "v", "--"),
+          ("Joint ML Lh=3", "joint CFO / channel ML (Morelli-Mengali 2000)", "#9467bd", "s", "--"),
+          ("cnn-cr", "CNN classification + refinement", "#1f9e89", "D", "--"),
+          ("CRB 128 pilots", "CFO error at the CRB (ideal 128-pilot estimator)", GREY, "x", ":"),
+          ("Genie CFO", "genie: known CFO and phase, one decode", "k", "", ":"))
 plt.rcParams.update({"font.size": 13, "font.family": "DejaVu Sans"})
 
 
@@ -67,19 +76,29 @@ def xlim(ax, rate):
     ax.set_xlim(min(s) - pad, max(s) + pad)
 
 
+def in_range(rate, pts):
+    s = [p[0] for p in D[rate]["blind_cnt"] if p[2] >= 10000]
+    return [p for p in pts if min(s) - 1e-9 <= p[0] <= max(s) + 1e-9]
+
+
 def bler_all():
     fig, axs = plt.subplots(1, 3, figsize=(13.2, 4.7))
     for ax, rate in zip(axs, RATES):
         o = D[rate]
-        bl = [(s, e / n) for s, e, n, u in o["blind_cnt"] if n >= 10000]
-        ml = [(s, e / n) for s, e, n, *_ in o["ML direct PM+all"]]
-        draw(ax, bl, color=NAVY, ls="-", lw=2.2, marker="o", ms=7)
-        draw(ax, ml, color=ORANGE, ls="--", lw=2.2, marker="^", ms=7)
+        for src, lab, c, mk, ls in MODELS[::-1]:
+            pts = in_range(rate, [(s_, e / n) for s_, e, n, *_ in o[src]])
+            draw(ax, pts, color=c, ls=ls, lw=1.8, marker=mk, ms=6)
+        bl = [(s_, e / n) for s_, e, n, u in o["blind_cnt"] if n >= 10000]
+        draw(ax, bl, color=NAVY, ls="-", lw=2.8, marker="o", ms=7)
         ax.set_title(f"R = {rate}", fontweight="bold")
         xlim(ax, rate)
     axs[0].set_ylabel("BLER")
-    finish(fig, axs, [line(NAVY, "-", "o"), line(ORANGE, "--", "^")], ["blind, 0 pilots", PILOT])
-    fig.tight_layout(rect=(0, 0.08, 1, 1))
+    finish(fig, axs, [line(NAVY, "-", "o")] + [line(c, ls, mk) for _, _, c, mk, ls in MODELS],
+           ["blind, 0 pilots"] + [lab for _, lab, *_ in MODELS], ncol=3)
+    for lg in fig.legends:
+        for t in lg.get_texts():
+            t.set_fontsize(10.5)
+    fig.tight_layout(rect=(0, 0.17, 1, 1))
     fig.savefig(os.path.join(HERE, "bler_all.png"), dpi=200, facecolor="white")
 
 
@@ -103,14 +122,16 @@ def bler_cap():
 
 def macs_snr():
     fig, axs = plt.subplots(2, 3, figsize=(13.2, 7.4))
+    models = [m for m in MODELS if m[0] + " macs" in D["1/10"]]
     for j, rate in enumerate(RATES):
         o = D[rate]
-        bm = [p for p in o["blind_macs"]]
-        pm = o["ML direct PM+all macs"]
+        bm = o["blind_macs"]
         for i, (k, lab) in enumerate(((1, "total MACs per packet"), (2, "MACs per core (32 cores)"))):
             ax = axs[i, j]
-            ax.plot([p[0] for p in bm], [p[k] for p in bm], color=NAVY, lw=2.4, marker="o", ms=7)
-            ax.plot([p[0] for p in pm], [p[k] for p in pm], color=ORANGE, ls="--", lw=2.2, marker="^", ms=7)
+            for src, _, c, mk, ls in models[::-1]:
+                pm = in_range(rate, o[src + " macs"])
+                ax.plot([p[0] for p in pm], [p[k] for p in pm], color=c, ls=ls, lw=1.8, marker=mk, ms=6)
+            ax.plot([p[0] for p in bm], [p[k] for p in bm], color=NAVY, lw=2.8, marker="o", ms=7)
             ax.set_yscale("log")
             ax.grid(True, which="both", ls=":", alpha=0.5)
             if j == 0:
@@ -120,10 +141,10 @@ def macs_snr():
             else:
                 ax.set_xlabel("SNR (Es/N0) [dB]")
             xlim(ax, rate)
-    fig.legend([line(NAVY, "-", "o"), line(ORANGE, "--", "^")],
-               ["blind, 0 pilots", PILOT + ", 4 decodes at once"],
-               loc="lower center", ncol=2, fontsize=12, frameon=False)
-    fig.tight_layout(rect=(0, 0.06, 1, 1))
+    fig.legend([line(NAVY, "-", "o")] + [line(c, ls, mk) for _, _, c, mk, ls in models],
+               ["blind, 0 pilots"] + [lab for _, lab, *_ in models],
+               loc="lower center", ncol=3, fontsize=10.5, frameon=False)
+    fig.tight_layout(rect=(0, 0.09, 1, 1))
     fig.savefig(os.path.join(HERE, "macs_snr.png"), dpi=200, facecolor="white")
 
 

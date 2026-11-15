@@ -21,10 +21,12 @@ for rate in RATES:
     # merged blind counts from blind_ber.json: frames, errors
     bj = json.load(open(P.BLIND_JSON))
     o["blind_cnt"] = sorted((x["snr"], x["frame_err"], x["frames"], x.get("undetected", 0)) for x in bj if x["rate"] == rate and x["rx"] == P.BLIND_RX[rate])
-    for src in ("ML direct PM+all", "ML direct"):
+    for src in ("ML direct PM+all", "ML direct", "M&M PM+all", "M&M", "Joint ML Lh=3", "cnn-cr", "CRB 128 pilots", "Genie CFO"):
         o[src] = sorted((r["snr"], r["frame_err"], r["frames"], r["extra_decodes_per_frame"], r["metric_evals"] / r["frames"],
                          (r["metric_rounds"] / r["frames"]) if r.get("metric_rounds") else None) for r in rows if r["rate"] == rate and r["src"] == src)
         mac = []
+        if src.split(" PM")[0] not in P.EST_NAME:
+            continue
         for s, e, n, x, me, mr in o[src]:
             t, c = P.pilot_macs(rate, src, x, m_evals=me if "PM" in src else 0.0, m_rounds=mr if "PM" in src else None)
             mac.append((s, t, c))
