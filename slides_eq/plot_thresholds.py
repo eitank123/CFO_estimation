@@ -59,7 +59,7 @@ z = np.linspace(0, 11, 400)
 c.semilogy(z, norm.sf(z), color=GREY, lw=2.5)
 for t, lab, col, yy in ((4, "candidate\nz > 4", ORANGE, 1e-11), (6, "decode\nat once\nz > 6", NAVY, 3e-4)):
     c.axvline(t, color=col, lw=2.5)
-    c.text(t + 0.2, yy, lab, color=col, fontsize=12)
+    c.text(t - 0.2 if t == 4 else t + 0.2, yy, lab, color=col, fontsize=12, ha="right" if t == 4 else "left")
 c.axvspan(8, 11, color=NAVY, alpha=0.12)
 c.text(9.5, 1e-6, "true cell\nz ≈ 10", ha="center", color=NAVY, fontsize=12)
 c.set_ylim(1e-12, 1)
