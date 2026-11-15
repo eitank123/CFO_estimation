@@ -121,6 +121,12 @@ EQ.update({
     "crit_p": r"$W_{\mathrm{crit}}=W_{\mathrm{seq}}+\dfrac{W_{\mathrm{split}}}{32}+\sum_{\mathrm{passes}\ p}\ \max_{\mathrm{core}}\ W_{p,\mathrm{core}}$",
     "tdec_p": r"$W_{\mathrm{dec}}=\dfrac{8N\log_2 N}{8}+\dfrac{6144}{32}+K\cdot\dfrac{1}{2}\log_2(2L)\,(\log_2(2L)+1)$",
     "tdec2_p": r"$R=1/10:\ \ 22.5\mathrm{k}+0.2\mathrm{k}+2.2\mathrm{k}\approx 25\mathrm{k}\ \ \mathrm{vs}\ \ 200\mathrm{k}\ \mathrm{on\ one\ core}$",
+    # ML pilot estimator (est3/estimators.ml_direct: FFT 512 + 2 Newton steps)
+    "ml1": r"$z_n=y_n\,p_n^{\,*}=A\,e^{\,j(2\pi fn+\theta)}+w^{\prime}_n,\qquad n=0,\ldots,L_0-1$",
+    "ml2": r"$\hat f=\arg\max_{|f|\leq 0.03}\ \Lambda(f),\qquad \Lambda(f)=\left|\sum_{n=0}^{L_0-1} z_n\,e^{-j2\pi fn}\right|^2$",
+    "ml3": r"$Z[k]=\sum_{n=0}^{L_0-1} z_n\,e^{-j2\pi kn/512},\qquad f_0=\dfrac{1}{512}\arg\max_{k}\,|Z[k]|^2$",
+    "ml4": r"$f_{t+1}=f_t-\dfrac{\Lambda^{\prime}(f_t)}{\Lambda^{\prime\prime}(f_t)},\qquad t=0,1$",
+    "ml5": r"$\mathrm{CRB}(f)=\dfrac{3}{2\pi^2\,\mathrm{SNR}\,L_0\,(L_0^2-1)}$",
 })
 
 
