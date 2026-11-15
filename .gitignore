@@ -26,3 +26,8 @@ docs/
 !cfo_results.npy
 !cfo_v2_results.npy
 !coarse_eval.npy
+
+# Cleanup 2026-11-15: decode dumps, the old re-encoding backup and archived logs stay out of git
+**/dumps/
+small_cfo/results/backup_re/
+logs/archive/

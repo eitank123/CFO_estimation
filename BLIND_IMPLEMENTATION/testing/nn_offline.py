@@ -1,3 +1,6 @@
+"""NOTE (2026-11-15): the input dumps small_cfo/blind/dumps/t-deca, t-decb25, t-decb2, t-decbn were deleted in the
+project cleanup (user-approved); the results stay in results/report_nn_offline.md and nn_offline.json. Re-running needs
+new decode dumps (run.py dec_dump variants)."""
 """BLIND_IMPLEMENTATION/testing/: offline stage of the decode-feedback NN plan (results/plan_nn_feedback.md).
 
     py BLIND_IMPLEMENTATION/testing/nn_offline.py [--quick]
