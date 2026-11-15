@@ -667,10 +667,13 @@ def _grid_stage(r, peaks, code, sigma2, st, spec, out, have, passed, f_fin, th_f
 def simulate(task):
     rate, snr, seed, max_frames, min_errors, rx_names, noise = task
     rng = np.random.default_rng(seed)
-    code = PolarCode(bc.N_BITS, bc.CODES[rate], 16, 8)
-    pi_code = bc.PiCode(bc.N_BITS, bc.CODES[rate], 16, 8)      # the blind receivers (phase known only mod pi)
-    pi_code4 = (bc.PiCode4(bc.N_BITS, bc.CODES[rate], 16, 8)   # small_rx equiv (BLIND_NOINT=1): any pi/2 branch
-                if any(RX[k].get("sps", {}).get("equiv") for k in rx_names) else None)
+    code = (bc.RBCode if bc.ROTBITS else PolarCode)(bc.N_BITS, bc.CODES[rate], 16, 8)   # BLIND_ROTBITS: the rotation-
+    pi_code = bc.PiCode(bc.N_BITS, bc.CODES[rate], 16, 8)      # bit code (frames, genie, dd_refine); the blind receivers
+    pi_code4 = (bc.PiCode4(bc.N_BITS, bc.CODES[rate], 16, 8)   # (phase known only mod pi); small_rx equiv
+                if any(RX[k].get("sps", {}).get("equiv") for k in rx_names) else None)   # (BLIND_NOINT=1): any pi/2 branch
+    if bc.ROTBITS:                                             # small_rx eqrb: every receiver must decode the rotation-
+        assert all(RX[k].get("sps", {}).get("eqrb") for k in rx_names), "BLIND_ROTBITS=1 runs only eqrb receivers"
+    pi_rb = bc.PiCodeRB(bc.N_BITS, bc.CODES[rate], 16, 8) if bc.ROTBITS else None   # bit code (bc.PiCodeRB)
     sigma2 = 1.0 / (2.0 * 10 ** (snr / 10))
     names = [GENIE] + list(rx_names)
     st = {k: dict(frames=0, frame_err=0, bit_err=0, undetected=0, decodes=0, metric_evals=0, se_coarse=0.0,
@@ -714,7 +717,8 @@ def simulate(task):
                 if RX[k]["kind"] == "small":                 # the true data, only to count the CRC-only undetected
                     spec["sps"]["truth"] = data              # errors and the checks' catches (small_rx._truth)
                     spec["sps"]["truth_f"], spec["sps"]["truth_th"] = f, th   # (measurement: testing/ dumps)
-                    if spec["sps"].get("dec_dump"):          # (measurement) decode dump: one file per chunk, packets
+                    if (spec["sps"].get("dec_dump") or spec["sps"].get("ref_diag")   # (measurement) decode dump /
+                            or spec["sps"].get("fz_diag")):  # ref_diag / fz_diag: one file per chunk, packets
                         spec["sps"]["dec_acc"] = dacc.setdefault(k, {})          # by (chunk_seed, index in chunk)
                         spec["sps"]["dec_id"] = (seed, s["frames"])
                 fn = {"sps": blind_fast.sps_receive, "sps2": blind_fast.sps2_receive,
@@ -722,6 +726,8 @@ def simulate(task):
                 sym = (((1 - 2.0 * cw[:, 0::2]) + 1j * (1 - 2.0 * cw[:, 1::2])) / np.sqrt(2)
                        if spec["sps"].get("pilots") else None)
                 pc_ = pi_code4 if spec["sps"].get("equiv") else pi_code   # equiv: the rotation-aware PiCode4
+                if spec["sps"].get("eqrb"):                  # eqrb: the rotation-bit decoder (BLIND_ROTBITS=1)
+                    pc_ = pi_rb
                 dec, ok, ff, f_top = (fn(r, rx, snr, pc_, sigma2, s, spec, sym) if sym is not None
                                       else fn(r, rx, snr, pc_, sigma2, s, spec))
                 s["se_coarse"] += float(np.sum((f_top - f) ** 2))
@@ -769,7 +775,11 @@ def simulate(task):
         import re
         import small_rx
         slug = lambda x: re.sub(r"[^0-9A-Za-z.+-]+", "_", str(x)).strip("_")
-        small_rx.dec_save(acc, os.path.join(RX[k]["sps"]["dec_dump"], f"dec_{slug(k)}_R{slug(rate)}_{snr:+.1f}_{seed}"
+        dir_, pre_ = ((RX[k]["sps"]["dec_dump"], "dec") if RX[k]["sps"].get("dec_dump")
+                      else (RX[k]["sps"]["ref_diag"], "rd") if RX[k]["sps"].get("ref_diag")
+                      else (RX[k]["sps"]["fz_diag"], "fz"))   # (ref_diag alone: rd_*.npz, groups r / q; fz_diag
+                                                             # alone: fz_*.npz, groups f / g)
+        small_rx.dec_save(acc, os.path.join(dir_, f"{pre_}_{slug(k)}_R{slug(rate)}_{snr:+.1f}_{seed}"
                           f"{'_noise' if noise else ''}.npz"), rate=rate, snr=snr, rx=k, chunk_seed=seed)
     return [{"rate": rate, "snr": snr, "rx": k + (" [noise only]" if noise else ""), "chunk_seed": seed, **v}
             for k, v in st.items()]                          # chunk_seed + fe_idx / ud_idx: paired fixed / broken counts

@@ -24,6 +24,32 @@ tuned for its code yet.
 | MF | pre-MF correction at f₀ and per candidate | same | same |
 | Cost model | Fast-SSC tree cost | same | same |
 
+The table is the presentation receiver. The testing receiver (README, "Current state"; run.py `testing_s11g`) changes
+four rows at R = 1/10, 0.15: fast path off at SNR <= 0 dB; R = 0.15 uses 4 phases below 0.5 dB and 2 from +1 dB;
+speculative decode `spec11` below 1/10 −3.5 dB / 0.15 −2.5 dB; `q_fix` at every rate. The reasons are in 8.1a.
+
+## 8.1a Why each threshold has its value (the measured evidence)
+"Set by design" means no sweep of that value is stored in the repo; the value comes from an argument or an older
+receiver. Packet counts are per arm; "paired" = the same packets in both arms.
+
+| Threshold | Value | Evidence | Alternatives tried |
+|---|---|---|---|
+| Checkpoint z-test drop τ, kept cells k_min | τ = −0.5 (1/10), −1 (2/5, 1/2); k_min = 16 | Offline replay of stored partial path metrics (`blind/smoke/pm_traj_report.py`), sweep τ ∈ {−1, −0.5, 0, 0.5, 1} × k_min ∈ {8, 16, 32}, rule: true cell lost <= 0.1 % (`blind_ber.py`). Work with coarse start 0.515 → 0.417 (1/10), 0.290 → 0.246 (2/5), 0.234 → 0.177 (1/2). The printed sweep table is not stored | τ = +1, one checkpoint (1/10 −5 dB): BLER 6.7e-4 vs 3.9e-4 for τ = −0.5 with checkpoints ½ + ¾ (10.5 M vs 8.6 M MACs). τ = 0 with k_min = 8: loses the true cell |
+| Early win | z > 6 | Replay: z > 6 is almost never a wrong cell (swept 6 … 20; numbers not stored) | z > 4 (64k paired): same BLER (9 vs 8 errors at 1/10 −5 dB, 273 vs 273 at 0.15 −4 dB), total −13 % but per core +6 % (1/10 −4 dB), +5 % (0.15 −3 dB): dropped (DEAD_ENDS) |
+| Candidates after the last checkpoint | z > 4 (at most 4), then the 32 best by path metric | z0 = 4 by design: a wrong cell (about Gaussian z) passes with probability 3e-5, the true cell sits at z ≈ 10. 68-71 % of failures at 1/10 −5 dB had the true cell at z <= 4, which the best-32 stage recovers (BLER 2.0e-3 → 1.2e-3 in the earlier ±0.2 receiver). The cap of 4 is set by design | — |
+| Batch block rejected | best z < 5 at the first checkpoint (1/10; pilots 3) | diag-b, 1/10 −5 dB, 40k: 47 / 47 / 47 / 47 errors with and without batches, z 3 / 5, blocks of 32 / 64; batches cut total MACs 30-45 % at no BLER cost. z 5 vs 3 is a BLER tie; no MAC comparison between them is stored | Hard top-K cut by the prior: true cell outside the top 64 in 63 % of packets, BLER 0.5 |
+| Checkpoint NN cut | cumulative probability 1 − 10⁻³, at least 8 cells | 3000 packets per point: 2/5 0.5 dB keeps 69 cells, 0 true cells missed, work 0.379; 2/5 1 dB 14 cells, 0 missed; 1/2 2 dB 24 cells, 0 missed, work 0.237 | 1 − 10⁻²: 27.5 cells but misses 0.17 % (2/5), 0.07 % (1/2). 1 − 10⁻⁴: 133 cells, work 0.499. At least 16 instead of 8: work 0.388 / 0.249 for the same misses |
+| 4th-power prior weight w₄ | 0.1 / ⅓ / 1 at −5 / −2 / +1 dB | Set by design (inherited from the ±0.2 study). Context: at 1/10 the 4th-power periodogram is almost uninformative (true cell mean rank ~90 of 201), at 2/5 rank 12-25 of 401, at 1/2 ~5 | — |
+| Coarse start, phase pruning | stride 2; best 2 phases per cell from ½ | diag-c, 1/10 −5 dB, 40k: phase_keep 2 gives 10 vs 9 errors at 4.15 vs 5.99 M MACs (−31 %) | Stride 3: 148 errors in 3200 packets. Joining only the top 16 / 8 neighbours: 37 / 43 errors vs 9 (×5 at 200k) |
+| Grid step (1/10) | 4 STEP at every SNR | Widening to 6 / 8 STEP above −2 dB gave BLER 1.9e-3 at 0 dB; 4 STEP: 0 errors in 100k per point | 6 or 3 STEP (testing): BLER ×5-70 and more MACs |
+| Re-encoding check | max(0.12, ½·√(s/(1+s)), RHO_N·√(s/(1+s))) | 06, 6.2: RHO_N is midway between the lowest correct pass and the highest false pass, per rate and SNR (calibration table there) | ½·√(s/(1+s)) alone ("rho_min") is far too loose: false passes reached ρ = 0.65 vs a threshold of 0.37 (2/5 1 dB) |
+| Fast path off (testing receiver) | SNR <= 0 dB at 1/10, 0.15 (`s0_snr = 0.5`); kept at 2/5, 1/2 | Paired, per core: 1/10 −30 / −37 / −38 / −37 / −30 % at −5 / −4 / −3 / −1 / 0 dB; 0.15 −15 / −35 / −35 / −26 % at −4 / −3 / −1 / 0 dB, but +6 % at +1 dB, so the switch sits between 0 and +1 dB. BLER the same (8 vs 8, 275 vs 273, 7 vs 7 errors) | Off at 2/5, 1/2 (32k paired): 0 fixed / 17 broken at 2/5 0.5 dB (p = 1.5e-5), per core +22 % (2/5), +278 … +316 % (1/2) |
+| Phases at R = 0.15 (testing receiver) | 4 below 0.5 dB, 2 from +1 dB | Paired 400k: −1 dB 72 → 0 errors (72 fixed / 0 broken), per core −5 %; 0 dB 9 → 1, per core +1 %. +1 dB: 0 errors in 64k both ways, 4 phases cost +2.1 % per core, +10 % total | 2 phases from −1 dB (presentation receiver): the 143 / 880k error bump at −1 dB. 2 phases at 1/10: BLER ×20 |
+| Speculative decode (testing receiver) | 4 < z <= 6, accepted at ρ > 1.1 × threshold | Plain spec at the normal threshold (1/10 −5 dB, 400k): its 2 undetected errors had ρ / threshold in [1.0, 1.1), where only 573 of 107,317 correct passes (0.5 %) lie. Confirmed on fresh packets: 400k 98 vs 98 errors, 0 discordant, undetected 1 = base, per core −14.4 %; 1e6: 209 vs 209, undetected 2 vs 2, −14.5 % | Plain spec (factor 1.0): 1 broken packet, 2 undetected |
+| spec11 SNR gate | below −3.5 dB (1/10), −2.5 dB (0.15) | 64k paired sweep, per core: 1/10 −14.6 / −10.1 / −3.6 % at −5 / −4.5 / −4 dB, +3.7 % at −3 dB; 0.15 −7.0 / −8.1 / −4.1 % at −4 / −3.5 / −3 dB, +0.5 % at −2.5 dB, +2.8 … +3.6 % above. Gate = between the last gain and the first loss | — |
+| Hard MAC cap (option) | 2 M per core (1/10, 0.15), 1 M (2/5, 1/2) | 07, 7.6 cap plots (0.5 … 10 M). Paired: 0.15 −2.5 dB 400k 2 → 4 errors; 2/5 1.5 dB 400k 0 → 3; 1/2 2.5 dB 128k 0 → 0; mean MACs within 0.1 %; noise-only packets stop at the cap instead of ~16.5 M | 1 M per core at 1/10 −5 dB: BLER 3.3e-4 → 1.1e-3; a cap on total MACs is much worse |
+| SNR margin on the check (option) | `re_margin` 1 dB | SNR underestimated by 1 dB: 3-5 undetected in 3200-6400 packets; with the margin none, and the few correct packets rejected (0 at 1/10, 4 of 6400 at 2/5) were all recovered. Not used in the final runs (SNR known) | — |
+
 ## 8.2 Results (AWGN, CFO uniform in ±0.03, full chain; all runs merged, 2026-11-12)
 Errors / packets. "Genie" knows the CFO and phase and decodes once. The 128-pilot receivers (est3) use the same
 back-end as blind (pre-MF correction, CA-SCL-8, CRC search over neighbouring CFOs, the same re-encoding check); "ML"
@@ -90,6 +116,54 @@ is the ML estimator (FFT 512 + 2 Newton), "CRB" an ideal estimator whose CFO err
 almost all deep in the waterfall, where many hypotheses are decoded per packet. Noise-only packets: 0 false alarms
 in 9,600 (earlier final receivers).
 
+## 8.2a Fair comparison: pilots outside the packet, energy charged (est4, 2026-11-15)
+The presentation figures `presentation/bler_fair_R*.png` (`testing/plot_pres.py`; numbers in
+`testing/results/expected_est4.md`). The tables above put 128 pilots INSIDE the packet and do not charge their energy.
+Here the pilot receivers keep the whole 1024-symbol packet for data (N = 2048, CRC-16, as blind) and send their known
+symbols as EXTRA symbols, all at the same Es; the SNR axis is the burst energy per data symbol,
+SNR = Es/N0 + 10 log10((1024 + Nk) / 1024): +0.47 dB for 116 known symbols, +0.51 dB for 128, +0.13 dB for 32.
+Same back-end for all (pre-MF correction, CA-SCL-8, the re-encoding check, the fair metric-ordered CRC search), the same
+data / CFO / noise; 480k packets per SNR for the pilot receivers.
+
+Receivers:
+| Receiver | Known symbols | CFO estimate |
+|---|---|---|
+| Blind | none | 08, 8.1 (testing receiver) |
+| DVB-RCS2 ID 13 (EN 301 545-2, scaled) | preamble 32, 53 × (19 data + 1 pilot), postamble 31: 116 | Rife-Boorstyn FFT over all known symbols + parabolic interpolation |
+| 128 preamble, ML / Mengali-Morelli | 128 | ML direct (FFT 512 + 2 Newton) / M&M |
+| 64 + 64 pre / post, joint ML | 128 | joint ML over both blocks, CRC search over the ±3 ML lobes |
+| DVB-RCS2 16 + 16 pre / post | 32 | 4th-power FFT over the burst (non-data-aided), π/2 ambiguity from the known symbols |
+| Genie | none | true CFO and phase, one decode (lower bound) |
+
+SNR [dB] where the BLER crosses a target (log-linear interpolation; blind pooled over all its runs, 64k-1.4M packets per
+SNR, about ±0.1 dB at 1/10 and 0.15):
+| Rate, BLER | Blind | DVB-RCS2 ID 13 | 128 preamble, ML | 64 + 64, joint ML | 16 + 16, 4th power | Genie |
+|---|---|---|---|---|---|---|
+| 1/10, 10⁻⁴ | **−4.9** | −4.09 | −4.68 | −2.87 | fails | −5.19 |
+| 0.15, 10⁻³ | **−3.60** | −3.45 | −3.44 | −3.34 | fails | −3.91 |
+| 0.15, 10⁻⁴ | −2.98 | **−3.12** | **−3.12** | −2.71 | fails | −3.59 |
+| 2/5, 10⁻³ | **0.61** | 1.10 | 1.16 | 1.12 | fails | 0.64 |
+| 1/2, 10⁻³ | **1.79** | 2.33 | 2.41 | 2.38 | 2.77 | 1.90 |
+
+**Reading it**
+- With the pilot energy charged, the waterfall gap of 8.2 ("blind loses at the lowest SNRs") is gone: blind is the best
+  receiver at R = 1/10 (about 0.2 dB ahead of the 128-preamble ML at 10⁻⁴), ties at R = 0.15 (0.15 dB ahead at 10⁻³,
+  0.14 dB behind at 10⁻⁴: the pilot waterfalls are steeper) and is about 0.5 dB better at R = 2/5 and 1/2.
+- The cost is complexity, not BLER: blind needs 2-12× the MACs per core of the pilot receivers (07, 7.5b).
+- DVB-RCS2 ID 13 is the strongest and cheapest pilot receiver. Its single-symbol pilots every 20 symbols resolve only
+  |f| < 0.025, so at R = 1/10 −5 dB 0.2 % of packets fall outside its CFO window (881 errors per 480k).
+- The 128-preamble receivers keep a floor of wrong CRC passes: 2-6 per 480k at every SNR above the waterfall
+  (pooled: about 3-7·10⁻⁶); DVB-RCS2 ID 13 and 64 + 64 have none. In the figures that floor is pooled over the flat
+  region (the legend gives the count) instead of drawn point by point.
+- The 4th-power estimator with 32 known symbols fails at low SNR: BLER 0.5-0.9 below 0 dB at every rate.
+- The 64 + 64 joint ML picks a wrong lobe (spacing 1/1088) in about 55-60 % of packets below −4 dB; the CRC search over
+  ±3 lobes recovers most of it, but it is the weakest ML layout at R = 1/10.
+- Phase noise (Wiener, linewidth × Ts, per-symbol SNR, pilot energy not charged; 64k per point): at 10⁻⁴ the DVB-RCS2
+  receiver with Kalman phase tracking is the best pilot receiver and beats blind at 0.15 and 2/5 (94 vs 144 and 1967 vs
+  5312 errors) but loses at 1/10 (168 vs 42); every pilot receiver with a constant phase is worse than blind. Blind's
+  code-aided phase tracking (`pns`) cuts its BLER 10-23 % at 10⁻⁴ and 9-22 % at 3·10⁻⁴, never breaks a packet and lowers
+  MACs per core (`testing/results/expected_pns.md`).
+
 ## 8.3 Throughput with the pilots inside the packet
 The pilot receivers' 128 known symbols sit inside the 1024-symbol packet, so they carry no data. Information bits per packet:
 
@@ -105,9 +179,14 @@ The pilot receivers would beat blind on throughput only where blind's BLER is mo
 
 **Matching throughput instead:** a pilot system that keeps the same data bits needs a code rate 1024/896 times higher, which costs roughly 0.5–0.7 dB of SNR.
 
+**Pilots outside the packet instead (8.2a):** the pilot system keeps every data bit but sends 1024 + Nk symbols, so its
+airtime throughput is 1024 / (1024 + Nk) of blind's: 0.898 for 116 known symbols, 0.889 for 128, 0.970 for 32; the extra
+energy is charged on the SNR axis of 8.2a.
+
 ## 8.4 Limits of what was simulated
 - **Ideal synchronisation:** timing and SNR are known. A 1 dB SNR error was tested, and a 1 dB threshold margin fixes it.
-- **Static channel:** AWGN only, with a static CFO over the packet (no drift or phase noise).
+- **Static channel:** AWGN only, with a static CFO over the packet in 8.2 and 8.2a. Wiener phase noise was tested
+  separately (8.2a, last point; `testing/results/expected_est4.md`, `expected_pns.md`); CFO drift was not.
 - **Floating-point arithmetic.**
 - **No worst-case MAC cap** in the receiver (7.6 gives the BLER cost of one).
 - **PiCode's assumption:** it requires u_{N−1} to be an information bit and no shortening. With 5G-NR-style rate matching by shortening, 4 phase branches would be needed in the final decodes.

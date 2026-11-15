@@ -113,6 +113,33 @@ With the fair (metric-ordered) CRC search adopted as the pilot reference on 2026
 the pilot receivers need 0.04–0.09 M per core (+8 … +36 %: the metric pass over the neighbours of failing packets),
 so the per-core gap to blind narrows by about that much but stays 2–6× at R = 1/10 and 0.15.
 
+## 7.5b Fair comparison: pilots outside the packet, DVB-RCS2 included (est4, 2026-11-15)
+The presentation figures `presentation/macs_fair_R*.png` (`testing/plot_pres.py`). The pilot receivers carry their known
+symbols as EXTRA symbols outside the 1024-symbol packet, and the SNR axis charges their energy (+0.47 dB for 116 known
+symbols, +0.51 dB for 128). Same back-end as 7.5 with the fair metric-ordered CRC search (+ a search over ML lobes for the
+64 + 64 layout). Every count is the standard scheduled MACs per core (7.5a); the FFT estimators are charged a full
+8192-point FFT. Blind = the testing receiver (`testing_s11g` at 1/10, 0.15; `base_qfix` at 2/5, 1/2). M MACs per core
+at the plotted SNR (the pilot points sit 0.47-0.51 dB right of the blind point):
+
+| Rate / SNR | Blind | DVB-RCS2 ID 13 (116 known) | 128 preamble, ML | 64 + 64, joint ML |
+|---|---|---|---|---|
+| 1/10 −5 dB | 0.206 | 0.034 | 0.092 | 0.072 |
+| 1/10 −4 dB | 0.165 | 0.034 | 0.070 | 0.069 |
+| 0.15 −4 dB | 0.406 | 0.037 | 0.096 | 0.085 |
+| 0.15 −3.5 dB | 0.225 | 0.035 | 0.079 | 0.072 |
+| 0.15 −3 dB | 0.182 | 0.035 | 0.074 | 0.068 |
+| 2/5 0.5 dB | 0.234 | 0.045 | 0.124 | 0.093 |
+| 2/5 1 dB | 0.119 | 0.040 | 0.087 | 0.067 |
+| 1/2 2 dB | 0.083 | 0.044 | 0.079 | 0.072 |
+| 1/2 2.5 dB | 0.075 | 0.042 | 0.065 | 0.063 |
+
+- The DVB-RCS2 layout is the cheapest pilot receiver: its CFO estimate (Rife-Boorstyn FFT over pilots spread across the
+  burst) is accurate enough that it rarely needs extra decodes; the estimator is 16-21 % of its cost. The 64 + 64 layout's
+  estimator is 8-15 %, the preamble ML's ~1 %.
+- Blind costs 5-12× the DVB-RCS2 receiver per core at R = 1/10 and 0.15, about 6× at 2/5 0.5 dB, 3× at 2/5 1 dB and
+  about 2× at R = 1/2. Against the 128-preamble ML it is 2-4× at 1/10, 0.15 and about 1-2× at 2/5, 1/2.
+- The 16 + 16 pre/post receiver with the 4th-power estimator is not in the table: it fails below 0 dB (08, 8.2a).
+
 ## 7.5a Standard count from 2026-11-13: scheduled MACs per core
 From 2026-11-13 the standard "MACs per core" is the scheduled critical path: at R = 1/10 and 0.15 one core per (cell,
 phase) hypothesis in the grid plus 4 CA-SCL-8 decodes at once; at R = 2/5 and 1/2 (joint decode already) 4 decodes at

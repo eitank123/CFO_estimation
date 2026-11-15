@@ -113,6 +113,48 @@ class PolarCode:
             self._ends = None
 
     _ends = None
+    fz_q = None     # (measurement, small_rx fz_diag) None = off; fractions of the frozen set (decoding order) at which
+                    # every list path's frozen-only metrics are recorded in fz_rec (decisions / PMs unchanged)
+
+    def _fz_start(self, shape):
+        """(fz_q) a decode starts: per path (B, Ls) running sums of the frozen-bit hard penalty |LLR| [LLR < 0] and
+        of |LLR| over the frozen leaves seen (leaf LLRs, also inside rate-0 nodes), checkpoint c at the
+        ceil(fz_q[c] F)-th frozen leaf (F frozen bits); and of the decoder's own frozen PM increment ps (log(1 + e^-a)
+        summed over a rate-0 node's / frozen leaf's LLRs, the _pm terms recomputed apart), at the first node boundary
+        with >= ceil(fz_q[c] F) frozen leaves. fz_rec: pen, mag, alive (B, Ls, C) finite PM, cnt / pos / nb (C,)
+        frozen leaves, leaves (bits) and information bits decided; ps, alive_s (B, Ls, C), cnt_s / pos_s / nb_s (C,)."""
+        F = int(self.frozen.sum())
+        t = np.maximum(np.ceil(np.asarray(self.fz_q, float) * F - 1e-9).astype(int), 1)
+        C = len(t)
+        self._fz_t, self._fz_c, self._fz_cs, self._fz_n = t, 0, 0, 0
+        self._fz_s = np.zeros(shape + (3,))
+        z = lambda: np.zeros(C, int)
+        self.fz_rec = dict(pen=np.full(shape + (C,), np.nan, np.float32), mag=np.full(shape + (C,), np.nan, np.float32),
+                           alive=np.zeros(shape + (C,), bool), cnt=t.copy(), pos=z(), nb=z(),
+                           ps=np.full(shape + (C,), np.nan, np.float32), alive_s=np.zeros(shape + (C,), bool),
+                           cnt_s=z(), pos_s=z(), nb_s=z())
+
+    def _fz_add(self, a, lo, node):
+        """(fz_q) frozen leaves lo, lo + 1, ... with leaf LLRs a (B, Ls, n), node LLRs node (B, Ls, n) (a frozen leaf:
+        node = a): accumulate, record crossed checkpoints."""
+        pen, mag = np.where(a < 0, -a, 0).astype(np.float64), np.abs(a).astype(np.float64)
+        n, R = a.shape[2], self.fz_rec
+        while self._fz_c < len(self._fz_t) and self._fz_t[self._fz_c] <= self._fz_n + n:
+            c, m = self._fz_c, self._fz_t[self._fz_c] - self._fz_n      # m leaves of this node up to checkpoint c
+            R["pen"][..., c] = self._fz_s[..., 0] + pen[..., :m].sum(2)
+            R["mag"][..., c] = self._fz_s[..., 1] + mag[..., :m].sum(2)
+            R["alive"][..., c] = np.isfinite(self._pm)
+            R["pos"][c], R["nb"][c] = lo + m, len(self._bits)
+            self._fz_c += 1
+        self._fz_s[..., 0] += pen.sum(2)
+        self._fz_s[..., 1] += mag.sum(2)
+        self._fz_s[..., 2] += np.logaddexp(np.float32(0), -node).sum(axis=2)   # = the _pm term, computed apart
+        self._fz_n += n
+        while self._fz_cs < len(self._fz_t) and self._fz_t[self._fz_cs] <= self._fz_n:   # node boundary checkpoints
+            c = self._fz_cs
+            R["ps"][..., c], R["alive_s"][..., c] = self._fz_s[..., 2], np.isfinite(self._pm)
+            R["cnt_s"][c], R["pos_s"][c], R["nb_s"][c] = self._fz_n, lo + n, len(self._bits)
+            self._fz_cs += 1
 
     def _mark(self, end):
         """(decode_traced) the list's best path metric once the first `end` bits are decided."""
@@ -123,6 +165,8 @@ class PolarCode:
     def _rec(self, alpha, lo, hi):
         """Decode leaves [lo, hi). Returns (re-encoded bits (B, Ls, n), path permutation or None)."""
         n = hi - lo
+        if n == self.N and self.fz_q is not None:               # (measurement) a decode starts
+            self._fz_start(alpha.shape[:2])
         if n == 1:
             out = self._leaf(alpha[..., 0], lo)
             if self._ends is not None:
@@ -133,6 +177,8 @@ class PolarCode:
             self._pm += np.logaddexp(np.float32(0), -alpha).sum(axis=2)
             if self._ends is not None:
                 self._mark(hi)
+            if self.fz_q is not None:                           # (measurement) its leaves' LLRs, as SC would see them
+                self._fz_add(_rate0_leaves(alpha), lo, alpha)
             return np.zeros(alpha.shape, dtype=np.uint8), None
         mid = lo + n // 2
         a, b = alpha[..., :n // 2], alpha[..., n // 2:]
@@ -149,6 +195,8 @@ class PolarCode:
     def _leaf(self, llr, i):
         if self.frozen[i]:
             self._pm += np.logaddexp(np.float32(0), -llr)       # cost of u_i = 0
+            if self.fz_q is not None:                           # (measurement) frozen-only metrics
+                self._fz_add(llr[..., None], i, llr[..., None])
             return np.zeros(llr.shape + (1,), dtype=np.uint8), None
         Ls = self.list_size
         zero = np.float32(0)
@@ -159,6 +207,8 @@ class PolarCode:
         self._pm = cand[np.arange(len(cand))[:, None], keep]
         self._bits.append(bit)
         self._parents.append(parent)
+        if self.fz_q is not None:                               # (measurement) the sums follow their paths
+            self._fz_s = self._fz_s[np.arange(len(cand))[:, None], parent]
         return bit[..., None], parent
 
 
@@ -172,6 +222,17 @@ def polar_transform(u):
         v[..., 0, :] ^= v[..., 1, :]
         step *= 2
     return x
+
+
+def _rate0_leaves(a):
+    """(measurement, fz_q) leaf LLRs (..., n) of an all-frozen sub-tree from its node LLRs a (..., n), leaf order: the
+    decoder's min-sum f and g with zero partial sums (g = a + b)."""
+    n = a.shape[-1]
+    if n == 1:
+        return a
+    x, y = a[..., :n // 2], a[..., n // 2:]
+    return np.concatenate([_rate0_leaves(np.copysign(np.minimum(np.abs(x), np.abs(y)), x * y)),
+                           _rate0_leaves(x + y)], -1)
 
 
 def _gather(arr, perm):

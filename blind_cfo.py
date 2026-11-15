@@ -34,7 +34,7 @@ import time
 import numpy as np
 
 import config as cfg
-from polar import PolarCode, polar_transform
+from polar import PolarCode, polar_transform, pw_reliability
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 # a study (environment variable BLIND_STUDY) has its own CFO range and keeps all its results / logs / models / figures
@@ -71,6 +71,12 @@ INTERLEAVER = np.random.default_rng(12345).permutation(N_BITS)  # the same fixed
 NOINT = os.environ.get("BLIND_NOINT", "") == "1"
 if NOINT:
     INTERLEAVER = np.arange(N_BITS)
+# BLIND_ROTBITS=1 (needs BLIND_NOINT=1): the faithful phase-equivariant code (Geiselhart et al. 2023, 2 rotation bits,
+# testing/results/expected_eqrb.md): information set = the K + 2 most reliable positions, data + CRC on the K other
+# than N-2, N-1, u_{N-2} = u_{N-1} = 0 sent. Switches the transmitter / genie / re-encoding code (RBCode), the metric
+# code (sc_code: N-2, N-1 decoded as free bits) and the blind decoder (PiCodeRB). Read at import, as BLIND_NOINT
+ROTBITS = os.environ.get("BLIND_ROTBITS", "") == "1"
+assert not ROTBITS or NOINT, "BLIND_ROTBITS=1 needs BLIND_NOINT=1 (no interleaver)"
 
 
 def path(kind, name):
@@ -235,7 +241,12 @@ _sc = {}
 
 def sc_code(A, crc=16):
     if (A, crc) not in _sc:
-        _sc[(A, crc)] = PolarCode(N_BITS, A, crc, list_size=1)
+        if ROTBITS:                                        # rotation-bit code: the metric decodes the K + 2 positions
+            c = PolarCode(N_BITS, A + 2, crc, list_size=1)  # (N-2, N-1 free, the metric stays equivariant); only its
+            assert np.array_equal(c.info_pos, rb_sets(A + crc)[0])   # frozen set / path metric are used
+            _sc[(A, crc)] = c
+        else:
+            _sc[(A, crc)] = PolarCode(N_BITS, A, crc, list_size=1)
     return _sc[(A, crc)]
 
 
@@ -403,6 +414,11 @@ class PiCode4(PiCode):
         ip[self.info_pos] = True
         return int(ip[0::2].sum()) + 2 + self.K
 
+    @property
+    def n_dec(self):
+        """Information positions the list decodes (traceback length; PiCodeRB: K + 2, the rotation bits too)."""
+        return self.K
+
     def _accept(self, info, pm):
         """info (B, Ls, K) the list paths' bits -> data (B, Ls, A) un-rotated, ok (B, Ls), rotation (B, Ls), info
         un-rotated (B, Ls, K)."""
@@ -433,10 +449,10 @@ class PiCode4(PiCode):
         self._bits, self._parents = [], []
         alpha = np.repeat(llr[:, None, :].astype(np.float32), Ls, axis=1)
         self._rec(alpha, 0, self.N)
-        info = np.empty((B, Ls, self.K), dtype=np.uint8)
+        info = np.empty((B, Ls, self.n_dec), dtype=np.uint8)
         path = np.broadcast_to(np.arange(Ls), (B, Ls))
         rows = np.arange(B)[:, None]
-        for k in range(self.K - 1, -1, -1):
+        for k in range(self.n_dec - 1, -1, -1):
             info[:, :, k] = self._bits[k][rows, path]
             path = self._parents[k][rows, path]
         data, ok, rot, self.last_info = self._accept(info, self._pm)
@@ -461,9 +477,9 @@ class PiCode4(PiCode):
             alpha = np.repeat(llr_h[:1, None, :].astype(np.float32), Ls, axis=1)
             alpha[0, :H] = llr_h
             self._rec(alpha, 0, self.N)
-            info = np.empty((1, Ls, self.K), dtype=np.uint8)
+            info = np.empty((1, Ls, self.n_dec), dtype=np.uint8)
             path = np.arange(Ls)[None]
-            for k in range(self.K - 1, -1, -1):
+            for k in range(self.n_dec - 1, -1, -1):
                 info[:, :, k] = self._bits[k][0, path]
                 path = self._parents[k][0, path]
             data, ok, rot, self.last_info = self._accept(info, self._pm)
@@ -475,6 +491,80 @@ class PiCode4(PiCode):
             return data[best], bool(ok.any()), pm[best], int(path[0, best])   # path: the starting path = hypothesis
         finally:
             self.list_size = L0
+
+
+def rb_sets(K, N=N_BITS):
+    """(rotation-bit code) the K + 2 most reliable positions (decoded as information) and the K of them other than
+    N-2, N-1 (data + CRC). PW order: N-1, N-2 are the two most reliable, and 2m in the set implies 2m+1 in it."""
+    dec = np.sort(pw_reliability(N)[-(K + 2):])
+    assert dec[-2] == N - 2 and dec[-1] == N - 1, "the rotation bits N-2, N-1 must be information positions"
+    return dec, dec[:-2]
+
+
+class RBCode(PolarCode):
+    """Transmitter / genie / re-encoding code of the rotation-bit code (BLIND_ROTBITS=1): data + CRC on the K positions
+    of rb_sets, u_{N-2} = u_{N-1} = 0 (frozen here: the genie knows them)."""
+
+    def __init__(self, N, A, crc_len=16, list_size=8):
+        super().__init__(N, A, crc_len, list_size)
+        self.info_pos = rb_sets(self.K, N)[1]
+        self.frozen = np.ones(N, dtype=bool)
+        self.frozen[self.info_pos] = False
+
+
+class PiCodeRB(PiCode4):
+    """The faithful phase-equivariant code (Geiselhart et al. 2023; BLIND_ROTBITS=1, BLIND_NOINT=1): 2 rotation bits.
+    A pi/2 rotation of the decoded symbols, cw' = rot(cw) ((b0, b1) -> (not b1, b0), undone by unrot), acts on u as
+    R(u) = T(u) + e_{N-2}, T: u_{2m+1} ^= u_{2m} (ones at even positions = e_{N-2} G); R^2(u) = u + e_{N-1}. R maps
+    (u_{N-2}, u_{N-1}) = (a, b) to (a ^ 1, b ^ a) whatever the other bits, so a packet sent with (0, 0) is decoded at
+    rotation q (cw' = rot^q(cw)) with (0, 0), (1, 0), (0, 1), (1, 1) for q = 0..3: q = u_{N-2} + 2 u_{N-1}. The list
+    decodes the K + 2 positions (N-2, N-1 as free bits: SC / the metric stay equivariant); each path reads its q, is
+    un-rotated ONCE (unrot) and gets ONE CRC test on its K data + CRC bits (no last-bit trick, no rotation guessing).
+    info_pos = the K data + CRC positions (encode / re-encoding: the sent, un-rotated codeword), frozen = the decoder's
+    frozen set (N-2, N-1 not frozen). Returns as PiCode4 (data un-rotated, last_rot, last_info (B, Ls, K) un-rotated);
+    last_q (B, Ls) every path's rotation read (measurement)."""
+
+    def __init__(self, N, A, crc_len=16, list_size=8):
+        PolarCode.__init__(self, N, A, crc_len, list_size)
+        self._check()
+        self.dec_pos, self.info_pos = rb_sets(self.K, N)
+        self.frozen = np.ones(N, dtype=bool)
+        self.frozen[self.dec_pos] = False
+
+    @staticmethod
+    def _check():
+        PiCode4._check()
+        assert ROTBITS, "PiCodeRB needs BLIND_ROTBITS=1 (the transmitter sends u_{N-2} = u_{N-1} = 0)"
+
+    @property
+    def n_dec(self):
+        return self.K + 2
+
+    def rot_macs(self):
+        """Cost per list path: the rotation read (2 bits, free), ONE un-rotation in the u domain (T: one XOR per decoded
+        bit at an even index, + the 2-bit constant) and ONE CRC (K), as PiCode4.rot_macs over the K + 2 positions. The
+        simulation un-rotates through the codeword (same result)."""
+        ip = np.zeros(self.N, bool)
+        ip[self.dec_pos] = True
+        return int(ip[0::2].sum()) + 2 + self.K
+
+    def _accept(self, info, pm):
+        """info (B, Ls, K + 2) the list paths' bits (the last two = u_{N-2}, u_{N-1}) -> data (B, Ls, A) un-rotated,
+        ok (B, Ls), rotation read (B, Ls), info un-rotated (B, Ls, K)."""
+        B, Ls = pm.shape
+        q = info[..., self.K].astype(int) + 2 * info[..., self.K + 1]
+        u = np.zeros((B, Ls, self.N), np.uint8)
+        u[..., self.dec_pos] = info
+        cw = polar_transform(u)
+        for v in (1, 2, 3):
+            m = q == v
+            if m.any():
+                cw[m] = unrot(cw[m], v)
+        iq = polar_transform(cw)[..., self.info_pos]
+        d, c = iq[..., :self.A], iq[..., self.A:]
+        ok = np.all(self.crc(d.reshape(-1, self.A)).reshape(B, Ls, self.C) == c, axis=-1)
+        self.last_q = q
+        return d, ok, np.where(ok, q, -1), iq
 
 
 def crb_da(snr_db, L=N_SYM):

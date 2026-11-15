@@ -70,3 +70,12 @@ $$\mathrm{LP}_c = w_4(\mathrm{SNR})\; \max_{\text{bins of cell }c}\frac{|Y[k]|^2
 
 ## 4.5 Candidates
 After the last checkpoint, the cells are taken in z order: the ones with z > z₀ = **4**, at most 4, then the 32 best by final path metric. Each candidate goes to stage 3 (05), and the search stops at the first accepted decode.
+
+## 4.6 Why these thresholds
+The measured evidence for every threshold in this chapter is in 08, 8.1a. In short:
+- **τ and k_min:** chosen on a replay of stored path metrics so the true cell is lost in at most 0.1 % of packets.
+- **Early win at z > 6:** almost never a wrong cell. z > 4 gave the same BLER but cost +5 … +6 % MACs per core.
+- **Block rule z < 5:** batches cut total MACs 30–45 % at no BLER cost (47 errors in 40k packets with and without).
+- **NN cut 1 − 10⁻³, at least 8:** no true cell missed in 3000 packets per point; 1 − 10⁻² misses 0.07–0.17 %.
+- **Phase pruning to 2:** −31 % MACs for 10 vs 9 errors in 40k packets.
+- **Set by design, not swept:** z₀ = 4 and the w₄ prior weights.

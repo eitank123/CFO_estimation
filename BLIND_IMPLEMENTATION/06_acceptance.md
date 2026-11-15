@@ -26,6 +26,26 @@ $$P(\rho > t) \approx e^{-N t^2}\qquad(t = 0.12:\; e^{-14.7} = 4\cdot10^{-7}).$$
 $$\rho > \max\!\Big(0.12,\;\tfrac12\sqrt{\tfrac{s}{1+s}},\;\mathrm{RHO\_N}(\mathrm{SNR})\sqrt{\tfrac{s}{1+s}}\Big),$$
 
 - RHO_N is a per-rate table that tightens the threshold to a fraction of the expected right-packet value (R = 1/10: 0.775 at −5 dB down to 0.553 at 0 dB; R = 0.15: 0.873 at −4.5 dB down to 0.655 at +1 dB; R = 2/5: 0.928 to 0.883; R = 1/2: 0.934 to 0.903). Each table is calibrated per code from the false passes of wrong-CFO hypotheses (R = 0.15: runs `fp15a/b`).
+- **How RHO_N was calibrated** (`blind/smoke/fp_check.py`; `blind_ber.py` RHO_N): the receiver ran with only the loose
+  check, and every CRC pass was labelled right or false. For each rate and SNR, RHO_N = the midpoint between the lowest
+  normalised ρ of the right passes (their 0.1 % quantile, in practice the minimum) and the highest of the false passes.
+  At every calibrated point the two groups do not overlap, so the rule removes all observed false passes:
+
+  | Point | lowest right pass | highest false pass | RHO_N | Log |
+  |---|---|---|---|---|
+  | 1/10 −5 dB (255 right, 65 false) | 0.7945 | 0.7519 | 0.775 | `logs/run_fp-1.out` |
+  | 1/10 −3 dB | 0.690 | 0.633 | 0.66 | `logs/run_fp-3.out` |
+  | 0.15 −4.5 dB | 0.8926 | 0.8525 | 0.873 | `logs/run_fp15a.out` |
+  | 0.15 −1 dB | 0.7337 | 0.6545 | 0.694 | `logs/run_fp15b.out` |
+  | 0.15 0 dB | 0.7663 | 0.6189 | 0.693 | `logs/run_fp15b.out` |
+  | 0.15 +1 dB | 0.7217 | 0.5881 | 0.655 | `logs/run_fp15b.out` |
+  | 2/5 0.5 dB | 0.9503 | 0.9052 | 0.928 | `logs/run_fp-1.out` |
+
+  R = 0.15: 16k packets per SNR (48-72 false passes, 226-14,414 right passes per point). The other table entries come
+  from the same runs at the remaining SNRs; between table points RHO_N is interpolated.
+- **The other two terms.** 0.12 is a floor set by the formula above (an unrelated codeword exceeds it with probability
+  4·10⁻⁷). ½·√(s/(1+s)) is the earlier check ("rho_min"), far too loose on its own: false passes reached ρ = 0.65
+  against a threshold of 0.37 (2/5, 1 dB) and 0.35 against 0.245 (1/10, −5 dB); it now only acts as a floor.
 - The 128-pilot comparison receivers (est3) use the same threshold, so the comparison is fair.
 - Option `re_margin`: the threshold uses SNR + margin. Then an SNR estimate that is too low cannot lower it; a margin of 1 dB fixes the −1 dB SNR-error case.
 

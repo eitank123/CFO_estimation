@@ -16,6 +16,18 @@ and MACs unchanged), one file per chunk in <study data>/dumps/<part>/ (small_cfo
 BLIND_STUDY=small_cfo; sync it back with cluster.py --results small_cfo/blind/dumps/<part>):
 
     BLIND_STUDY=small_cfo python BLIND_IMPLEMENTATION/testing/run.py --points 0.15:-4:4 --rx nofast15_dump --part t-dec15a
+
+<key>_rd (testing_s11g_rd, base25_qfix_rd, base2_qfix_rd) runs that receiver with the Stage 3 refinement diagnostic
+(small_rx ref_diag, D0 of results/expected_ref.md; decisions and MACs unchanged): rd_*.npz per chunk in the same
+<study data>/dumps/<part>/ (r_* one row per refined candidate cell, q_* one per packet) + rd_* counters in the json.
+
+<key>_fz (testing_s11g_fz, base25_qfix_fz, base2_qfix_fz) runs that receiver with the frozen-bit diagnostic (small_rx
+fz_diag, F5 of results/expected_f3f5.md; decisions and MACs unchanged): fz_*.npz per chunk in the same directory (f_* one
+row per CA-SCL-8 decode, j_* per joint list: every path's frozen-only metrics at small_rx FZ_Q of the frozen set; g_* per packet).
+
+testing_s11g_lm2 / _lm4 (small_rx lmarg = 2 / 4) and testing_s11g_ddref (small_rx ddref): the online tests of
+results/expected_online_f3dd.md, decisions changed (lm_* / ddref_* counters in the json); run them with testing_s11g on
+the same --seed and points (paired packets).
 """
 import argparse
 import os
@@ -115,8 +127,45 @@ VARIANTS["testing_spec11"] = ("base10", {**VARIANTS["testing"][1], "win_spec": 4
 # 2026-11-14 (expected_s11.md): spec11 costs +3 ... +4 % per core above the waterfall (1/10 from -3 dB, 0.15 from -2 dB), so it
 # runs only below 1/10 -3.5 dB, 0.15 -2.5 dB. At each SNR this receiver is exactly `testing_spec11` or `testing`.
 VARIANTS["testing_s11g"] = ("base10", {**VARIANTS["testing_spec11"][1], "spec_snr": {"1/10": -3.5, "0.15": -2.5}})
+# 2026-11-15 (expected_eqrb.md): the faithful phase-equivariant code, 2 rotation bits (Geiselhart et al. 2023; bc.PiCodeRB):
+# the `*_eq` receivers with each list path un-rotated by the rotation read from (u_{N-2}, u_{N-1}) and ONE CRC test. MUST
+# run with BLIND_NOINT=1 BLIND_ROTBITS=1 (asserted below; the whole chain then sends u_{N-2} = u_{N-1} = 0), and that
+# job runs only eqrb receivers; the comparison arm is the interleaved receiver on the same seed in another part
+for _k in ("nofast15_qfix", "base25_qfix", "base2_qfix", "testing"):
+    VARIANTS[f"{_k}_eqrb"] = (VARIANTS[_k][0], {**VARIANTS[_k][1], "equiv": True, "eqrb": True})
+# 2026-11-15 (expected_pns.md): phase tracking for Wiener phase noise. _pns: after a CA-SCL-8 decode that fails CRC or the
+# re-encoding check, the list-weighted re-encoded symbols drive an RTS phase smoother, the samples are de-rotated by it and
+# decoded once more (small_rx pns). The smoother's linewidth = small_rx pns_lw, default None = BLIND_PN of the run when
+# > 0, else 1e-4 (the AWGN runs: an assumed 1e-4). _rhosl: the segment re-encoding check measured only (small_rx rhos_log,
+# S = 32 / 64 / 128; decisions unchanged) -> st["rhos_rows"] for the offline calibration of rhos_k.
+# TODO after that calibration: testing_s11g_rhos / base25_qfix_rhos / base2_qfix_rhos ({"rhos": 64, "rhos_k": ...})
+PNS = {"pns": {"iters": 1, "soft": True, "max_calls": 2}, "pns_lw": None}   # at most 2 pns retries per packet (cost cap)
+RHOS_LOG = {"rhos_log": (32, 64, 128)}
+for _k in ("testing_s11g", "base25_qfix", "base2_qfix"):
+    VARIANTS[f"{_k}_pns"] = (VARIANTS[_k][0], {**VARIANTS[_k][1], **PNS})
+    VARIANTS[f"{_k}_rhosl"] = (VARIANTS[_k][0], {**VARIANTS[_k][1], **RHOS_LOG})
+    VARIANTS[f"{_k}_pns_rhosl"] = (VARIANTS[_k][0], {**VARIANTS[_k][1], **PNS, **RHOS_LOG})
 
-DEC_DUMP = ("nofast15", "base25", "base2", "nofast15_qfix", "base25_qfix")   # decode dump receivers registered by
+# 2026-11-15 (expected_ref.md, D0): the refinement diagnostic, log-only (small_rx ref_diag: decisions and MACs = the
+# receiver's): every candidate cell refined in Stage 3 -> one row (truth residual, grid scores, 4th-power Newton,
+# checkpoint-PM / grid parabolas, DD Newton, their MACs) in <study data>/dumps/<part>/rd_*.npz (sync it back with
+# cluster.py --results small_cfo/blind/dumps/<part>) + rd_* counters in the part's json
+for _k in ("testing_s11g", "base25_qfix", "base2_qfix"):
+    VARIANTS[f"{_k}_rd"] = (VARIANTS[_k][0], {**VARIANTS[_k][1], "ref_diag": True})   # True -> the part's dump dir
+# 2026-11-16 (expected_f3f5.md, F5 offline): the frozen-bit diagnostic, log-only (small_rx fz_diag: decisions and MACs = the
+# receiver's): every CA-SCL decode (main, CA retry, joint list, pns) -> one row with every list path's frozen-only metric
+# at small_rx FZ_Q (1/4 ... 1) of the frozen set (polar.PolarCode fz_q), its outcome and true-cell label, in
+# <study data>/dumps/<part>/fz_*.npz (groups f / j / g)
+for _k in ("testing_s11g", "base25_qfix", "base2_qfix"):
+    VARIANTS[f"{_k}_fz"] = (VARIANTS[_k][0], {**VARIANTS[_k][1], "fz_diag": True})    # True -> the part's dump dir
+# 2026-11-16 (expected_online_f3dd.md, online at 1/10, 0.15): A (F3) _lm2 / _lm4: the candidates after the last checkpoint
+# ordered by the list-marginalised metric of a Fast-SSC list decode (L_e = 2 / 4 paths, fastscl) of every surviving (cell,
+# phase) hypothesis up to c = 3/4 (small_rx lmarg); B (TODO 3) _ddref: each candidate cell refined first at its DD-Newton
+# estimate from the list-1 SC codeword at the cell centre, the 5-offset grid only as the fallback (small_rx ddref)
+for _t, _f in (("lm2", {"lmarg": 2}), ("lm4", {"lmarg": 4}), ("ddref", {"ddref": True})):
+    VARIANTS[f"testing_s11g_{_t}"] = ("base10", {**VARIANTS["testing_s11g"][1], **_f})
+
+DEC_DUMP = ("nofast15","base25", "base2", "nofast15_qfix", "base25_qfix")   # decode dump receivers registered by
                                                                               # default (<key>_dump; any key on request)
 
 
@@ -130,6 +179,10 @@ def register(dump_dir=None, dec_dir=None, keys=()):
             names[k] = nm
     for k, (base, flags) in VARIANTS.items():
         nm = f"T {k}"
+        if flags.get("ref_diag") is True:                  # (measurement) ref_diag rows into the decode dump dir
+            flags = {**flags, "ref_diag": dec_dir}
+        if flags.get("fz_diag") is True:                   # (measurement) fz_diag rows: the same dir
+            flags = {**flags, "fz_diag": dec_dir}
         bb.RX[nm] = {**bb.RX[BASE[base]], "sps": {**bb.RX[BASE[base]]["sps"], **flags}}
         names[k] = nm
     if dec_dir:                                            # (measurement) <key>_dump: the receiver + the decode dump
@@ -152,6 +205,9 @@ if __name__ == "__main__":
     ap.add_argument("--dump", action="store_true")
     ap.add_argument("--part", required=True)
     a = ap.parse_args()
+    _rb = [k.endswith("_eqrb") or k.endswith("_eqrb_dump") for k in a.rx]
+    if any(_rb) or bb.bc.ROTBITS:                          # eqrb: only with BLIND_NOINT=1 BLIND_ROTBITS=1, and alone
+        assert all(_rb) and bb.bc.NOINT and bb.bc.ROTBITS, "eqrb receivers need BLIND_NOINT=1 BLIND_ROTBITS=1 (and only them)"
     dump = os.path.join(HERE, "results", "dumps", a.part) if a.dump else None
     names = register(dump, os.path.join(bb.bc.DATA, "dumps", a.part), a.rx)
     run_args = argparse.Namespace(points=a.points, rate=None, snrs=None, chunks=1, max_frames=a.max_frames,
