@@ -32,7 +32,6 @@ PILOT = "ML, 128 pilots, metric-ordered CRC search"
 MODELS = (("ML direct PM+all", "ML (FFT + 2 Newton), metric-ordered search", ORANGE, "^", "--"),
           ("M&M PM+all", "Mengali & Morelli, metric-ordered search", "#8c564b", "v", "--"),
           ("Joint ML Lh=3", "joint CFO / channel ML (Morelli-Mengali 2000)", "#9467bd", "s", "--"),
-          ("cnn-cr", "CNN classification + refinement", "#1f9e89", "D", "--"),
           ("CRB 128 pilots", "CFO error at the CRB (ideal 128-pilot estimator)", GREY, "x", ":"),
           ("Genie CFO", "genie: known CFO and phase, one decode", "k", "", ":"))
 plt.rcParams.update({"font.size": 13, "font.family": "DejaVu Sans"})
