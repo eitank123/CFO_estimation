@@ -2,8 +2,7 @@
 
     python slides_eq/plot_competitor_algos.py
 
-Layouts from est4/common.py (data/layouts_est4.json: known-symbol burst positions of rcs13 and vde27). The lower panel
-is the noiseless known-symbol pattern |sum_k exp(-j 2 pi nu n_k)| / Nk (true CFO 0): where the estimator's spectrum
+Layouts from est4/common.py (data/layouts_est4.json: known-symbol burst positions of rcs13 and vde27). (Earlier versions also drew the noiseless known-symbol pattern |sum_k exp(-j 2 pi nu n_k)| / Nk (true CFO 0): where the estimator's spectrum
 X(nu) peaks, including its alias lobes. Deterministic from the layout, no simulation.
 """
 import json
@@ -52,14 +51,10 @@ def spectrum(ax, curves, win=None):
     ax.legend(fontsize=11, loc="upper right")
 
 
-def fig(name, lay, title, curves, win=None, marks=()):
-    f = plt.figure(figsize=(9.5, 6.2))
-    a = f.add_axes([0.09, 0.80, 0.88, 0.10])
-    b = f.add_axes([0.09, 0.10, 0.88, 0.56])
+def fig(name, lay, title, curves=None, win=None, marks=()):
+    f = plt.figure(figsize=(9.5, 2.3))
+    a = f.add_axes([0.04, 0.30, 0.93, 0.48])
     strip(a, lay, title)
-    spectrum(b, curves, win)
-    for x, t in marks:
-        b.text(x, 0.66, t, ha="center", fontsize=12, color=RED)
     f.savefig(os.path.join(HERE, name), dpi=200, facecolor="white")
 
 
