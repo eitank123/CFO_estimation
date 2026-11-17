@@ -104,11 +104,10 @@ def macs():
             ax.plot(*zip(*pts), color=c, marker=m, ms=6, lw=1.7, ls="--")
             ys += [p[1] for p in pts]
         ax.plot(x, m1, color=NAVY, marker="o", ms=8, lw=3)
-        ax.axhline(cap / 1e6, color="#777777", ls="-.", lw=1.5)
-        ax.text(0.97, 0.95, f"cap = {capname(rate)} per core", transform=ax.transAxes, ha="right", va="top",
+        ax.text(0.97, 0.95, f"cap: {capname(rate)} per core", transform=ax.transAxes, ha="right", va="top",
                 color="#555555", fontsize=11)
         ax.set_yscale("log")
-        lo, hi = min(ys) * 0.7, cap / 1e6 * 1.6
+        lo, hi = min(ys) * 0.7, max(ys) * 1.6
         ax.set_ylim(lo, hi)
         flat = float(np.median([v["core"] for v in V[rate]["comp"]["RCS2-13"].values() if v.get("core")])) / 1e6
         t = [v for v in (0.1, 0.2, 0.5, 1, 2) if lo <= v <= hi] + [flat]
