@@ -21,9 +21,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 D = json.load(open(os.path.join(HERE, "data", "curves_17b16ea.json")))
 RATES = ("1/10", "0.15", "2/5", "1/2")
 NAVY = "#003366"
-COMP = (("RCS2-13", "DVB-RCS2 ID 13 (116 known, +0.47 dB)", "#E07B39", "s"),
-        ("VDE-SAT", "VDE-SAT (66 known, +0.27 dB)", "#8c564b", "P"),
-        ("pre128 ML", "128-symbol preamble, ML: FFT 512 + 2 Newton (+0.51 dB)", "#777777", "^"))
+COMP = (("RCS2-13", "DVB-RCS2 ID 13 (116 known)", "#E07B39", "s"),
+        ("VDE-SAT", "VDE-SAT (66 known)", "#8c564b", "P"),
+        ("pre128 ML", "128-symbol preamble, ML: FFT 512 + 2 Newton", "#777777", "^"))
 plt.rcParams.update({"font.size": 13, "font.family": "DejaVu Sans"})
 
 
