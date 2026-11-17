@@ -110,10 +110,13 @@ def macs():
         ax.set_yscale("log")
         lo, hi = min(ys) * 0.7, cap / 1e6 * 1.6
         ax.set_ylim(lo, hi)
-        t = [v for v in (0.03, 0.05, 0.1, 0.2, 0.5, 1, 2) if lo <= v <= hi]
+        flat = float(np.median([v["core"] for v in V[rate]["comp"]["RCS2-13"].values() if v.get("core")])) / 1e6
+        t = [v for v in (0.1, 0.2, 0.5, 1, 2) if lo <= v <= hi] + [flat]
         ax.minorticks_off()
         ax.set_yticks(t)
-        ax.set_yticklabels([f"{v:g}" for v in t])
+        ax.set_yticklabels([f"{v:g}" for v in t[:-1]] + [f"{flat:.3f}"])
+        ax.get_yticklabels()[-1].set_color("#E07B39")
+        ax.axhline(flat, color="#E07B39", lw=0.8, ls=":", alpha=0.7)
         ax.set_title(f"R = {rate}", fontweight="bold")
         ax.set_xlabel("SNR [dB]")
         ax.grid(True, which="major", ls=":", alpha=0.45)
