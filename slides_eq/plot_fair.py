@@ -1,6 +1,6 @@
-"""Blind (adopted testing receiver) vs DVB-RCS2, VDE-SAT, CCSDS (131.0 ASM, 131.2) and DVB-S2 (PL header only), full curves on the fair
+"""Blind (adopted testing receiver) vs DVB-RCS2 ID 13, VDE-SAT and the 128-symbol ML preamble, full curves on the fair
 SNR axis (known symbols outside the packet, their energy charged), from slides_eq/data/curves_17b16ea.json
-(full-chain-cfo 17b16ea, testing/plot_curves.data + the est4 genie).
+(full-chain-cfo 17b16ea, testing/plot_curves.data).
 
     python slides_eq/plot_fair.py
 
@@ -23,9 +23,7 @@ RATES = ("1/10", "0.15", "2/5", "1/2")
 NAVY = "#003366"
 COMP = (("RCS2-13", "DVB-RCS2 ID 13 (116 known, +0.47 dB)", "#E07B39", "s"),
         ("VDE-SAT", "VDE-SAT (66 known, +0.27 dB)", "#8c564b", "P"),
-        ("CCSDS 131.0 ASM", "CCSDS 131.0 ASM (64 known, +0.26 dB)", "#9467bd", "D"),
-        ("CCSDS 131.2 real", "CCSDS 131.2 real pilot density (32 known, +0.13 dB)", "#c8423b", "X"),
-        ("DVB-S2 header90", "DVB-S2 PL header only (90 known, +0.37 dB)", "#2ca02c", "v"))
+        ("pre128 ML", "128-symbol preamble, ML: FFT 512 + 2 Newton (+0.51 dB)", "#777777", "^"))
 plt.rcParams.update({"font.size": 13, "font.family": "DejaVu Sans"})
 
 
@@ -62,10 +60,6 @@ def figure(key, fname):
     for ax, rate in zip(axs, RATES):
         o = D[rate]
         xs = []
-        if key == "bler":
-            g = pts(o["genie"], key)
-            draw(ax, g, color="k", ls=":", lw=1.6)
-            xs += [s for r in runs(g) for s, _ in r]
         for src, _, c, m in COMP[::-1]:
             p = pts(o["comp"][src], key)
             draw(ax, p, color=c, marker=m, ms=6, lw=1.7, ls="--")
@@ -88,9 +82,6 @@ def figure(key, fname):
     h = [plt.Line2D([], [], color=NAVY, marker="o", ms=8, lw=3)] + \
         [plt.Line2D([], [], color=c, marker=m, ms=6, lw=1.7, ls="--") for _, _, c, m in COMP]
     lab = ["blind, 0 known symbols (testing receiver)"] + [l for _, l, _, _ in COMP]
-    if key == "bler":
-        h.append(plt.Line2D([], [], color="k", ls=":", lw=1.6))
-        lab.append("genie*: known CFO and phase, no pilots, one decode")
     fig.legend(h, lab, loc="lower center", ncol=3, fontsize=11.5, frameon=False)
     fig.tight_layout(rect=(0, 0.2, 1, 1))
     fig.savefig(os.path.join(HERE, fname), dpi=200, facecolor="white")

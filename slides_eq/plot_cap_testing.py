@@ -29,9 +29,7 @@ MID = 10 ** (4 + (np.arange(100) + 0.5) / 20)
 NAVY = "#003366"
 REF = (("RCS2-13", "DVB-RCS2 ID 13", "#E07B39", "s"),
        ("VDE-SAT", "VDE-SAT", "#8c564b", "P"),
-       ("CCSDS 131.0 ASM", "CCSDS 131.0 ASM", "#9467bd", "D"),
-       ("CCSDS 131.2 real", "CCSDS 131.2 real", "#c8423b", "X"),
-       ("DVB-S2 header90", "DVB-S2 PL header", "#2ca02c", "v"))
+       ("pre128 ML", "128-symbol preamble, ML", "#777777", "^"))
 plt.rcParams.update({"font.size": 13, "font.family": "DejaVu Sans"})
 
 
@@ -86,7 +84,7 @@ def bler():
          plt.Line2D([], [], color=NAVY, marker="o", ms=8, lw=3)] + \
         [plt.Line2D([], [], color=c, marker=m, ms=6, lw=1.7, ls="--") for _, _, c, m in REF]
     fig.legend(h, ["blind (testing receiver), no cap", "blind with the hard cap on MACs per core (same packets)"]
-               + [l + " (no cap)" for _, l, _, _ in REF], loc="lower center", ncol=4, fontsize=12, frameon=False)
+               + [l + " (no cap)" for _, l, _, _ in REF], loc="lower center", ncol=3, fontsize=12, frameon=False)
     fig.tight_layout(rect=(0, 0.15, 1, 1))
     fig.savefig(os.path.join(HERE, "cap_bler.png"), dpi=200, facecolor="white")
 
