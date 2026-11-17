@@ -35,13 +35,13 @@ for k, (ax, (title, pts, cut)) in enumerate(zip(axs, P)):
     ax.set_title(title, fontweight="bold")
     ax.grid(True, axis="y", ls=":", alpha=0.5)
     if k < 2:
-        ax.set_ylim(-48, 14)
+        ax.set_ylim(-48, 20)
     else:
         ax.set_ylim(0, 380)
     if cut:
         ax.axvline(cut, color=BLUE, ls="--", lw=2)
-        ax.text(cut - 0.1, 11, "OFF", ha="right", va="center", color=BLUE, fontsize=12)
-        ax.text(cut + 0.1, 11, "ON", ha="left", va="center", color=BLUE, fontsize=12)
+        ax.text(cut - 0.1, 16.5, "OFF", ha="right", va="center", color=BLUE, fontsize=12)
+        ax.text(cut + 0.1, 16.5, "ON", ha="left", va="center", color=BLUE, fontsize=12)
 axs[0].set_ylabel("MACs per core, fast path OFF vs ON [%]")
 axs[2].text(1.5, 340, "fast path stays ON", ha="center", color=BLUE, fontsize=12)
 h = [plt.Rectangle((0, 0), 1, 1, color=GREEN), plt.Rectangle((0, 0), 1, 1, color=RED)]
