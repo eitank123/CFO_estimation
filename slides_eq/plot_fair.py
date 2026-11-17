@@ -5,12 +5,14 @@ SNR axis (known symbols outside the packet, their energy charged), from slides_e
     python slides_eq/plot_fair.py
 
 fair_bler.png   BLER vs SNR, R = 1/10, 0.15, 2/5, 1/2
+fair_ebn0.png   BLER vs Eb/N0 = plotted SNR + 10 log10(1024 / A), A = data bits per packet
 fair_macs.png   MACs per core (32 cores, scheduled count) vs SNR, same receivers
 Lines join runs of >= 2 adjacent simulated SNRs with errors; 0-error and isolated points are not drawn.
 """
 import json
 import os
 
+import numpy as np
 import matplotlib
 import matplotlib.ticker
 
@@ -27,11 +29,16 @@ COMP = (("RCS2-13", "DVB-RCS2 ID 13 (116 known)", "#E07B39", "s"),
 plt.rcParams.update({"font.size": 13, "font.family": "DejaVu Sans"})
 
 
-def pts(d, key):
+A_BITS = {"1/10": 205, "0.15": 307, "2/5": 819, "1/2": 1024}    # data bits per packet (BLIND_IMPLEMENTATION README)
+
+
+def pts(d, key, rate=None):
     out = []
     for s in sorted(d, key=float):
         v = d[s]
-        if key == "bler":
+        if key == "ebn0":       # Eb/N0 = burst energy per data bit = plotted SNR + 10 log10(1024 / A)
+            out.append((float(s) + 10 * np.log10(1024 / A_BITS[rate]), v["err"] / v["n"] if v["n"] else 0))
+        elif key == "bler":
             out.append((float(s), v["err"] / v["n"] if v["n"] else 0))
         elif v.get("core"):
             out.append((float(s), v["core"] / 1e6))
@@ -61,10 +68,10 @@ def figure(key, fname):
         o = D[rate]
         xs = []
         for src, _, c, m in COMP[::-1]:
-            p = pts(o["comp"][src], key)
+            p = pts(o["comp"][src], key, rate)
             draw(ax, p, color=c, marker=m, ms=6, lw=1.7, ls="--")
             xs += [s for r in runs(p) for s, _ in r]
-        b = pts(o["blind"], key)
+        b = pts(o["blind"], key, rate)
         draw(ax, b, color=NAVY, marker="o", ms=8, lw=3)
         xs += [s for r in runs(b) for s, _ in r]
         ax.set_xlim(min(xs) - 0.15, max(xs) + 0.15)
@@ -76,9 +83,9 @@ def figure(key, fname):
             ax.minorticks_off()
             ax.set_yticks(t)
             ax.set_yticklabels([f"{v:g}" for v in t])
-        ax.set_xlabel("SNR [dB], pilot energy charged")
+        ax.set_xlabel("Eb/N0 [dB], pilot energy charged" if key == "ebn0" else "SNR [dB], pilot energy charged")
         ax.grid(True, which="both", ls=":", alpha=0.45)
-    axs[0].set_ylabel("BLER" if key == "bler" else "MACs per core [M]")
+    axs[0].set_ylabel("MACs per core [M]" if key == "macs" else "BLER")
     h = [plt.Line2D([], [], color=NAVY, marker="o", ms=8, lw=3)] + \
         [plt.Line2D([], [], color=c, marker=m, ms=6, lw=1.7, ls="--") for _, _, c, m in COMP]
     lab = ["blind, 0 known symbols (testing receiver)"] + [l for _, l, _, _ in COMP]
@@ -89,3 +96,4 @@ def figure(key, fname):
 
 figure("bler", "fair_bler.png")
 figure("macs", "fair_macs.png")
+figure("ebn0", "fair_ebn0.png")
