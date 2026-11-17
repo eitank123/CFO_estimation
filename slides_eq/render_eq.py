@@ -127,6 +127,12 @@ EQ.update({
     "ml3": r"$Z[k]=\sum_{n=0}^{L_0-1} z_n\,e^{-j2\pi kn/512},\qquad f_0=\dfrac{1}{512}\arg\max_{k}\,|Z[k]|^2$",
     "ml4": r"$f_{t+1}=f_t-\dfrac{\Lambda^{\prime}(f_t)}{\Lambda^{\prime\prime}(f_t)},\qquad t=0,1$",
     "ml5": r"$\mathrm{CRB}(f)=\dfrac{3}{2\pi^2\,\mathrm{SNR}\,L_0\,(L_0^2-1)}$",
+    # competitors (est4/estimators.py: rb, vde)
+    "rcs1": r"$z_k=r_{n_k}\,p_k^{\,*},\qquad k=1,\ldots,116\quad(n_k:\ \mathrm{burst\ position\ of\ known\ symbol}\ k)$",
+    "rcs2": r"$X(\nu)=\left|\sum_{k} z_k\,e^{-j2\pi\nu n_k}\right|,\qquad \hat f=\arg\max_{|\nu|\leq 0.03} X(\nu)$",
+    "rcs3": r"$\hat\theta=\arg\sum_{k} z_k\,e^{-j2\pi\hat f n_k}$",
+    "vde1": r"$f_c=\arg\max_{f}\ \left|\sum_{n=0}^{26} z_n\,e^{-j2\pi fn}\right|^2$",
+    "vde2": r"$\hat f=\arg\max_{|\nu-f_c|\,\leq\,1/54}\ X(\nu),\qquad X(\nu)=\left|\sum_{k=1}^{66} z_k\,e^{-j2\pi\nu n_k}\right|$",
     # F5 frozen-bit early stop
     "f5a": r"$\psi_\ell=\dfrac{1}{n_F}\sum_{i\,\in\,\mathcal{F},\ i\ \mathrm{decided}}\Delta M_\ell(i)$",
     "f5b": r"$\mathrm{stop\ the\ decode\ if}\ \ \min_{\ell\ \mathrm{alive}}\ \psi_\ell>t,\quad \mathrm{checked\ once\ at}\ n_F=\lceil qF\rceil$",
