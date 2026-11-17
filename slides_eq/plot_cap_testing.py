@@ -96,30 +96,33 @@ def macs():
         cap = 10 ** (4 + k / 20)
         R = rows(rate)
         x = [s for s, _ in R]
-        m0 = [float((np.array(v["ph"]) * MID).sum() / sum(v["ph"])) / 1e6 for _, v in R]
         m1 = [float((np.array(v["ph"]) * np.minimum(MID, cap)).sum() / sum(v["ph"])) / 1e6 for _, v in R]
-        ax.plot(x, m0, color=NAVY, marker="o", ms=7, lw=1.8, ls="--", mfc="white")
+        ys = list(m1)
+        for src, _, c, m in REF:
+            pts = sorted((float(s), v["core"] / 1e6) for s, v in V[rate]["comp"][src].items() if v.get("core"))
+            pts = [p for p in pts if min(x) - 0.3 <= p[0] <= max(x) + 0.6]
+            ax.plot(*zip(*pts), color=c, marker=m, ms=6, lw=1.7, ls="--")
+            ys += [p[1] for p in pts]
         ax.plot(x, m1, color=NAVY, marker="o", ms=8, lw=3)
         ax.axhline(cap / 1e6, color="#777777", ls="-.", lw=1.5)
         ax.text(0.97, 0.95, f"cap = {capname(rate)} per core", transform=ax.transAxes, ha="right", va="top",
                 color="#555555", fontsize=11)
         ax.set_yscale("log")
-        lo, hi = min(m1) * 0.7, max(max(m0), cap / 1e6) * 1.6
+        lo, hi = min(ys) * 0.7, cap / 1e6 * 1.6
         ax.set_ylim(lo, hi)
-        t = [v for v in (0.05, 0.1, 0.2, 0.5, 1, 2, 5) if lo <= v <= hi]
+        t = [v for v in (0.03, 0.05, 0.1, 0.2, 0.5, 1, 2) if lo <= v <= hi]
         ax.minorticks_off()
         ax.set_yticks(t)
         ax.set_yticklabels([f"{v:g}" for v in t])
         ax.set_title(f"R = {rate}", fontweight="bold")
         ax.set_xlabel("SNR [dB]")
         ax.grid(True, which="major", ls=":", alpha=0.45)
-        print(rate, [(s, round(a, 3), round(b, 3)) for s, a, b in zip(x, m0, m1)])
-    axs[0].set_ylabel("mean MACs per core [M]\n(critical path, 32 cores)")
-    fig.legend([plt.Line2D([], [], color=NAVY, marker="o", ms=7, lw=1.8, ls="--", mfc="white"),
-                plt.Line2D([], [], color=NAVY, marker="o", ms=8, lw=3)],
-               ["blind (testing receiver), no cap", "blind with the hard cap"], loc="lower center", ncol=2,
-               fontsize=12, frameon=False)
-    fig.tight_layout(rect=(0, 0.08, 1, 1))
+    axs[0].set_ylabel("mean MACs per core [M]")
+    fig.legend([plt.Line2D([], [], color=NAVY, marker="o", ms=8, lw=3)] +
+               [plt.Line2D([], [], color=c, marker=m, ms=6, lw=1.7, ls="--") for _, _, c, m in REF],
+               ["blind with the hard cap (critical path)"] + [l + " (scheduled count, no cap needed)" for _, l, _, _ in REF],
+               loc="lower center", ncol=2, fontsize=12, frameon=False)
+    fig.tight_layout(rect=(0, 0.14, 1, 1))
     fig.savefig(os.path.join(HERE, "cap_macs.png"), dpi=200, facecolor="white")
 
 
