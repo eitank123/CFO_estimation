@@ -127,6 +127,9 @@ EQ.update({
     "ml3": r"$Z[k]=\sum_{n=0}^{L_0-1} z_n\,e^{-j2\pi kn/512},\qquad f_0=\dfrac{1}{512}\arg\max_{k}\,|Z[k]|^2$",
     "ml4": r"$f_{t+1}=f_t-\dfrac{\Lambda^{\prime}(f_t)}{\Lambda^{\prime\prime}(f_t)},\qquad t=0,1$",
     "ml5": r"$\mathrm{CRB}(f)=\dfrac{3}{2\pi^2\,\mathrm{SNR}\,L_0\,(L_0^2-1)}$",
+    # F5 frozen-bit early stop
+    "f5a": r"$\psi_\ell=\dfrac{1}{n_F}\sum_{i\,\in\,\mathcal{F},\ i\ \mathrm{decided}}\Delta M_\ell(i)$",
+    "f5b": r"$\mathrm{stop\ the\ decode\ if}\ \ \min_{\ell\ \mathrm{alive}}\ \psi_\ell>t,\quad \mathrm{checked\ once\ at}\ n_F=\lceil qF\rceil$",
 })
 
 
@@ -140,5 +143,8 @@ def render(name, tex):
 
 
 if __name__ == "__main__":
+    import sys
     for k, v in EQ.items():
+        if len(sys.argv) > 1 and k not in sys.argv[1:]:
+            continue
         print(render(k, v))
