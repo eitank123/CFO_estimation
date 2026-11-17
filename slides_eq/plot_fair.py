@@ -1,4 +1,4 @@
-"""Blind (adopted testing receiver) vs the most relevant deployed pilot / preamble systems, full curves on the fair
+"""Blind (adopted testing receiver) vs DVB-RCS2, VDE-SAT, CCSDS (131.0 ASM, 131.2) and DVB-S2 (PL header only), full curves on the fair
 SNR axis (known symbols outside the packet, their energy charged), from slides_eq/data/curves_17b16ea.json
 (full-chain-cfo 17b16ea, testing/plot_curves.data + the est4 genie).
 
@@ -22,12 +22,10 @@ D = json.load(open(os.path.join(HERE, "data", "curves_17b16ea.json")))
 RATES = ("1/10", "0.15", "2/5", "1/2")
 NAVY = "#003366"
 COMP = (("RCS2-13", "DVB-RCS2 ID 13 (116 known, +0.47 dB)", "#E07B39", "s"),
-        ("pre128 ML", "128-symbol preamble, ML (+0.51 dB)", "#777777", "^"),
-        ("DVB-S2 style", "DVB-S2-inspired: header + pilot block (126, +0.50 dB)", "#2ca02c", "v"),
-        ("CCSDS 131.0 ASM", "CCSDS 131.0 ASM (64, +0.26 dB)", "#9467bd", "D"),
-        ("VDE-SAT", "VDE-SAT (66, +0.27 dB)", "#8c564b", "P"),
-        ("DMRS 1/7", "5G-NR-like DMRS 1/7 (171, +0.67 dB)", "#17becf", "X"),
-        ("hyb3-pre48 wide", "Advantech 48 preamble, wide DA window (+0.20 dB)", "#c8423b", "h"))
+        ("VDE-SAT", "VDE-SAT (66 known, +0.27 dB)", "#8c564b", "P"),
+        ("CCSDS 131.0 ASM", "CCSDS 131.0 ASM (64 known, +0.26 dB)", "#9467bd", "D"),
+        ("CCSDS 131.2 real", "CCSDS 131.2 real pilot density (32 known, +0.13 dB)", "#c8423b", "X"),
+        ("DVB-S2 header90", "DVB-S2 PL header only (90 known, +0.37 dB)", "#2ca02c", "v"))
 plt.rcParams.update({"font.size": 13, "font.family": "DejaVu Sans"})
 
 

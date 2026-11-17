@@ -9,7 +9,7 @@ packets) of the critical-path MACs per core (crit_par, 32 cores; 0.05-decade bin
   exact at the bin edge: caps 2 M (bin 46) at R = 1/10, 0.15 and 1 M (bin 40) at 2/5, 1/2;
 - mean MACs per core, uncapped and capped, from the ph_ histogram at the bin centres (capped: min(centre, cap)).
 crit_par is >= the scheduled count of fair_macs.png per packet, so these caps are conservative for blind.
-Pilot references (uncapped) from data/curves_17b16ea.json.
+Pilot receivers (uncapped) from data/curves_17b16ea.json.
 """
 import json
 import os
@@ -27,8 +27,11 @@ RATES = ("1/10", "0.15", "2/5", "1/2")
 CAPK = {"1/10": 46, "0.15": 46, "2/5": 40, "1/2": 40}
 MID = 10 ** (4 + (np.arange(100) + 0.5) / 20)
 NAVY = "#003366"
-REF = (("RCS2-13", "DVB-RCS2 ID 13 (no cap needed)", "#E07B39", "s"),
-       ("pre128 ML", "128-symbol preamble, ML (no cap needed)", "#777777", "^"))
+REF = (("RCS2-13", "DVB-RCS2 ID 13", "#E07B39", "s"),
+       ("VDE-SAT", "VDE-SAT", "#8c564b", "P"),
+       ("CCSDS 131.0 ASM", "CCSDS 131.0 ASM", "#9467bd", "D"),
+       ("CCSDS 131.2 real", "CCSDS 131.2 real", "#c8423b", "X"),
+       ("DVB-S2 header90", "DVB-S2 PL header", "#2ca02c", "v"))
 plt.rcParams.update({"font.size": 13, "font.family": "DejaVu Sans"})
 
 
@@ -65,7 +68,7 @@ def bler():
         xs = []
         for src, _, c, m in REF:
             p = [(float(s), v["err"] / v["n"]) for s, v in sorted(V[rate]["comp"][src].items(), key=lambda x: float(x[0]))]
-            draw(ax, p, color=c, marker=m, ms=6, lw=1.7, ls="--")
+            draw(ax, p, color=c, marker=m, ms=5, lw=1.3, ls="--", alpha=0.8)
             xs += [s for r in runs(p) for s, _ in r]
         p0 = [(s, v["err"] / v["n"]) for s, v in R]
         p1 = [(s, (v["err"] + sum(v["pg"][k:])) / v["n"]) for s, v in R]
@@ -83,8 +86,8 @@ def bler():
          plt.Line2D([], [], color=NAVY, marker="o", ms=8, lw=3)] + \
         [plt.Line2D([], [], color=c, marker=m, ms=6, lw=1.7, ls="--") for _, _, c, m in REF]
     fig.legend(h, ["blind (testing receiver), no cap", "blind with the hard cap on MACs per core (same packets)"]
-               + [l for _, l, _, _ in REF], loc="lower center", ncol=2, fontsize=12, frameon=False)
-    fig.tight_layout(rect=(0, 0.13, 1, 1))
+               + [l + " (no cap)" for _, l, _, _ in REF], loc="lower center", ncol=4, fontsize=12, frameon=False)
+    fig.tight_layout(rect=(0, 0.15, 1, 1))
     fig.savefig(os.path.join(HERE, "cap_bler.png"), dpi=200, facecolor="white")
 
 
