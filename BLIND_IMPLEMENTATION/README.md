@@ -44,33 +44,90 @@ At high SNR that estimate is good enough and a single decode succeeds. Below abo
 
 Code: [small_rx.py](../small_rx.py) (receiver), [blind_fast.py](../blind_fast.py) (path metric, pre-MF correction, re-encoding check), [blind_cfo.py](../blind_cfo.py) (chain, 4th power, PiCode), [blind_ber.py](../blind_ber.py) (final receiver settings `S blind final v2`, `S blind final 2/5, 1/2, best-first 32`, `S blind final 2/5, 1/2`).
 
-## Current state (2026-11-14)
+## Current state (2026-11-17)
 
-The files above describe the **presentation** receivers. The experiments in [testing/](testing/README.md) have since
-produced a **testing receiver** (run.py `testing_s11g`), paired against them on the same packets (corrected phase
-accounting, MACs per core = the standard scheduled count):
+### Which receiver is "blind" now: the adopted testing receiver
+The files 01-08 describe the **presentation** receivers. The experiments in [testing/](testing/README.md) produced
+the **testing receiver**, which is now the blind receiver in every comparison and figure:
 
-| Change | Where | Effect (paired, same packets) | Status |
+| Rate | Presentation receiver (blind_ber.py) | Adopted testing receiver (testing/run.py) | Changes vs presentation |
 |---|---|---|---|
-| Fast path off at SNR <= 0 dB (`s0_snr = 0.5`) | R = 1/10, 0.15 | MACs per core -25 ... -37 % (1/10), -13 ... -32 % (0.15); BLER unchanged | **adopted** |
-| 4 phase hypotheses below 0.5 dB, 2 from +1 dB (`nph = {"0.15": (4, 0.5)}`) | R = 0.15 | removes the -1 dB error bump (143 / 880k -> 0 / 400k) | **adopted** (user) |
-| Phase-index fix (`q_fix`) | all rates | -14 % per core at 2/5 0.5 dB, 21 fixed / 8 broken; -1 ... -5 % at 1/10, 0.15 | **adopted** (user) |
-| Speculative decode at 4 < z <= 6, accepted at rho > 1.1 thr (`spec11`), only below 1/10 -3.5 dB, 0.15 -2.5 dB (`spec_snr`) | R = 1/10, 0.15 | per core -14.6 % (1/10 -5 dB), -7 ... -8 % (0.15 -4 ... -3.5 dB); 0 discordant packets in 1e6 + 64k per SNR; undetected = base; 0 noise false alarms. Above those SNRs it costs +3 ... +4 %, so it is off there | **adopted** 2026-11-14 |
-| Hard MAC cap (2 M per core at 1/10, 0.15; 1 M at 2/5, 1/2) | all rates | ~+1e-5 BLER at the waterfall foot (+2 / 400k at 0.15 -2.5 dB, +3 / 400k at 2/5 1.5 dB), no change in mean MACs; a noise-only packet stops at the cap instead of ~16 M per core | available (`*_cap2`, `*_cap1`); recommended for a real receiver |
-| Fast path kept | R = 2/5, 1/2 | turning it off there is clearly worse | unchanged |
-| Code-aided refinement (`s3_dd`), coarser grid, early win at z > 4 | - | no gain / BLER x5-70 / more MACs per core | dropped |
-| Retry gate (logistic on the failed decode's list / LLRs, `nn_b`) | all rates | online: -9 % per core at best, 0 fixed / 8 broken (p = 0.008) | dropped |
-| Phase-equivariant receiver without the bit interleaver (`equiv`) | R = 2/5, 1/2 / 1/10, 0.15 | 2/5, 1/2: same BLER, -30 ... -40 % per core; 1/10, 0.15: BLER x1.6-17, undetected errors | low rates dropped; 2/5, 1/2 open (needs a format change + NN retrain) |
+| 1/10, 0.15 | `S blind final v2` | `testing_s11g` | fast path off at SNR <= 0 dB (`s0_snr = 0.5`); 0.15: 4 phase hypotheses below 0.5 dB (`nph`); phase-index fix (`q_fix`); speculative decode `spec11` below 1/10 -3.5 dB, 0.15 -2.5 dB |
+| 2/5 | `S blind final 2/5, 1/2, best-first 32` | `base25_qfix_fzs` | `q_fix` + early stop of the Stage 3 search (F5, adopted 2026-11-15) |
+| 1/2 | `S blind final 2/5, 1/2` | `base2_qfix_fzs` | `q_fix` + early stop (F5) |
 
-Net, testing vs presentation receiver (MACs per core): R = 1/10 -36 ... -45 %, R = 0.15 -25 ... -38 % below 0 dB (-1 %
-at +1 dB), R = 2/5 -2 ... -6 %, R = 1/2 0 %; BLER the same or lower.
+**Improvement over the presentation receiver** (fair axis, all runs of each receiver pooled; MACs per core = the
+standard scheduled count, interpolated at each receiver's own crossing):
 
-**Real-world checks (2026-11-13 / 14).** Wiener phase noise (linewidth x Ts): 1e-5 harmless; 1e-4 x3 BLER at 1/10, 0.15
-and x36 BLER, x10 MACs per core at 2/5; 3e-4 x100-235. Phase tracking is the main open real-world item
-(`testing/results/expected_cap_pn_comb.md`). Noise-only packets: 0 false alarms in ~30k (PDCCH practice is 1e6).
+| Rate, BLER | Presentation: SNR [dB] / M MACs per core | Testing: SNR [dB] (95 % CI) / M MACs per core | MACs per core | BLER |
+|---|---|---|---|---|
+| 1/10, 1e-4 | -4.80 / 0.317 | -4.78 [-4.86, -4.69] / 0.194 | **-39 %** | same (0.02 dB, inside the CI) |
+| 0.15, 1e-3 | -3.61 / 0.387 | -3.60 [-3.67, -3.52] / 0.262 | **-32 %** | same |
+| 0.15, 1e-4 | -2.98 / 0.287 | -2.93 [-2.99, -2.83] / 0.180 | **-37 %** | same (0.05 dB, inside the CI) |
+| 2/5, 1e-3 | 0.61 / 0.221 | 0.58 [0.55, 0.61] / 0.183 | **-17 %** | same (0.03 dB) |
+| 1/2, 1e-3 | 1.78 / not measured at the crossing | 1.73 [1.69, 1.76] / 0.139 | -20 % at 1.5 dB (early stop, paired); -2 % at 2 dB, 0 % at 2.5 dB | same (0.05 dB) |
 
-**Pilot reference (2026-11-13 / 14).** The 128-pilot receivers' CRC search now tries the neighbouring CFOs in order of
-the list-1 path metric ("PM+all", `est3`): the same waterfall BLER, the false-accept floor 2-5x lower, +8 ... +36 % MACs
-per core. It is the pilot reference in the `testing/results/plots/cmp_*` figures (`testing/results/expected_fair.md`).
+- The BLER changes are packet-set noise, not gains: on paired packets every adopted change kept the BLER (McNemar
+  counts within +-1 per change, `testing/results/expected_s11.md`, `expected_f3f5.md`). The gain is complexity.
+- At 1/2 the presentation receiver has per-core MACs only at 2 and 2.5 dB, so the gain at the crossing (1.73 dB) is
+  the paired early-stop result at 1.5 dB: -20.4 % per core, 18 lost packets in 128k, crossing shift <= 0.003 dB.
+
+### Full curves: BLER vs SNR and MACs per core vs SNR (every receiver, every simulated point)
+The crossings below are a summary only. The full curves of blind and all 31 compared receivers, one panel per
+system family (blind in every panel), are in `testing/results/plots/` and every point (errors / packets, BLER, MACs per
+core) is tabulated in **[testing/results/curves.md](testing/results/curves.md)** (`py BLIND_IMPLEMENTATION/testing/plot_curves.py`).
+
+| Rate | BLER vs SNR | MACs per core vs SNR |
+|---|---|---|
+| 1/10 | [curves_bler_R10.png](testing/results/plots/curves_bler_R10.png) | [curves_macs_R10.png](testing/results/plots/curves_macs_R10.png) |
+| 0.15 | [curves_bler_R15.png](testing/results/plots/curves_bler_R15.png) | [curves_macs_R15.png](testing/results/plots/curves_macs_R15.png) |
+| 2/5 | [curves_bler_R25.png](testing/results/plots/curves_bler_R25.png) | [curves_macs_R25.png](testing/results/plots/curves_macs_R25.png) |
+| 1/2 | [curves_bler_R2.png](testing/results/plots/curves_bler_R2.png) | [curves_macs_R2.png](testing/results/plots/curves_macs_R2.png) |
+
+![BLER vs SNR, R = 1/10](testing/results/plots/curves_bler_R10.png)
+![MACs per core vs SNR, R = 1/10](testing/results/plots/curves_macs_R10.png)
+![BLER vs SNR, R = 0.15](testing/results/plots/curves_bler_R15.png)
+![MACs per core vs SNR, R = 0.15](testing/results/plots/curves_macs_R15.png)
+![BLER vs SNR, R = 2/5](testing/results/plots/curves_bler_R25.png)
+![MACs per core vs SNR, R = 2/5](testing/results/plots/curves_macs_R25.png)
+![BLER vs SNR, R = 1/2](testing/results/plots/curves_bler_R2.png)
+![MACs per core vs SNR, R = 1/2](testing/results/plots/curves_macs_R2.png)
+
+What the MACs curves show: blind's cost falls with SNR (0.21 -> 0.09 M per core at 1/10 from -5 to 0 dB) because more
+packets finish in the early stages; the cheap pilot receivers stay at 0.03-0.10 M (one decode plus a few CRC-search
+decodes); the scanning / wide-window layouts (DVB-S2 header, Wi-Fi 320, CCSDS 131.2 real, Advantech 48) sit at or above
+blind.
+
+### Blind vs the real preamble / pilot systems (fair axis, pilot energy charged)
+31 receivers from 12 deployed-system families were simulated on our burst (same code, decoder, re-encoding check,
+CRC search, CFO range; each with its own known-symbol layout and estimator): DVB-RCS2 (and Griebel 2021), plain 128
+preambles, 64 + 64 pre/post, VDE-SAT, DVB-S2, CCSDS (inspired, 131.2 real, 131.0 ASM), ViaSat (two patents), 5G-NR-like
+DMRS, sparse pilots, Wi-Fi 802.11, MIL-STD-188-110 and the Advantech hybrid preamble. Full table per target:
+**[testing/results/scoreboard.md](testing/results/scoreboard.md)**. Gap = competitor - blind, + = blind better:
+
+| Rate, BLER | Blind [dB] | Closest competitors (gap [dB]) | Blind loses to | Fails the target |
+|---|---|---|---|---|
+| 1/10, 1e-4 | -4.78 | 128 preamble ML +0.10, CCSDS-inspired +0.13, DMRS 1/7 +0.20, 64 + 64 L4 ~+0.18 (not bracketed); DVB-RCS2 +0.69 | none measured; DVB-S2 90-symbol header is open (below 1e-4 at -4.63, crossing ~-4.95 ... -4.65) | 10 of 31 (VDE-SAT, ViaSat x3, Advantech x3, sparse 1/32, Wi-Fi 320 without lobes, 4th-power pre/post) |
+| 0.15, 1e-3 | -3.60 | Advantech 48 wide -0.03, DVB-S2 header +0.03 (ties), DVB-RCS2 +0.15, 128 ML +0.16, CCSDS 131.0 ASM +0.16 | none (the tie) | 7 |
+| 0.15, 1e-4 | -2.93 | - | **DVB-S2 90-symbol header -0.31 (at 0.69 M MACs per core, 3.8x blind), DVB-RCS2 -0.19, 128 ML -0.20, Griebel 4096 -0.18, 64 + 64 L4 -0.17, CCSDS-inspired -0.14** (CIs do not overlap); 128 M&M -0.07, ASM -0.05, DMRS +0.01, Wi-Fi 128 +0.07: ties | 9 |
+| 2/5, 1e-3 | 0.58 | Advantech 48 wide +0.33, VDE-SAT +0.34, CCSDS 131.0 ASM +0.38, DVB-S2 header +0.44, DVB-RCS2 +0.52 | none | 5 |
+| 1/2, 1e-3 | 1.73 | Advantech 48 wide +0.38, VDE-SAT +0.44, Advantech 48 +0.45, ASM +0.47, DVB-RCS2 +0.61 | none | 1 (ViaSat UW) |
+
+- **Cost:** blind needs 0.14-0.26 M MACs per core at its crossings; the cheap pilot receivers 0.03-0.09 M (blind
+  2-7x more). A few faithful layouts are dearer than blind: Wi-Fi 320 (0.34-0.44 M), CCSDS 131.2 real (0.26-0.39 M),
+  Advantech 48 wide at 0.15 (0.36 M), DVB-S2 header scan (0.63-0.83 M).
+- **Typical failure of the competitors:** coarse-CFO misses outside their search window (Advantech wide floor ~2.5e-4,
+  Wi-Fi 320 wrap floor ~1e-2 at 1/10) and shallow waterfalls with few pilots (CCSDS 131.2 real).
+- Blind and the competitors run on different packets: gaps under ~0.1 dB are ties. Timing / burst detection is
+  assumed known for everyone (it favours blind: a preamble also does detection).
+- Still running (2026-11-17): DVB-S2 SOF26 at every rate, DVB-S2 header at 1/2, and the 1/10 -5.3 dB point for the
+  DVB-S2 header (v-10hla/hlb, 960k packets). Per-job results with
+  predictions: `testing/results/expected_variants.md` §9, news in [NEWS.md](NEWS.md).
+
+### Real-world checks
+Wiener phase noise (linewidth x Ts): 1e-5 harmless; 1e-4 x3 BLER at 1/10, 0.15 and x36 BLER, x10 MACs per core at 2/5;
+3e-4 x100-235. Code-aided phase tracking (`pns`) cuts blind's BLER 10-23 % at 1e-4. Phase tracking is the main open
+real-world item (`testing/results/expected_cap_pn_comb.md`, `expected_pns.md`). Noise-only packets: 0 false alarms in
+~30k. A hard MAC cap (2 M per core at 1/10, 0.15; 1 M at 2/5, 1/2) costs ~1e-5 BLER at the waterfall foot.
 
 Details and reports: [testing/README.md](testing/README.md), `testing/results/report_*.md`, plots in `testing/results/plots/`.

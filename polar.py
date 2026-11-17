@@ -115,6 +115,30 @@ class PolarCode:
     _ends = None
     fz_q = None     # (measurement, small_rx fz_diag) None = off; fractions of the frozen set (decoding order) at which
                     # every list path's frozen-only metrics are recorded in fz_rec (decisions / PMs unchanged)
+    fz_stop = None  # F5 online (small_rx fzstop): None = off; (q, t): at the first node boundary with >= ceil(q F) frozen
+                    # leaves seen, a row whose min over its alive paths of psn = (the decoder's own frozen PM increment
+                    # summed over the frozen leaves / rate-0 nodes seen) / (frozen leaves seen) is > t is marked stopped
+                    # (fzs_stop (B,), fzs_pos the check's leaf end, fzs_nb information bits decided); the decode itself
+                    # runs on unchanged (the caller treats a stopped row as a CRC failure and charges the work up to
+                    # fzs_pos); the fz_diag `ps` checkpoint rule
+
+    def _fzs_start(self, shape):
+        """(fz_stop) a decode starts: per path (B, Ls) the frozen PM increment sum, the check's frozen-leaf count."""
+        F = int(self.frozen.sum())
+        self._fzs_t = max(int(np.ceil(float(self.fz_stop[0]) * F - 1e-9)), 1)
+        self._fzs_n, self._fzs_ps, self._fzs_done = 0, np.zeros(shape), False
+        self.fzs_stop, self.fzs_pos, self.fzs_nb = np.zeros(shape[0], bool), -1, -1
+
+    def _fzs_add(self, inc, n, hi):
+        """(fz_stop) n frozen leaves ending at leaf hi added inc (B, Ls) to the PMs (already in _pm): the check."""
+        if self._fzs_done:
+            return
+        self._fzs_ps += inc
+        self._fzs_n += n
+        if self._fzs_n >= self._fzs_t:                          # the first node boundary at >= ceil(q F) frozen leaves
+            psn = np.where(np.isfinite(self._pm), self._fzs_ps, np.inf).min(1) / self._fzs_n
+            self.fzs_stop, self.fzs_pos, self.fzs_nb = psn > float(self.fz_stop[1]), int(hi), len(self._bits)
+            self._fzs_done = True
 
     def _fz_start(self, shape):
         """(fz_q) a decode starts: per path (B, Ls) running sums of the frozen-bit hard penalty |LLR| [LLR < 0] and
@@ -167,6 +191,8 @@ class PolarCode:
         n = hi - lo
         if n == self.N and self.fz_q is not None:               # (measurement) a decode starts
             self._fz_start(alpha.shape[:2])
+        if n == self.N and self.fz_stop is not None:            # (fz_stop) a decode starts
+            self._fzs_start(alpha.shape[:2])
         if n == 1:
             out = self._leaf(alpha[..., 0], lo)
             if self._ends is not None:
@@ -174,7 +200,12 @@ class PolarCode:
             return out
         if self.frozen[lo:hi].all():
             # Rate-0 node (Fast-SSCL): all-zero sub-codeword, metric of every node LLR being 0
-            self._pm += np.logaddexp(np.float32(0), -alpha).sum(axis=2)
+            if self.fz_stop is None:
+                self._pm += np.logaddexp(np.float32(0), -alpha).sum(axis=2)
+            else:                                               # (fz_stop) the same increment, also summed apart
+                inc = np.logaddexp(np.float32(0), -alpha).sum(axis=2)
+                self._pm += inc
+                self._fzs_add(inc, n, hi)
             if self._ends is not None:
                 self._mark(hi)
             if self.fz_q is not None:                           # (measurement) its leaves' LLRs, as SC would see them
@@ -194,7 +225,12 @@ class PolarCode:
 
     def _leaf(self, llr, i):
         if self.frozen[i]:
-            self._pm += np.logaddexp(np.float32(0), -llr)       # cost of u_i = 0
+            if self.fz_stop is None:
+                self._pm += np.logaddexp(np.float32(0), -llr)   # cost of u_i = 0
+            else:                                               # (fz_stop) the same increment, also summed apart
+                inc = np.logaddexp(np.float32(0), -llr)
+                self._pm += inc
+                self._fzs_add(inc, 1, i + 1)
             if self.fz_q is not None:                           # (measurement) frozen-only metrics
                 self._fz_add(llr[..., None], i, llr[..., None])
             return np.zeros(llr.shape + (1,), dtype=np.uint8), None
@@ -209,6 +245,8 @@ class PolarCode:
         self._parents.append(parent)
         if self.fz_q is not None:                               # (measurement) the sums follow their paths
             self._fz_s = self._fz_s[np.arange(len(cand))[:, None], parent]
+        if self.fz_stop is not None and not self._fzs_done:     # (fz_stop) the sums follow their paths
+            self._fzs_ps = self._fzs_ps[np.arange(len(cand))[:, None], parent]
         return bit[..., None], parent
 
 

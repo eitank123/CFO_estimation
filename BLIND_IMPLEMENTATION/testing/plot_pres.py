@@ -7,7 +7,9 @@ Smoothing (statistics only, no model of the waterfall):
   errors above the waterfall are an SNR-flat floor (CRC-16 false passes), so they are pooled over the floor region
   (SNRs where the receiver has <= 2 detected errors) and that pooled rate replaces the 0-6-count per-SNR values there.
   BLER drawn = detected / n + undetected rate (per SNR in the waterfall, pooled in the floor region).
-usage: py plot_pres.py"""
+usage: py plot_pres.py
+       py plot_pres.py --e5   (+ the est5 deployed competitors -> results/plots/pres5_bler_R*.png and e5_macs_R*.png;
+                               nothing is copied to presentation/)"""
 import os, sys
 from collections import defaultdict
 import numpy as np
@@ -30,15 +32,19 @@ STY = [("Genie", "genie: true CFO and phase (no pilots, lower bound)", "#7f7f7f"
        ("pre128 M&M", "128-symbol preamble, Mengali-Morelli", "#bcbd22", "v", "--"),
        ("split64 ML", "64 + 64 symbols (pre + post), joint ML", "#ff7f0e", "o", "-"),
        ("RCS2 pre/post", "DVB-RCS2 16 + 16 pre/post, 4th-power NDA", "#9467bd", "D", "--")]
+STY5 = [(s, P4.STY5[s][0], P4.STY5[s][1], P4.STY5[s][2], P4.STY5[s][3]) for s in P4.STY5]   # est5 (plot_e4.STY5)
 BLIND = ("blind CFO (proposed, no pilots)", "#e377c2", "d")
 
 
-def pilots(rate):
-    """{src: {snr_plot: [n, det, und]}}"""
+def pilots(rate, e5=False):
+    """{src: {snr_plot: [n, det, und]}}; e5: + the est5 sources (their parts' Genie not used)"""
     out = defaultdict(lambda: defaultdict(lambda: [0, 0, 0]))
     parts = [P4.MAIN[rate], P4.PP[rate]] + (LOW10 if rate == "1/10" else [])
-    for r in sum((P4.load(p) for p in parts), []):
-        if r["rate"] != rate or r["pn"] != 0 or r["src"] not in dict((s[0], 1) for s in STY):
+    rows = sum((P4.load(p) for p in parts), [])
+    if e5:
+        rows += [r for r in sum((P4.load(p) for p in (P4.MAIN5[rate], P4.PP5[rate])), []) if r["src"] != "Genie"]
+    for r in rows:
+        if r["rate"] != rate or r["pn"] != 0 or r["src"] not in dict((s[0], 1) for s in STY + (STY5 if e5 else [])):
             continue
         d = out[r["src"]][round(r["snr_plot"], 3)]
         d[0] += r["frames"]
@@ -90,17 +96,20 @@ def blind(rate):
     return {s: tuple(v) for s, v in acc.items() if v[1] >= 1000}
 
 
-def fig(rate):
+def fig(rate, e5=False):
     f, ax = plt.subplots(figsize=(10, 7.6))
     lo, hi = XLIM[rate]
     B = blind(rate)
-    have = [s for s in B if B[s][0] > 0] + [s for d in pilots(rate).values() for s in d]
+    PL = pilots(rate, e5)
+    have = [s for s in B if B[s][0] > 0] + [s for d in PL.values() for s in d]
     lo = max(lo, min(have) - 0.2)                       # until the low-SNR extension is in
     xb = np.array([s for s in sorted(B) if B[s][0] > 0 and lo <= s <= hi])
     ax.plot(xb, [B[s][0] / B[s][1] for s in xb], color=BLIND[1], marker=BLIND[2], lw=3, ms=10, label=BLIND[0], zorder=5)
     notes = []
-    for src, lab, c, m, ls in STY:
-        pts = pilots(rate).get(src)
+    for src, lab, c, m, ls in STY + (STY5 if e5 else []):
+        if src == "Genie":                                # genie not drawn (user 2026-11-15)
+            continue
+        pts = PL.get(src)
         if not pts:
             continue
         x, y, f0, uf, nf = smooth(pts)
@@ -119,7 +128,7 @@ def fig(rate):
     ax.grid(True, which="both", ls=":", alpha=0.6)
     ax.legend(fontsize=9, loc="upper center", bbox_to_anchor=(0.5, -0.11), ncol=1, frameon=False)
     f.tight_layout()
-    p = os.path.join(OUT, f"pres_bler_R{P4.tag(rate)}.png")
+    p = os.path.join(OUT, f"{'pres5' if e5 else 'pres'}_bler_R{P4.tag(rate)}.png")
     f.savefig(p, dpi=160)
     plt.close(f)
     print(p)
@@ -134,6 +143,11 @@ def tag2(rate):
 
 if __name__ == "__main__":
     import shutil
+    if "--e5" in sys.argv:
+        for rate in ("1/10", "0.15", "2/5", "1/2"):
+            fig(rate, True)
+            P4.fig(rate, "core", True)
+        sys.exit(0)
     for rate in ("1/10", "0.15", "2/5", "1/2"):
         fig(rate)
         P4.fig(rate, "core")

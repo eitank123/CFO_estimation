@@ -680,6 +680,9 @@ def simulate(task):
                   se_final=0.0, se_dd=0.0, n_dd=0, time=0.0, timed_frames=0) for k in names}
     running = lambda k: st[k]["frame_err"] < min_errors and st[k]["frames"] < max_frames
     dacc = {}                                        # (measurement) small_rx decode dump accumulators per receiver
+    part_ = os.environ.get("BLIND_MACLOG_PART")      # (measurement) per-packet MACs log of the small receivers (small_rx
+    mlog = bool(part_) and os.environ.get("BLIND_NO_MACLOG", "0") != "1"   # mac_acc: one dict per batch), one file per
+    macc = {}                                        # chunk; the part from run() (BLIND_NO_MACLOG=1: off)
     B = 100
     while any(running(k) for k in names):
         data, cw, r, rx, f, th = bc.frames(B, code, snr, rng, noise_only=noise)
@@ -721,6 +724,9 @@ def simulate(task):
                             or spec["sps"].get("fz_diag")):  # ref_diag / fz_diag: one file per chunk, packets
                         spec["sps"]["dec_acc"] = dacc.setdefault(k, {})          # by (chunk_seed, index in chunk)
                         spec["sps"]["dec_id"] = (seed, s["frames"])
+                    if mlog:                                 # (measurement) per-packet MACs log (small_rx mac_acc)
+                        spec["sps"]["mac_acc"] = macc.setdefault(k, [])
+                        n_ml = len(macc[k])
                 fn = {"sps": blind_fast.sps_receive, "sps2": blind_fast.sps2_receive,
                       "sps3": blind_fast.sps3_receive, "small": small_rx.small_receive}[RX[k]["kind"]]
                 sym = (((1 - 2.0 * cw[:, 0::2]) + 1j * (1 - 2.0 * cw[:, 1::2])) / np.sqrt(2)
@@ -755,6 +761,9 @@ def simulate(task):
             fe_ = errs.any(1)                                # (measurement) packet indices within the chunk of the
             s.setdefault("fe_idx", []).extend((s["frames"] + np.where(fe_)[0]).tolist())          # frame errors and
             s.setdefault("ud_idx", []).extend((s["frames"] + np.where(fe_ & ok)[0]).tolist())     # undetected errors
+            if mlog and RX.get(k, {}).get("kind") == "small" and len(macc.get(k, ())) == n_ml + 1:   # (measurement) this
+                macc[k][-1].update(pkt=(s["frames"] + np.arange(B)).astype(np.int32), fe=fe_.copy(),   # batch's row:
+                                   ud=fe_ & ok)       # packet index in the chunk, frame error / undetected as counted here
             s["frames"] += B
             s["frame_err"] += int(errs.any(1).sum())
             s["bit_err"] += int(errs.sum())
@@ -781,6 +790,19 @@ def simulate(task):
                                                              # alone: fz_*.npz, groups f / g)
         small_rx.dec_save(acc, os.path.join(dir_, f"{pre_}_{slug(k)}_R{slug(rate)}_{snr:+.1f}_{seed}"
                           f"{'_noise' if noise else ''}.npz"), rate=rate, snr=snr, rx=k, chunk_seed=seed)
+    for k, rows in macc.items():                     # (measurement) per-packet MACs log: one file per (chunk, rx) in
+        rows = [x for x in rows if "pkt" in x]       # <study data>/dumps/<part>/macs_<rx>_R<rate>_<snr>_<seed>.npz
+        if not rows:
+            continue
+        import re
+        slug = lambda x: re.sub(r"[^0-9A-Za-z.+-]+", "_", str(x)).strip("_")
+        dir_ = os.path.join(bc.DATA, "dumps", part_)
+        os.makedirs(dir_, exist_ok=True)
+        np.savez_compressed(os.path.join(dir_, f"macs_{slug(k)}_R{slug(rate)}_{snr:+.1f}_{seed}"
+                                         f"{'_noise' if noise else ''}.npz"),
+                            **{q: np.concatenate([x[q] for x in rows]) for q in rows[0]},
+                            rate=rate, snr=snr, rx=k, chunk_seed=seed,
+                            cap_core=float(RX[k]["sps"].get("cap_core") or np.nan))   # (capped run: valid C <= it)
     return [{"rate": rate, "snr": snr, "rx": k + (" [noise only]" if noise else ""), "chunk_seed": seed, **v}
             for k, v in st.items()]                          # chunk_seed + fe_idx / ud_idx: paired fixed / broken counts
 
@@ -793,6 +815,7 @@ def run(a):
             seed = zlib.crc32(repr((rate, s, a.seed, i)).encode())
             tasks.append((rate, s, seed, a.max_frames, a.min_errors, a.rx or list(RX), a.noise_only))
     tasks.sort(key=lambda t: -t[1])                 # the long, high-SNR chunks first
+    os.environ["BLIND_MACLOG_PART"] = a.part        # (measurement) the per-packet MACs log's dump dir (simulate)
     t0, res = time.time(), []
     with mp.Pool(a.workers) as pool:
         for i, r in enumerate(pool.imap_unordered(simulate, tasks), 1):

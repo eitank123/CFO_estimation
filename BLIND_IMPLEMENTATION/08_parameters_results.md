@@ -102,7 +102,7 @@ is the ML estimator (FFT 512 + 2 Newton), "CRB" an ideal estimator whose CFO err
   waterfall BLER is unchanged, the floor falls 2–5× to 2–10·10⁻⁶ (undetected 3–5× fewer) and per core rises 8–36 %
   (0.04–0.09 M, still 2–6× below blind; totals −8 … +15 %). The `cmp_*` plots now use this search as the pilot
   reference. Blind still has 0 errors above the waterfall at the same packet counts, so its edge there shrinks to
-  ~5·10⁻⁶ BLER plus the 12.5 % pilot overhead (8.3); its MAC cost per core stays 2–6× higher.
+  ~5·10⁻⁶ BLER plus the pilots' overhead (12.5 % of the packet in this inside-the-packet framing, 8.3); its MAC cost per core stays 2–6× higher.
 - **Blind vs pilots in the waterfall.** At the lowest SNRs blind loses to the pilot receivers: R = 1/10 −5 dB
   (2.1·10⁻⁴ vs 6.5·10⁻⁵) and R = 0.15 −4 … −3 dB (3–9×); at R = 2/5 and 1/2 blind is equal or better, because its
   retries and joint list decoding add decoding diversity (it even beats the one-decode genie).
@@ -135,20 +135,24 @@ Receivers:
 | DVB-RCS2 16 + 16 pre / post | 32 | 4th-power FFT over the burst (non-data-aided), π/2 ambiguity from the known symbols |
 | Genie | none | true CFO and phase, one decode (lower bound) |
 
-SNR [dB] where the BLER crosses a target (log-linear interpolation; blind pooled over all its runs, 64k-1.4M packets per
-SNR, about ±0.1 dB at 1/10 and 0.15):
+SNR [dB] where the BLER crosses a target (log-linear interpolation; blind = the adopted testing-receiver runs,
+`plot_e4.blind`, 64k-1.4M packets per SNR, about ±0.1 dB at 1/10 and 0.15; the presentation BLER curves pool all runs of
+the same receiver, which moves blind by <= 0.07 dB: 1/10 -4.83, 0.15 -3.62 / -2.97, 1/2 1.78; genie at 1/10 interpolates
+with its -5.5 dB point, which is not plotted; CIs and the raw / charged-axis / Pareto figures: `testing/results/final_table.md`):
+(Blind column updated 2026-11-17 to the adopted testing receiver: `testing_s11g` at 1/10, 0.15; q_fix + early stop at
+2/5, 1/2. All 31 deployed-system competitors: [testing/results/scoreboard.md](testing/results/scoreboard.md).)
 | Rate, BLER | Blind | DVB-RCS2 ID 13 | 128 preamble, ML | 64 + 64, joint ML | 16 + 16, 4th power | Genie |
 |---|---|---|---|---|---|---|
-| 1/10, 10⁻⁴ | **−4.9** | −4.09 | −4.68 | −2.87 | fails | −5.19 |
+| 1/10, 10⁻⁴ | **−4.78** | −4.09 | −4.68 | −2.87 | fails | −5.19 |
 | 0.15, 10⁻³ | **−3.60** | −3.45 | −3.44 | −3.34 | fails | −3.91 |
-| 0.15, 10⁻⁴ | −2.98 | **−3.12** | **−3.12** | −2.71 | fails | −3.59 |
-| 2/5, 10⁻³ | **0.61** | 1.10 | 1.16 | 1.12 | fails | 0.64 |
-| 1/2, 10⁻³ | **1.79** | 2.33 | 2.41 | 2.38 | 2.77 | 1.90 |
+| 0.15, 10⁻⁴ | −2.93 | **−3.12** | **−3.12** | −2.71 | fails | −3.59 |
+| 2/5, 10⁻³ | **0.58** | 1.10 | 1.16 | 1.12 | fails | 0.64 |
+| 1/2, 10⁻³ | **1.73** | 2.33 | 2.41 | 2.38 | 2.77 | 1.90 |
 
 **Reading it**
 - With the pilot energy charged, the waterfall gap of 8.2 ("blind loses at the lowest SNRs") is gone: blind is the best
-  receiver at R = 1/10 (about 0.2 dB ahead of the 128-preamble ML at 10⁻⁴), ties at R = 0.15 (0.15 dB ahead at 10⁻³,
-  0.14 dB behind at 10⁻⁴: the pilot waterfalls are steeper) and is about 0.5 dB better at R = 2/5 and 1/2.
+  receiver at R = 1/10 (0.10 dB ahead of the 128-preamble ML at 10⁻⁴), ties at R = 0.15 (0.15 dB ahead at 10⁻³,
+  0.19 dB behind at 10⁻⁴: the pilot waterfalls are steeper) and is 0.5-0.6 dB better at R = 2/5 and 1/2 (2026-11-17).
 - The cost is complexity, not BLER: blind needs 2-12× the MACs per core of the pilot receivers (07, 7.5b).
 - DVB-RCS2 ID 13 is the strongest and cheapest pilot receiver. Its single-symbol pilots every 20 symbols resolve only
   |f| < 0.025, so at R = 1/10 −5 dB 0.2 % of packets fall outside its CFO window (881 errors per 480k).
@@ -164,7 +168,14 @@ SNR, about ±0.1 dB at 1/10 and 0.15):
   code-aided phase tracking (`pns`) cuts its BLER 10-23 % at 10⁻⁴ and 9-22 % at 3·10⁻⁴, never breaks a packet and lowers
   MACs per core (`testing/results/expected_pns.md`).
 
-## 8.3 Throughput with the pilots inside the packet
+## 8.3 Throughput: two framings, do not mix them
+**Which framing applies to which result.** The 8.2 tables (est3) put the 128 pilots INSIDE the 1024-symbol packet: the
+pilot receivers carry fewer data bits and the SNR axis is the same for all. The 8.2a comparison (est4, the presentation
+figures) puts the pilots OUTSIDE the packet: every receiver carries the same data, the pilot energy is charged on the
+SNR axis, and the remaining cost is airtime. The "12.5 %" below belongs ONLY to the inside-the-packet framing; with the
+8.2a curves the airtime cost is 11.1 % for 128 known symbols (10.2 % for 116), reported separately from the energy.
+
+**Inside the packet (8.2, est3):**
 The pilot receivers' 128 known symbols sit inside the 1024-symbol packet, so they carry no data. Information bits per packet:
 
 $$T = A\,(1-\mathrm{BLER})\cdot\frac{1024 - n_{\text{pilots}}}{1024}.$$
@@ -179,7 +190,7 @@ The pilot receivers would beat blind on throughput only where blind's BLER is mo
 
 **Matching throughput instead:** a pilot system that keeps the same data bits needs a code rate 1024/896 times higher, which costs roughly 0.5–0.7 dB of SNR.
 
-**Pilots outside the packet instead (8.2a):** the pilot system keeps every data bit but sends 1024 + Nk symbols, so its
+**Outside the packet (8.2a, est4; the framing of the presentation figures):** the pilot system keeps every data bit but sends 1024 + Nk symbols, so its
 airtime throughput is 1024 / (1024 + Nk) of blind's: 0.898 for 116 known symbols, 0.889 for 128, 0.970 for 32; the extra
 energy is charged on the SNR axis of 8.2a.
 

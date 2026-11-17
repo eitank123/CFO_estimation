@@ -22,6 +22,7 @@ Rates: R = 1/10, 0.15, 2/5, 1/2; N = 2048, CRC-16. BLER statements are paired (s
 | Re-ranking the final CA-SCL list (exp. F) | 0 hypotheses with the true packet in the list but another path chosen | testing README | - |
 | Half-packet consistency check (exp. J) | Right and wrong decodes overlap in every feature | testing README | - |
 | spec11 (speculative decode at 4 < z <= 6, rho > 1.1 thr) above the waterfall (1/10 >= -3 dB, 0.15 >= -2 dB) | Per core +3 ... +4 %, BLER identical: the extra decode mostly duplicates the next round's win. Kept below 1/10 -3.5, 0.15 -2.5 dB (`testing_s11g`) | `testing/results/expected_s11.md` | - |
+| List-marginalised re-ranking of the last-checkpoint survivors (F3 online: `lm2`, `lm2z`, `lm4`), for BLER | No significant BLER gain: 0.15 -4 dB 245 -> 241 / 64k (n10 11 / n01 7, McNemar p 0.48); -3.5 dB 48 -> 50-51. Per core -6 % at -4 dB, -1 % at -3.5 dB (fewer Stage-3 sweeps; the list decode runs in 1-5 % of packets) | `testing/results/expected_online_f3dd.md` (Measured, 2026-11-15) ; onl10 (1/10 -5 dB): BLER identical, per core -0.7 % -> MAC trim of ~2 % at the operating points only | a receiver that fails Stage 2 more often (e.g. phase noise) |
 | Multi-candidate DD retry (G), adaptive list size (H) | Not run: upside <= the non-Stage-2 failures (2 of 16 at 1/10 -5 dB) | testing README | Stage-2 failures fixed first |
 
 ## Acceptance and false alarms

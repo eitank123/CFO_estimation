@@ -1,7 +1,8 @@
 """Fast-SSC list decoder of the path metric only (F3 of BLIND_IMPLEMENTATION/testing/results/expected_f3f5.md; Yuan,
 Coskun, Kramer 2021): the list-marginalised SC metric -log sum_l exp(-PM_l) over the L_e surviving paths. Used by the
 offline rank harness (BLIND_IMPLEMENTATION/testing/lit_checks.py lmarg) and by small_rx's `lmarg` re-ranking of the
-last-checkpoint survivors. Moved here from lit_checks.py (2026-11-16), unchanged except the optional early stop."""
+last-checkpoint survivors. Moved here from lit_checks.py (2026-11-15), unchanged except the optional early stop and
+the L = 1 REP rule (review fix 2026-11-15: bf.FastSC's arithmetic)."""
 import numpy as np
 
 import blind_fast as bf
@@ -27,8 +28,8 @@ class FastSCL:
     2017: rate-1 the min(L - 1, n) least reliable bits one by one, SPC min(L, n) (pair flips with the least reliable
     bit, which fixes the parity), REP both repetitions; the L best paths by PM kept per hypothesis (the list grows
     1, 2, 4, ... to L). PM_l = sum over the node bits of softplus(-(1 - 2 b) a) (a flip costs +|a|), so L = 1 is
-    bf.FastSC.metric (up to near-tie REP decisions: pm + c0 vs pm + c1 in float32). decode(llr (H, N), cut) -> PM (H, L)
-    at the end and after the last leaf ending <= cut bits; stop=True skips every node starting at or beyond the cut
+    bf.FastSC.metric (REP at L = 1 in FastSC's arithmetic, pm + min(c0, c1); L >= 2 unchanged). decode(llr (H, N),
+    cut) -> PM (H, L) at the end and after the last leaf ending <= cut bits; stop=True skips every node starting at or beyond the cut
     (the end PM is then partial: only the checkpoint PM is valid)."""
 
     def __init__(self, fs, L):
@@ -77,6 +78,10 @@ class FastSCL:
             return np.concatenate([bl ^ br, br], -1), pm, p1
         if t == "REP":
             c0, c1 = bf._softplus(-a).sum(-1), bf._softplus(a).sum(-1)
+            if self.L == 1:                                           # L = 1: bf.FastSC's own arithmetic (b = c1 < c0,
+                pm = pm + np.minimum(c0, c1)                          # pm + min): no near-tie flips; c0 (H, 1)
+                self._mark(lo + n, pm)
+                return np.broadcast_to((c1 < c0)[..., None], a.shape).copy(), pm, None
             cur = pm.shape[1]
             o, pm, p = self._sel(np.concatenate([pm + c0, pm + c1], 1), cur)
             self._mark(lo + n, pm)

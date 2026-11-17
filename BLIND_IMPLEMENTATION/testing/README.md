@@ -11,6 +11,11 @@ The final receivers are the baselines and stay unchanged (`S blind final v2` for
 separate small_rx flag that defaults to the baseline behaviour; variants are compared on **paired packets** (same
 seed, points and therefore the same data, CFO, phase and noise).
 
+> **Adopted testing receiver (2026-11-17):** `testing_s11g` at R = 1/10, 0.15; `base25_qfix_fzs` (2/5) and
+> `base2_qfix_fzs` (1/2) = q_fix + early stop. Gain over the presentation receivers, BLER unchanged: MACs per core
+> -39 % (1/10), -32 ... -37 % (0.15), -17 % (2/5), -20 % at 1.5 dB (1/2). Table and competitor scoreboard:
+> [../README.md](../README.md#current-state-2026-11-17), [results/scoreboard.md](results/scoreboard.md).
+
 > **Before testing an idea, check [../DEAD_ENDS.md](../DEAD_ENDS.md)**: every dropped idea (search, acceptance, NN,
 > channel format) with its evidence and what would justify reopening it.
 
@@ -47,6 +52,8 @@ errors are reported as a 95 % upper bound (3 / n).
 | `analyze.py` | Step 2: failure classification, MAC breakdown, policy evaluation, plots |
 | `agg_variants.py` | sums `blind_ber_<part>.json` per (rate, SNR, receiver): BLER with 95 % interval, total MACs, MACs per core, scoring / fast-path / decode MACs, decodes per packet, stage shares, undetected (`py BLIND_IMPLEMENTATION/testing/agg_variants.py srch10 srch15 ...`) |
 | `plot_variants.py` | (not run since 2026-11-13: its plots `srch_*`, `k_nph4_*` were removed; the numbers are in the tables below) |
+| `plot_curves.py` | full BLER vs SNR and MACs per core vs SNR of blind and every compared receiver (figures `results/plots/curves_*`, table `results/curves.md`) |
+| `results/scoreboard.md` | required SNR / gap / MACs per core at the target BLERs, every compared receiver |
 | `results/` | dumps, tables, plots |
 
 ## Status

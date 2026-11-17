@@ -18,6 +18,13 @@ Every multipath script takes `--channel awgn` and then reduces exactly to the AW
 Part A, so the switch back is instant. Those AWGN runs are reported in Part A and validated against it.
 
 **Bottom line**
+* **Final blind receiver (small CFO, |f| <= 0.03; 2026-11-17): the system is explained in
+  [BLIND_IMPLEMENTATION/README.md](BLIND_IMPLEMENTATION/README.md)** (architecture, formulas, current numbers). With
+  the pilot energy charged, the adopted testing receiver (0 known symbols) needs -4.78 dB at R = 1/10 (BLER 1e-4),
+  -3.60 / -2.93 dB at 0.15 (1e-3 / 1e-4), 0.58 dB at 2/5 and 1.73 dB at 1/2 (1e-3). Against 31 receivers of 12
+  deployed preamble / pilot systems it is the best or tied everywhere except R = 0.15 at 1e-4 (0.14-0.31 dB behind
+  the DVB-S2 header, DVB-RCS2, 128 ML, CCSDS-inspired; the DVB-S2 90-symbol header at 1/10 is still open), at 2-7x the MACs per core of the cheap pilot receivers
+  ([scoreboard](BLIND_IMPLEMENTATION/testing/results/scoreboard.md)). A.16-A.17 below are the history of that study.
 * **AWGN, full Tx/Rx chain (A.1–A.5, verified).** A CFO of up to 0.2 Rs before the matched filter costs every
   receiver, even a Genie, up to 1.25 dB plus ISI, so all estimators sit at ≈ 1.12–1.17× the ideal CRB. ML is the
   best and cheapest estimator. The chain-retrained SNR-aware NN is 27× better than M&M at −5 dB but 2–8 % worse

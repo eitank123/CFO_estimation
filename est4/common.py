@@ -14,8 +14,9 @@ parts. Differences from est3:
               prepost16  16 known, 1024 data, 16 known (IDs 5 / 15 style, pilotless)  Nk = 32, K = 1056
               none       1024 data (genie)                                            Nk = 0, K = 1024
             est5 (deployed systems, expected_est5.md; appended to LAYOUTS so the est4 noise streams are unchanged):
-              vde27      VDE-SAT (ITU-R M.2092-2): 27 syncword, 39 x (26 data + 1 pilot), 10 data; one pilot symbol
-                         repeated in all pilot fields ((1+j)/sqrt2 in the standard)  Nk = 66, K = 1090, alias 1/27
+              vde27      VDE-SAT (ITU-R M.2092-2 A5-2.10): 27 syncword (0-26), 13 data, 1 pilot, 38 x (26 data +
+                         1 pilot), 23 data: pilots at 40, 67, 94, ..., 1066 (period 27); one pilot symbol repeated in
+                         all pilot fields ((1+j)/sqrt2 in the standard)               Nk = 66, K = 1090, alias 1/27
               dvbs2      DVB-S2 style: 90 PL header (SOF 26 + PLS 64), 512 data, 36 pilot block, 512 data
                                                                                       Nk = 126, K = 1150, lobes 1/575
               ccsds8     CCSDS style: 8 blocks of 16 known, one at each end, data gaps 146 146 147 146 147 146 146
@@ -23,18 +24,35 @@ parts. Differences from est3:
               viasat16   ViaSat burst: 512 data, 16 midamble UW, 512 data                Nk = 16, K = 1040
               dmrs7      NB-IoT DMRS style: 170 x (3 data, 1 pilot, 3 data), 3 data, 1 pilot, 1 data (pilot mid-slot)
                                                                                       Nk = 171, K = 1195, alias 1/7
-              zr32       400ZR style: 33 x (1 pilot + 31 data), 1 data                Nk = 33, K = 1057, alias 1/32
+              zr32       sparse pilots 1/32 (400ZR-inspired): 33 x (1 pilot + 31 data), 1 data
+                                                                                      Nk = 33, K = 1057, alias 1/32
               wifi128    Wi-Fi style: 128 preamble = one random 16-symbol sequence repeated 8 x, 1024 data
                                                                                       Nk = 128, K = 1152, fine lobes 1/64
               mil110     MIL-STD-188-110C App C scaled: 184 preamble, 4 x (256 data + 31 probe)
                                                                                       Nk = 308, K = 1332, alias 1/287
+            faithful variants (expected_variants.md, lit_card_sat / space / terr.md; appended after est5, so the est4 /
+            est5 noise streams and phase-noise paths are unchanged):
+              pre48      Advantech US 7590199 / 7593490: 48 contiguous preamble, 1024 data     Nk = 48, K = 1072
+              dvbh90     DVB-S2 PLHEADER only (SOF 26 + PLS 64, CCM), 1024 data (no pilot block: the first one is 1440
+                         data symbols after the header)                              Nk = 90, K = 1114, CRC range scan
+              sof26      DVB-S2 SOF only (ACM: the PLS is unknown before decoding)   Nk = 26, K = 1050, CRC range scan
+              mil110f    MIL-STD-188-110C App C full: 287 preamble (184 + 72 + 31), 4 x (256 data + 31 probe)
+                                                                                      Nk = 411, K = 1435, alias 1/287
+              cc131      CCSDS 131.2 pilot density: 242 data, 16 pilots, 540 data, 16 pilots, 242 data
+                                                                                      Nk = 32, K = 1056, alias 1/556
+              asm32      CCSDS 131.0 (2048,1024) LDPC: the same 32-symbol ASM before and after the codeblock
+                                                                                      Nk = 64, K = 1088, lobes 1/1056
+              wifi320    Wi-Fi legacy: L-STF 10 x 16, L-LTF 32 guard (the last 32 of the 64) + 2 x 64, 1024 data
+                                                                                      Nk = 320, K = 1344, fine lobes 1/64
             a FIELD is one contiguous run of known symbols (preamble, a pilot, postamble): the phase models work per field
             alias / lobe spacing 1 / lobe_D(layout) and the number of lobe hypotheses each side lobe_n (run_bler's CRC
             search); est5 layouts only search the lobes whose centre is inside |f| <= MAX_CFO + the window
     chain   est3.common.transmit (= blind_cfo.transmit_full) on the whole burst: Es measured over the burst, + Wiener
             phase noise as blind_cfo (BLIND_PN): per 8-SPS sample increment N(0, 2 pi pn / SPS), zero at the burst
             centre, only if pn > 0; bursts longer than the est4 KMAX (1152) take the est4 path extended outwards at
-            both ends by extend_path (its own rng stream), so the est4 path and its RNG draws are unchanged
+            both ends by extend_path (its own rng stream), so the est4 path and its RNG draws are unchanged; bursts
+            longer than the est5 KMAX_ALL (1332: the variants mil110f, wifi320) continue that path once more
+            (KMAX_V, a third stream), so the est5 path is unchanged too
 """
 import os
 import sys
@@ -54,14 +72,21 @@ N_SYM, N_BITS = C3.N_SYM, C3.N_BITS
 SPS, SPAN, BETA, DELAY_SYM, MAX_CFO = C3.SPS, C3.SPAN, C3.BETA, C3.DELAY_SYM, C3.MAX_CFO
 INTERLEAVER, CODES = C3.INTERLEAVER, C3.CODES
 RCS_PRE, RCS_NP, RCS_DP, RCS_TAIL, RCS_POST = 32, 53, 19, 17, 31    # ID 13 scaled: pre, pilots, data per pilot, ...
-VDE_SYNC, VDE_NP, VDE_DP, VDE_TAIL = 27, 39, 26, 10                 # VDE-SAT: syncword, pilots, data per pilot, tail
+VDE_SYNC, VDE_NP, VDE_DP, VDE_TAIL = 27, 39, 26, 23                 # VDE-SAT: syncword, pilots, data per pilot, tail
+VDE_HEAD = 13                                                       # data between syncword and 1st pilot (pilot at 40)
 DVB_HDR, DVB_PB = 90, 36                                            # DVB-S2: PL header, mid-burst pilot block
 CC_BL, CC_GAPS = 16, (146, 146, 147, 146, 147, 146, 146)            # CCSDS: block length, data between the 8 blocks
 UW_LEN = 16                                                         # ViaSat midamble unique word
 DM_NS = 170                                                         # DMRS: full 7-symbol slots (3 data, pilot, 3 data)
-ZR_P, ZR_NP = 32, 33                                                # 400ZR: pilot period, pilots
+ZR_P, ZR_NP = 32, 33                                                # sparse pilots 1/32: pilot period, pilots
 WIFI_REP, WIFI_FINE = 16, 64                                        # Wi-Fi: repeat length (coarse lag), fine lag
 MIL_PRE, MIL_PROBE, MIL_DATA, MIL_NP = 184, 31, 256, 4              # MIL-110C App C scaled: preamble, probe, data, probes
+PRE48 = 48                                                          # Advantech (US 7590199): contiguous preamble
+DVB_SOF = 26                                                        # DVB-S2 SOF (ACM: the PLS is unknown before decoding)
+MILF_PRE = 287                                                      # MIL-110C App C full preamble (184 + 72 + 31 probe)
+CC_P, CC_D = 16, 540                                                # CCSDS 131.2: pilot field, data per pilot field
+ASM_LEN = 32                                                        # CCSDS 131.0: 64-bit ASM on QPSK
+WIFI_STF, WIFI_GI = 160, 32                                         # Wi-Fi legacy: L-STF 10 x 16, L-LTF guard (+ 2 x 64)
 
 # receiver: (layout, CFO estimator, phase model); the estimators and phase models are in est4/estimators.py
 SOURCES = {
@@ -83,14 +108,59 @@ SOURCES = {
     "ViaSat UW": ("viasat16", "nda4uw", "const"),         # C9: 4th-power top-32 peaks, picked with the midamble UW
     "DMRS 1/7": ("dmrs7", "rb", "const"),                 # C10: R-B over the pilots (no alias inside +-0.03)
     "DMRS 1/7 track": ("dmrs7", "rb", "track"),           # C10 + Kalman / RTS over the 171 pilots (pn runs)
-    "400ZR style": ("zr32", "nda4rb", "const"),           # C11: 4th-power coarse, R-B on the pilots in its lobe
+    "Sparse pilots 1/32": ("zr32", "nda4rb", "const"),    # C11 (400ZR-inspired): 4th-power coarse, R-B on the pilots
     "WiFi pre128": ("wifi128", "lag", "const"),           # C12: lag-16 coarse + lag-64 fine autocorrelation
     "MIL-110 HF": ("mil110", "rb", "const"),              # C13: R-B over preamble + probes
     "MIL-110 HF track": ("mil110", "rb", "track"),        # C13 + Kalman / RTS over the 5 fields (pn runs)
     "hyb3": ("prepost16", "hyb3", "const")}               # C14: US7590199, log DA + log 4th-power spectra, 3 candidates
 EST5 = ("VDE-SAT", "VDE-SAT track", "DVB-S2 style", "CCSDS style", "CCSDS style track", "CCSDS style blocks",
-        "ViaSat UW", "DMRS 1/7", "DMRS 1/7 track", "400ZR style", "WiFi pre128", "MIL-110 HF", "MIL-110 HF track",
-        "hyb3")                                           # run_bler: lobe range filter + per-packet hypotheses
+        "ViaSat UW", "DMRS 1/7", "DMRS 1/7 track", "Sparse pilots 1/32", "WiFi pre128", "MIL-110 HF",
+        "MIL-110 HF track", "hyb3")                       # run_bler: lobe range filter + per-packet hypotheses
+# Griebel, Wasenmueller, Wehn, ARS 19 (2021) variants on the rcs13 layout (lit_ars2021.md section 6, expected_ars.md):
+# the same burst as RCS2-13, so they pair packet for packet with it
+SOURCES.update({
+    "G4096": ("rcs13", "rb4096", "const"),                # rb with FFT 4096 + parabolic
+    "G2048": ("rcs13", "rb2048", "const"),                # rb with FFT 2048 + parabolic
+    "G2048N": ("rcs13", "rb2048n", "const"),              # rb with FFT 2048 + parabolic + 1 Newton step
+    "Griebel faithful": ("rcs13", "rb2048f", "eq17"),     # FFT 2048, peak over the full band, Eq. 17 phase, 1 decode
+    "RCS2-13 lobes": ("rcs13", "rb", "const")})           # RCS2-13 + the +-1/20 alias lobes in the CRC search
+ARS = ("G4096", "G2048", "G2048N", "Griebel faithful", "RCS2-13 lobes")   # run_bler: the est5 search branch
+NO_SEARCH = ("Griebel faithful",)                         # window 0: one decode at the estimate (the paper's chain)
+SRC_LOBES = {"RCS2-13 lobes": (float(RCS_DP + 1), 1)}     # per-source (D_lobe, lobes each side): rcs13 itself keeps 0
+# faithful variants of the est5 competitors (expected_variants.md, 2026-11-15): the deployed layouts / estimators of
+# lit_card_sat / space / terr.md; the est5 search branch; McNemar-paired with PARENT when both are in a job
+SOURCES.update({
+    "hyb3-pre48": ("pre48", "hyb3", "const"),             # V1: US 7590199 / 7593490 layout, 48 contiguous preamble
+    "ViaSat 7653150": ("viasat16", "nda4pk", "x4"),       # V2a: single 4th-power peak, 3-bin average, phase arg X4 / 4
+    "ViaSat top32 X4phase": ("viasat16", "nda4uw", "x4"),  # V2b: ViaSat UW (US 8243859) with the 4th-power phase
+    "DVB-S2 header90": ("dvbh90", "mmml", "const"),       # V3a: PLHEADER only (CCM): M&M + ML in its 1/90 lobe
+    "DVB-S2 SOF26": ("sof26", "mmml", "const"),           # V3b: SOF only (ACM): M&M + ML in its 1/26 lobe
+    "MIL-110 full": ("mil110f", "rb", "const"),           # V4: R-B over 287 preamble + 4 probes, +-3 lobes of 1/287
+    "CCSDS 131.2 real": ("cc131", "rb", "const"),         # V5: R-B over the 2 pilot fields, +-17 lobes of 1/556
+    "CCSDS 131.0 ASM": ("asm32", "ml", "const"),          # V6: joint ML over the 2 ASMs, +-12 lobes of 1/1056
+    "WiFi real320": ("wifi320", "lag320", "const"),       # V7a: lag 16 on the L-STF, lag 64 on the L-LTF, no lobes
+    "WiFi real320 lobes": ("wifi320", "lag320", "const"),     # V7b: V7a + the +-4 fine-lobe (1/64) CRC search
+    "hyb3-pre48 wide": ("pre48", "hyb3", "const"),        # V1w: V1 with window max(4th-power, 48-symbol DA CRB)
+    "split64 ML L4": ("split64", "ml", "const")})         # split64 ML with +-4 lobes (~4 sigma_env; reference for V6)
+VARS = ("hyb3-pre48", "ViaSat 7653150", "ViaSat top32 X4phase", "DVB-S2 header90", "DVB-S2 SOF26", "MIL-110 full",
+        "CCSDS 131.2 real", "CCSDS 131.0 ASM", "WiFi real320", "WiFi real320 lobes", "hyb3-pre48 wide")
+                                                          # run_bler: the est5 branch ("split64 ML L4" keeps the est4
+                                                          # branch of split64 ML: only its lobe count differs)
+PARENT = {"hyb3-pre48": "hyb3", "ViaSat 7653150": "ViaSat UW", "ViaSat top32 X4phase": "ViaSat UW",
+          "DVB-S2 header90": "DVB-S2 style", "DVB-S2 SOF26": "DVB-S2 style", "MIL-110 full": "MIL-110 HF",
+          "CCSDS 131.2 real": "CCSDS style", "CCSDS 131.0 ASM": "split64 ML", "WiFi real320": "WiFi pre128",
+          "WiFi real320 lobes": "WiFi pre128", "hyb3-pre48 wide": "hyb3-pre48",
+          "split64 ML L4": "split64 ML"}                  # run_bler McNemar reference of a variant (if in the job)
+SRC_LOBES["WiFi real320"] = (float(WIFI_FINE), 0)         # V7a: the chip trusts the coarse lobe pick (lobe_err kept)
+SRC_LOBES["split64 ML L4"] = (float(N_SYM + 64), 4)       # D_lobe 1088 (as split64), 4 lobes each side
+SCAN = ("DVB-S2 header90", "DVB-S2 SOF26")                # contiguous headers: no lobes, the CRC search scans k STEP over
+for _s in SCAN:                                           # the whole +-MAX_CFO, filtered per hypothesis to |f_hat + off|
+    SRC_LOBES[_s] = (0.0, 0)                              # <= MAX_CFO + STEP (run_bler; the 1/Nh lobe windows overlapped
+                                                          # (SOF26) or left holes (header90): verifier 2026-11-15)
+NDA4_WIN = ("hyb3-pre48",)                                # run_bler window from crb_nda4 (the 4th-power term sets the
+                                                          # precision of the summed spectrum, not the 48 DA symbols)
+WIN_MAX = ("hyb3-pre48 wide",)                            # run_bler window from max(crb_nda4, crb_known): at 1/10, 0.15 the
+                                                          # 4th power is noise and f_hat has the 48-symbol DA precision
 
 
 def _segments(name):
@@ -108,8 +178,9 @@ def _segments(name):
     if name == "none":
         return [("d", N_SYM)]
     if name == "vde27":
-        assert VDE_NP * VDE_DP + VDE_TAIL == N_SYM
-        return [("k", VDE_SYNC)] + [("d", VDE_DP), ("k", 1)] * VDE_NP + [("d", VDE_TAIL)]
+        assert VDE_HEAD + (VDE_NP - 1) * VDE_DP + VDE_TAIL == N_SYM
+        return ([("k", VDE_SYNC), ("d", VDE_HEAD), ("k", 1)] + [("d", VDE_DP), ("k", 1)] * (VDE_NP - 1)
+                + [("d", VDE_TAIL)])
     if name == "dvbs2":
         return [("k", DVB_HDR), ("d", N_SYM // 2), ("k", DVB_PB), ("d", N_SYM // 2)]
     if name == "ccsds8":
@@ -128,13 +199,37 @@ def _segments(name):
     if name == "mil110":
         assert MIL_NP * MIL_DATA == N_SYM
         return [("k", MIL_PRE)] + [("d", MIL_DATA), ("k", MIL_PROBE)] * MIL_NP
+    if name == "pre48":
+        return [("k", PRE48), ("d", N_SYM)]
+    if name == "dvbh90":
+        return [("k", DVB_HDR), ("d", N_SYM)]
+    if name == "sof26":
+        return [("k", DVB_SOF), ("d", N_SYM)]
+    if name == "mil110f":
+        return [("k", MILF_PRE)] + [("d", MIL_DATA), ("k", MIL_PROBE)] * MIL_NP
+    if name == "cc131":
+        h = (N_SYM - CC_D) // 2                                       # the 540-data gap centred in the codeword
+        return [("d", h), ("k", CC_P), ("d", CC_D), ("k", CC_P), ("d", N_SYM - CC_D - h)]
+    if name == "asm32":
+        return [("k", ASM_LEN), ("d", N_SYM), ("k", ASM_LEN)]
+    if name == "wifi320":
+        return [("k", WIFI_STF), ("k", WIFI_GI + 2 * WIFI_FINE), ("d", N_SYM)]   # fields: L-STF, L-LTF
     raise ValueError(name)
 
 
 LAYOUTS4 = ("pre128", "split64", "rcs13", "prepost16", "none")
-LAYOUTS = LAYOUTS4 + ("vde27", "dvbs2", "ccsds8", "viasat16", "dmrs7", "zr32", "wifi128", "mil110")   # est5 appended
+LAYOUTS5 = LAYOUTS4 + ("vde27", "dvbs2", "ccsds8", "viasat16", "dmrs7", "zr32", "wifi128", "mil110")   # est5 appended
+VLAYOUTS = ("pre48", "dvbh90", "sof26", "mil110f", "cc131", "asm32", "wifi320")   # faithful variants, appended last
+LAYOUTS = LAYOUTS5 + VLAYOUTS
 LAYOUT_ID = {l: i for i, l in enumerate(LAYOUTS)}           # the layout's noise stream (run_bler)
-LOBE_N = {"vde27": 1, "dvbs2": 3, "ccsds8": 5, "zr32": 1, "wifi128": 1, "mil110": 3}   # est5 lobe hypotheses each side
+LOBE_N = {"vde27": 1, "dvbs2": 3, "ccsds8": 5, "zr32": 1, "wifi128": 4, "mil110": 3}   # est5 lobe hypotheses each side
+                                                            # (wifi128 4: the lag-16 coarse range 1/32 wraps by
+                                                            # 1/16 = 4 fine lobes near |f| = 0.03)
+LOBE_N.update({"dvbh90": 3, "sof26": 1, "mil110f": 3, "wifi320": 4,   # variants: header-only ceil(0.03 Nh) (unused:
+               "cc131": int(np.ceil(MAX_CFO * (CC_D + CC_P))),   # C.SCAN); cc131 ceil(0.03 x 556) = 17 (= 4 sigma_env)
+               "asm32": 12})                                # asm32 ceil(4 sigma_env D) at -5 dB: sigma_env = the per-block
+                                                            # noncoherent CRB = 2.86 lobes (+-3 as split64 would miss the
+                                                            # lobe for 17 % of packets at -4 dB, 2 % at 2/5 0.5 dB)
 _LAY = {}
 
 
@@ -174,17 +269,21 @@ def lobe_D(name):
     """Lobe spacing 1/D_lobe of a 2-field layout (split64: D_lobe = 1088, prepost16: 1040, dvbs2: 575), D_lobe = the
     distance of the two block centres; est5 periodic layouts: D_lobe = the known-symbol period (vde27 27, zr32 32,
     wifi128 64 = the fine lag, ccsds8 the mean block-centre spacing 162.3, mil110 the probe spacing 287); 0 for the
-    other layouts (no lobe hypotheses in the CRC search; dmrs7: its 1/7 aliases are outside |f| <= 0.03)."""
+    other layouts (no lobe hypotheses in the CRC search; dmrs7: its 1/7 aliases are outside |f| <= 0.03). Variants:
+    dvbh90 / sof26 D_lobe = Nh (lobes at the header's resolution 1 / Nh), wifi320 64, mil110f 287, cc131 556, asm32
+    1056 (2 fields), pre48 0."""
     if name == "vde27":
         return float(VDE_DP + 1)
     if name == "zr32":
         return float(ZR_P)
-    if name == "wifi128":
+    if name in ("wifi128", "wifi320"):
         return float(WIFI_FINE)
+    if name in ("dvbh90", "sof26"):
+        return float(layout(name)["nk"])
     c = layout(name)["centres"]
     if name == "ccsds8":
         return float((c[-1] - c[0]) / (len(c) - 1))
-    if name == "mil110":
+    if name in ("mil110", "mil110f"):
         return float(np.mean(np.diff(c[1:])))
     if name in ("viasat16", "dmrs7"):
         return 0.0
@@ -196,6 +295,22 @@ def lobe_n(name, lobes):
     return (LOBE_N[name] if lobes else 0) if name in LOBE_N else lobes
 
 
+def src_lobes(src, lobes):
+    """(D_lobe, lobes each side) of a source: SRC_LOBES overrides (0 lobes if --lobes 0), else its layout's."""
+    if src in SRC_LOBES:
+        D, n = SRC_LOBES[src]
+        return (D, n) if lobes else (0.0, 0)
+    lay = SOURCES[src][0]
+    return (lobe_D(lay) if lobes else 0.0), lobe_n(lay, lobes)
+
+
+def var_lag(snr_db, lag=WIFI_FINE, n=WIFI_FINE):
+    """Variance of the lag-autocorrelation CFO estimate over n products at lag `lag` (Gaussian approximation,
+    lit_real_wlan.md): (2 rho + 1) / (2 n rho^2) / (2 pi lag)^2; the Wi-Fi fine stage: lag = n = 64."""
+    rho = 10 ** (np.asarray(snr_db) / 10)
+    return (2 * rho + 1) / (2 * n * rho ** 2) / (2 * np.pi * lag) ** 2
+
+
 def energy_db(nk):
     """Energy charged per data symbol by Nk extra known symbols: 10 log10((1024 + Nk) / 1024)."""
     return 10 * np.log10((N_SYM + nk) / N_SYM)
@@ -203,7 +318,9 @@ def energy_db(nk):
 
 KMAX = max(N_SYM + sum(l for k, l in _segments(n) if k == "k") for n in LAYOUTS4)  # est4 longest burst (1152): the
                                                                      # est4 phase-noise path length, unchanged
-KMAX_ALL = max(N_SYM + sum(l for k, l in _segments(n) if k == "k") for n in LAYOUTS)  # incl. est5 (mil110: 1332)
+KMAX_ALL = max(N_SYM + sum(l for k, l in _segments(n) if k == "k") for n in LAYOUTS5)  # incl. est5 (mil110: 1332),
+                                                                     # the est5 extended path, unchanged
+KMAX_V = max(N_SYM + sum(l for k, l in _segments(n) if k == "k") for n in LAYOUTS)    # incl. variants (mil110f: 1435)
 
 
 def crb_nda4(snr_db, K):
@@ -218,7 +335,9 @@ def make_burst(name, data_sym, rng):
     """Burst symbols (B, K) with the data symbols data_sym (B, 1024) at data_idx and random QPSK known symbols drawn
     from rng (rcs13: preamble / postamble random, ONE pilot symbol per burst repeated in all pilot fields, as the
     DVB-RCS2 unique word holds one pilot block; vde27 the same for its single pilots; wifi128: the first 16 known
-    symbols repeated 8 x). Returns burst, data_idx, known_idx, known symbols (B, Nk)."""
+    symbols repeated 8 x; wifi320: L-STF = the first 16 repeated 10 x, L-LTF = a 64-symbol sequence (known 160 .. 223)
+    as guard (its last 32) + 2 copies; asm32: the same 32-symbol marker before and after). Returns burst, data_idx,
+    known_idx, known symbols (B, Nk)."""
     L = layout(name)
     B = len(data_sym)
     burst = np.empty((B, L["K"]), complex)
@@ -229,6 +348,11 @@ def make_burst(name, data_sym, rng):
         ks[:, L["fstart"][pil]] = ks[:, [L["fstart"][pil[0]]]]
     if name == "wifi128":
         ks = np.tile(ks[:, :WIFI_REP], (1, L["nk"] // WIFI_REP))
+    if name == "wifi320":
+        lt = ks[:, WIFI_STF:WIFI_STF + WIFI_FINE]
+        ks = np.concatenate([np.tile(ks[:, :WIFI_REP], (1, WIFI_STF // WIFI_REP)), lt[:, WIFI_FINE - WIFI_GI:], lt, lt], 1)
+    if name == "asm32":
+        ks[:, ASM_LEN:] = ks[:, :ASM_LEN]
     burst[:, L["known_idx"]] = ks
     return burst, L["data_idx"], L["known_idx"], ks
 

@@ -25,9 +25,10 @@ BLIND_STUDY=small_cfo; sync it back with cluster.py --results small_cfo/blind/du
 fz_diag, F5 of results/expected_f3f5.md; decisions and MACs unchanged): fz_*.npz per chunk in the same directory (f_* one
 row per CA-SCL-8 decode, j_* per joint list: every path's frozen-only metrics at small_rx FZ_Q of the frozen set; g_* per packet).
 
-testing_s11g_lm2 / _lm4 (small_rx lmarg = 2 / 4) and testing_s11g_ddref (small_rx ddref): the online tests of
-results/expected_online_f3dd.md, decisions changed (lm_* / ddref_* counters in the json); run them with testing_s11g on
-the same --seed and points (paired packets).
+testing_s11g_lm2 / _lm4 / _lm2z (small_rx lmarg = 2 / 4, lazy 2) and testing_s11g_ddref / _ddref_s2 (small_rx ddref): the
+online tests of results/expected_online_f3dd.md, decisions changed (lm_* / ddref_* counters in the json); base25_qfix_fzs /
+base2_qfix_fzs / testing_s11g_fzs (small_rx fzstop, F5 online of results/expected_f3f5.md; fz_* / fzs_* counters). Run
+each with its baseline (testing_s11g / base25_qfix / base2_qfix) on the same --seed and points (paired packets).
 """
 import argparse
 import os
@@ -152,18 +153,30 @@ for _k in ("testing_s11g", "base25_qfix", "base2_qfix"):
 # cluster.py --results small_cfo/blind/dumps/<part>) + rd_* counters in the part's json
 for _k in ("testing_s11g", "base25_qfix", "base2_qfix"):
     VARIANTS[f"{_k}_rd"] = (VARIANTS[_k][0], {**VARIANTS[_k][1], "ref_diag": True})   # True -> the part's dump dir
-# 2026-11-16 (expected_f3f5.md, F5 offline): the frozen-bit diagnostic, log-only (small_rx fz_diag: decisions and MACs = the
+# 2026-11-15 (expected_f3f5.md, F5 offline): the frozen-bit diagnostic, log-only (small_rx fz_diag: decisions and MACs = the
 # receiver's): every CA-SCL decode (main, CA retry, joint list, pns) -> one row with every list path's frozen-only metric
 # at small_rx FZ_Q (1/4 ... 1) of the frozen set (polar.PolarCode fz_q), its outcome and true-cell label, in
 # <study data>/dumps/<part>/fz_*.npz (groups f / j / g)
 for _k in ("testing_s11g", "base25_qfix", "base2_qfix"):
     VARIANTS[f"{_k}_fz"] = (VARIANTS[_k][0], {**VARIANTS[_k][1], "fz_diag": True})    # True -> the part's dump dir
-# 2026-11-16 (expected_online_f3dd.md, online at 1/10, 0.15): A (F3) _lm2 / _lm4: the candidates after the last checkpoint
+# 2026-11-15 (expected_online_f3dd.md, online at 1/10, 0.15): A (F3) _lm2 / _lm4: the candidates after the last checkpoint
 # ordered by the list-marginalised metric of a Fast-SSC list decode (L_e = 2 / 4 paths, fastscl) of every surviving (cell,
 # phase) hypothesis up to c = 3/4 (small_rx lmarg); B (TODO 3) _ddref: each candidate cell refined first at its DD-Newton
 # estimate from the list-1 SC codeword at the cell centre, the 5-offset grid only as the fallback (small_rx ddref)
-for _t, _f in (("lm2", {"lmarg": 2}), ("lm4", {"lmarg": 4}), ("ddref", {"ddref": True})):
+for _t, _f in (("lm2", {"lmarg": 2}), ("lm4", {"lmarg": 4}), ("ddref", {"ddref": True}),
+               # verifier fixes (2026-11-15): _lm2z lazy lmarg (the first s2cand candidate in list-1 order first, the
+               # list decode only if it fails); _ddref_s2: ddref only for win / spec / s2cand, one DD decode per cell
+               ("lm2z", {"lmarg": 2, "lmarg_lazy": True}),
+               ("ddref_s2", {"ddref": True, "ddref_tags": ("win", "spec", "s2cand"), "ddref_T": 1})):
     VARIANTS[f"testing_s11g_{_t}"] = ("base10", {**VARIANTS["testing_s11g"][1], **_f})
+# 2026-11-15 (expected_f3f5.md "F5 online"): the frozen-metric stop inside every CA-SCL decode (small_rx fzstop = (q, t),
+# the offline 0-loss thresholds of results/fz_f5.json): 2/5 q = 0.7, t = 0.774; 0.15 q = 0.9, t = 0.763
+# review fix (2026-11-15): keyed by CODE rate (small_rx resolves p["code_rate"]; a missing rate = off), the 0-loss points
+# of expected_f3f5.md / fz_f5.json: 1/10 (0.8, 0.751), 0.15 (0.9, 0.763), 2/5 (0.7, 0.774), 1/2 (0.7, 0.776)
+FZS_T = {"1/10": (0.8, 0.751), "0.15": (0.9, 0.763), "2/5": (0.7, 0.774), "1/2": (0.7, 0.776)}
+VARIANTS["base25_qfix_fzs"] = ("base25", {**VARIANTS["base25_qfix"][1], "fzstop": FZS_T})
+VARIANTS["base2_qfix_fzs"] = ("base2", {**VARIANTS["base2_qfix"][1], "fzstop": FZS_T})
+VARIANTS["testing_s11g_fzs"] = ("base10", {**VARIANTS["testing_s11g"][1], "fzstop": FZS_T})
 
 DEC_DUMP = ("nofast15","base25", "base2", "nofast15_qfix", "base25_qfix")   # decode dump receivers registered by
                                                                               # default (<key>_dump; any key on request)

@@ -25,6 +25,8 @@ Fixed phase accounting (2026-11-13 runs, as agg_cnf.py / agg_qfix.py; used by pl
                      elsewhere (2 phases there: the fix changes nothing, report_cmp.md).
   q_fix              "T base10_qfix" (t-qfx10 + t-ddq10), "T base25_qfix" (t-qfx25 + t-ddq25), "T base2_qfix" (t-qfx2 + t-ddq2).
   Parts of one receiver are pooled per SNR; their chunk seeds must be disjoint (asserted).
+  tw (testing model over the full range, expected_tw.md): t-tw10a/b, t-tw15a/b ("T testing_s11g") pooled into adopted(),
+                     t-tw25 / t-tw2 ("T base25_qfix" / "T base2_qfix") into qfix(); parts not landed yet are skipped.
 """
 import collections
 import glob
@@ -167,13 +169,41 @@ S11_PARTS = ["t-s11-10a", "t-s11-10b", "t-s11-15a", "t-s11-15b"]
 S11_SNR = {"1/10": -3.5, "0.15": -2.5}                  # run.py testing_s11g: spec11 below these SNRs
 
 
+TW_PARTS = ["t-tw10a", "t-tw10b", "t-tw15a", "t-tw15b", "t-tw10a2", "t-tw15a2"]   # tw10a/tw15a were cancelled (no JSON); reruns *2 log MACs  # rx "T testing_s11g", seeds 8201-8204 (expected_tw.md)
+TW_QFX = {"2/5": ["t-tw25"], "1/2": ["t-tw2"]}           # rx FIX_QFX[rate][0], seeds 8205, 8206
+
+
+def part_rows(rate, rx, parts):
+    """{snr: [rows (+ _part)]} of rx over the parts whose file exists (a part not landed yet is skipped)."""
+    rows = collections.defaultdict(list)
+    for p in parts:
+        if not os.path.exists(os.path.join(A.ROOT, f"blind_ber_{p}.json")):
+            continue
+        for (r_, s, x), rs in A.load(p).items():
+            if r_ == rate and x == rx:
+                rows[s] += [{**r, "_part": p} for r in rs]
+    return rows
+
+
+def pooled(rs, rate):
+    """fixed()'s summary of the rows of one SNR; a chunk seed may appear once."""
+    seeds = [r["chunk_seed"] for r in rs]
+    assert len(seeds) == len(set(seeds)), f"duplicated chunk {rate} {rs[0]['snr']} {rs[0]['rx']}"
+    return {**A.summary(rs), "core_s": core_s(rs, rate), "parts": sorted({r["_part"] for r in rs})}
+
+
 def adopted(rate):
     """The ADOPTED testing receiver (run.py testing_s11g, 2026-11-14), MACs from the 64k paired s11 sweep: at each SNR it
-    is exactly testing_spec11 (below S11_SNR) or testing (expected_s11.md: smoke s11g-smoke equal packet for packet)."""
+    is exactly testing_spec11 (below S11_SNR) or testing (expected_s11.md: smoke s11g-smoke equal packet for packet).
+    The tw runs of testing_s11g (TW_PARTS) are pooled in per SNR once they land (new SNRs added)."""
     if rate not in S11_SNR:
         return {}
     a, b = fixed(rate, "T testing_spec11", S11_PARTS), fixed(rate, "T testing", S11_PARTS)
-    return {s: (a if s < S11_SNR[rate] else b)[s] for s in b}
+    out = {s: (a if s < S11_SNR[rate] else b)[s] for s in b}
+    for s, tw in part_rows(rate, "T testing_s11g", TW_PARTS).items():
+        arm = "T testing_spec11" if s < S11_SNR[rate] else "T testing"
+        out[s] = pooled(part_rows(rate, arm, S11_PARTS).get(s, []) + tw, rate)
+    return out
 
 
 def pres_fix_macs(rate):
@@ -184,7 +214,26 @@ def pres_fix_macs(rate):
 
 
 def qfix(rate):
-    return fixed(rate, *FIX_QFX[rate])
+    """fixed() of FIX_QFX, + the tw runs (TW_QFX) pooled in per SNR once they land (new SNRs added)."""
+    rx, parts = FIX_QFX[rate]
+    out = fixed(rate, rx, parts)
+    for s, tw in part_rows(rate, rx, TW_QFX.get(rate, [])).items():
+        out[s] = pooled(part_rows(rate, rx, parts).get(s, []) + tw, rate)
+    return out
+
+
+FZS = {"2/5": ("T base25_qfix_fzs", ["t-fzs-lo-a", "t-fzs25a", "t-fzs25b", "t-fzs25c", "t-fzs25d", "t-twf25"]),
+       "1/2": ("T base2_qfix_fzs", ["t-fzs-r2", "t-twf2"])}   # early stop, adopted 2026-11-15 (expected_f3f5.md)
+
+
+def testing_hi(rate):
+    """The ADOPTED testing receiver at 2/5, 1/2 (2026-11-15): q_fix + early stop (FZS) at every SNR it was run, the
+    q_fix receiver (qfix) at the remaining SNRs (above the waterfall, 0 errors; early stop saves 1-3 % there)."""
+    out = dict(qfix(rate))
+    rx, parts = FZS[rate]
+    for s, rs in part_rows(rate, rx, parts).items():
+        out[s] = {**pooled(rs, rate), "rx": rx}
+    return out
 
 
 def pilots(rate):

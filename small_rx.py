@@ -97,11 +97,30 @@ DEFAULT = dict(s0_snr=-99.0, nph=None, z0=4.0, T=2, ncand=4, final=32, rho_n=Non
                               # from it over the survivors, the cell's phase = its best by it; instead of the list-1 PM
                               # (non-joint receivers: R = 1/10, 0.15); rescue (final_post, fine_last) unchanged
                lmarg_ck=None,  # lmarg's codeword fraction (None = the last z-test checkpoint, 3/4 at R = 1/10, 0.15)
-               ddref=False)   # TODO 3 online (expected_online_f3dd.md B; False = the baseline): a candidate cell's
+               lmarg_lazy=False,  # lmarg lazily: the first s2cand candidate in list-1 order is decoded first; only if it
+                                  # fails (or no cell has z > z0) the survivors get the list decode, the rest of s2cand
+                                  # (at most ncand - 1 more, by the lmarg z) and final32 use it (st lm_lazy_runs)
+               ddref=False,   # TODO 3 online (expected_online_f3dd.md B; False = the baseline): a candidate cell's
                               # refinement (refine2 on the roffs grid, non-joint receivers) starts with the DD Newton of
                               # its list-1 SC codeword at the cell centre (bf.code_aided, 2 steps) -> f_dd x (theta_dd +
                               # sub) scored (list-1) and the best T decoded; the cells none of them accepted fall back
-                              # to the grid refinement (st ddref_cells / ddref_hit / ddref_fallback / _fallback_hit)
+                              # to the grid refinement (st ddref_cells / ddref_hit / ddref_fallback / _fallback_hit,
+                              # ddref_jump_<b>: |f_dd - f_cell| in 0.5-STEP bins); the centre pass is charged only when
+                              # the search had not decoded that hypothesis to full length (its SC decisions: a by-product)
+               ddref_tags=None,   # ddref only for decodes of these origins (e.g. ("win", "spec", "s2cand")); None = all
+               ddref_T=None,      # ddref: DD hypotheses decoded per cell, min(T, ddref_T) (None = the call's T)
+               fzstop=None,   # F5 online (expected_f3f5.md; None = off, the baseline): (q, t): every CA-SCL decode (main,
+                              # CA retry, pns, joint list) is stopped at the first node boundary with >= ceil(q F) frozen
+                              # leaves when min over its alive paths of psn > t (polar.PolarCode fz_stop) and treated as
+                              # a CRC failure; charged the work up to there (fz_share: the fz_profile tree share), per
+                              # core a 4-decode round shortens only when all its decodes stop (d4a); st fz_checks /
+                              # fz_stops / fz_stops_right (truth, log only) / macs_fz_saved / fzs_pos_<leaf> / fzs_<kind>;
+                              # or {code rate: (q, t)} (e.g. {"0.15": (0.9, 0.763)}; a missing rate = off). Not with
+                              # pns, the retry gate (nn_b) or s3_dd (not modelled)
+               mac_acc=None)  # (measurement) per-packet MACs log (None = off; blind_ber.simulate sets a list unless
+                              # BLIND_NO_MACLOG=1): each call appends one dict of per-packet arrays, the costs as the
+                              # counters below sum them (c_hd4a = crit_par_h_d4a, c_d4a = crit_par_d4a, cpar = crit_par,
+                              # macs; float32, after cap_core) + passed / right; decisions, MACs and counters unchanged
 FZ_Q = (0.25, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0)   # (measurement, fz_diag) checkpoints: fractions of the frozen set in
                                               # decoding order (denser in the information-bearing second half)
 FZ_L = {"f": 8, "j": 16}       # (measurement, fz_diag) list paths per row, padded: CA-SCL-8 rows / joint-list rows
@@ -155,6 +174,36 @@ def cost_share(plan, fr):
     e, s = _SHARE[key]
     i = np.searchsorted(e, np.asarray(fr) * bc.N_BITS, side="right") - 1
     return np.where(i >= 0, s[np.maximum(i, 0)], 0.0)
+
+
+_FZP = {}
+
+
+def fz_share(frozen, pos):
+    """(fzstop) share of a CA-SCL decode's work done once the leaves [0, pos) are decided (pos at a leaf / rate-0 node
+    end, else the last one before it), the decoder's own order (polar.PolarCode, Fast-SSCL rate-0 nodes): per path f
+    and g n/2 each at an internal node, n at a rate-0 node, 1 at a frozen leaf, 2 at an information leaf (as
+    BLIND_IMPLEMENTATION/testing/fz_profile.py profile / share)."""
+    key = np.asarray(frozen, bool).tobytes()
+    if key not in _FZP:
+        fz, out, acc = np.asarray(frozen, bool), [], [0.0]
+
+        def walk(lo, hi):
+            n = hi - lo
+            if n == 1 or fz[lo:hi].all():
+                acc[0] += n if fz[lo:hi].all() else 2
+                out.append((hi, acc[0]))
+                return
+            acc[0] += n / 2
+            walk(lo, lo + n // 2)
+            acc[0] += n / 2
+            walk(lo + n // 2, hi)
+
+        walk(0, len(fz))
+        a = np.array(out, float)
+        _FZP[key] = (np.r_[0, a[:, 0]].astype(int), np.r_[0, a[:, 1] / a[-1, 1]])
+    P, T = _FZP[key]
+    return T[np.searchsorted(P, np.asarray(pos), side="right") - 1]
 
 
 NF, NH, KS = 10, 12, 3          # cell-prior NN (small_prior_nn.py): features per cell, hidden channels, conv width
@@ -480,6 +529,15 @@ def rho_seg(code, r, data, fh, Ss):
 
 
 def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
+    """The small receiver (_small_receive); fzstop: code.fz_stop (shared code object) cleared on every exit, also when
+    the receiver raises (the normal path clears it already: no change there)."""
+    try:
+        return _small_receive(r, rx, snr, code, sigma2, st, spec, sym)
+    finally:
+        code.fz_stop = None
+
+
+def _small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
     p = {**DEFAULT, **spec.get("sps", {})}
     if p["snr_err"]:                                          # an SNR estimate off by snr_err dB: every SNR-dependent
         snr = snr + p["snr_err"]                              # setting and the LLR scaling see it
@@ -567,12 +625,22 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
         c_lmh = derot + L_e * m_met * sh_lm + ((~fs_.frozen[:cut_lm]).sum() * L_e * lg_lm * (lg_lm + 1) / 2
                                                if L_e > 1 else 0.0)
         dec_lm = fastscl.FastSCL(fs_, L_e)
-        for k_ in ("lm_calls", "lm_hyp", "lm_first_diff", "macs_lm"):
+        for k_ in ("lm_calls", "lm_hyp", "lm_first_diff", "macs_lm") + (("lm_lazy_runs",) if p["lmarg_lazy"] else ()):
             st[k_] = st.get(k_, 0)
     ddo = bool(p["ddref"]) and p["joint"] is None             # ddref (DEFAULT): DD-Newton refinement, grid fallback
     if ddo:
         assert not p["s3_dd"], "ddref replaces s3_dd's refinement: not both"
-        for k_ in ("ddref_cells", "ddref_hit", "ddref_fallback", "ddref_fallback_hit", "macs_ddref"):
+        for k_ in ("ddref_cells", "ddref_hit", "ddref_fallback", "ddref_fallback_hit", "macs_ddref", "ddref_paid"):
+            st[k_] = st.get(k_, 0)
+    if isinstance(p["fzstop"], dict):                         # fzstop per CODE rate ({"0.15": (q, t)}); missing -> off
+        p["fzstop"] = p["fzstop"].get(p["code_rate"])
+    fzs_on = p["fzstop"] is not None                          # fzstop (DEFAULT): the decoder's frozen-metric stop
+    assert not (fzs_on and (pns_on or gate is not None or p["s3_dd"])), \
+        "fzstop with pns / the retry gate (nn_b) / s3_dd: not modelled by fzstop (stop accounting, CRC-failure rows)"
+    code.fz_stop = tuple(p["fzstop"]) if fzs_on else None     # (the code object is shared by the receivers of a run;
+                                                              # small_receive clears it on every exit)
+    if fzs_on:
+        for k_ in ("fz_checks", "fz_stops", "fz_stops_right", "macs_fz_saved"):
             st[k_] = st.get(k_, 0)
     macs = np.zeros(B)
     cores = np.ones(B)                                        # the most cells decoded at once per packet
@@ -829,6 +897,49 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
             np.add.at(dcritp, fr, rm * np.ceil(L / Kc))
             st["macs_rot"] = st.get("macs_rot", 0.0) + float(L * rm * len(fr))
 
+    def _fzs(fr_, d_, ok_, L_, kind, rounds=True):
+        """fzstop (DEFAULT): after a CA-SCL call of rows fr_ (d_ (n, A), ok_ (n,), edited in place): the rows the decoder
+        stopped (code.fzs_stop) become CRC failures (data 2: never the packet) and get the work after the stop back:
+        total (1 - share) L/8 MAC decode (fz_share at code.fzs_pos), per core (dcritp; dcrit in its own model) the
+        share of the path part + the 2L -> L sorts of the information bits not decided; rounds (code.decode calls, as
+        decode's d4a): per packet the call's 4-decode rounds (rows in call order) keep their length unless every row
+        of the round stops (then the round ends at the stop). Returns the stopped mask."""
+        fr_ = np.asarray(fr_)
+        s_ = np.asarray(code.fzs_stop, bool).copy()
+        st["fz_checks"] += len(fr_)
+        if not s_.any():
+            return s_
+        tr_ = float(fz_share(code.frozen, code.fzs_pos))
+        lg = np.log2(2 * L_)
+        tot = (1 - tr_) * L_ / 8 * vp.MAC["decode"]
+        cr = (1 - tr_) * vp.MAC["decode"] / 8 * np.ceil(L_ / Kc) + (n_dec - code.fzs_nb) * lg * (lg + 1) / 2
+        crd = (1 - tr_) * vp.MAC["decode"] / 8 * np.ceil(L_ / Kc) + (n_dec - code.fzs_nb) * 2 * L_ * lg
+        w = np.where(s_)[0]
+        np.add.at(macs, fr_[w], -tot)
+        np.add.at(dmac, fr_[w], -tot)
+        np.add.at(dcritp, fr_[w], -cr)
+        np.add.at(dcrit, fr_[w], -crd)
+        if rounds:                                            # d4a: the rounds not all stopped keep their full length
+            rk = np.zeros(len(fr_), int)
+            cnt_ = {}
+            for q_, f_ in enumerate(fr_.tolist()):
+                rk[q_] = cnt_.get(f_, 0)
+                cnt_[f_] = rk[q_] + 1
+            for u_ in np.unique(fr_[w]):
+                m_ = fr_ == u_
+                rr_, ss_ = rk[m_] // 4, s_[m_]
+                n_all = sum(bool(ss_[rr_ == v_].all()) for v_ in np.unique(rr_))
+                d4a[u_] += (ss_.sum() - n_all) * cr
+        if p["truth"] is not None:                            # (measurement) right CRC passes the stop lost
+            st["fz_stops_right"] += int((np.asarray(ok_, bool)[w] & (d_[w] == p["truth"][fr_[w]]).all(1)).sum())
+        st["fz_stops"] += len(w)
+        st["macs_fz_saved"] += float(len(w) * tot)
+        st[f"fzs_{kind}"] = st.get(f"fzs_{kind}", 0) + len(w)
+        st[f"fzs_pos_{code.fzs_pos:04d}"] = st.get(f"fzs_pos_{code.fzs_pos:04d}", 0) + len(w)
+        d_[w] = 2
+        ok_[w] = False
+        return s_
+
     def _rotst(q_):                                           # (measurement) equiv: CRC passes per accepted rotation
         for v_, n_ in zip(*np.unique(q_, return_counts=True)):
             st[f"rot_{v_}"] = st.get(f"rot_{v_}", 0) + int(n_)
@@ -989,6 +1100,8 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
             dp, okp, _ = code.decode(bc.llrs(rcp, fl[act], tl[act], sigma2), return_info=True)
             if fzo:                                           # (measurement) fz_diag rows
                 _fzlog(fa_, fl[act], tl[act], dp, okp, 3)
+            if fzs_on:                                        # fzstop: stopped decodes = CRC failures
+                _fzs(fa_, dp, okp, 8, "pns")
             nxt = _plist() if t + 1 < PNSC["iters"] else None   # this decode's list (the next iteration)
             st["decodes"] += len(act)
             st["pns_decodes"] += len(act)
@@ -1038,8 +1151,10 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
         c0_ = _cpar(fr) if dd else None                       # (measurement) cost so far (joint: incl. its list decode)
         lm_ = rq_ = None
         lp_ = lr_ = None                                      # (pns) the main / joint list, the CA retries' lists
+        hd_ = None                                            # (fzstop, BER only) the stopped rows' own decoder output
         if pre is not None:                                   # a joint decode's chosen path (decode_joint)
             rc, d, ok = pre
+            hd_ = ctx.pop("fz_hd", None)
             lm_ = ctx["jl"]
             if pns_on:
                 lp_ = ctx["pns_l"]
@@ -1053,6 +1168,9 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
             d, ok, _ = code.decode(Lm_, return_info=True)
             if fzo:                                           # (measurement) fz_diag rows
                 _fzlog(fr, fh, th, d, ok, 0)
+            if fzs_on:                                        # fzstop: stopped decodes = CRC failures
+                hd_ = (d.copy(), ~ok)                         # (BER only) the output before the stop, CRC failed
+                _fzs(fr, d, ok, 8, "main")
             if pns_on:
                 lp_ = _plist()
             if p["equiv"]:                                    # (measurement) PiCode4's accepted rotations (CRC passes)
@@ -1090,6 +1208,8 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
             d2, ok2, _ = code.decode(L2_, return_info=True)
             if fzo:                                           # (measurement) fz_diag rows
                 _fzlog(fr[j], fca, tca, d2, ok2, 1)
+            if fzs_on:                                        # fzstop: stopped decodes = CRC failures
+                _fzs(fr[j], d2, ok2, 8, "retry")
             if pns_on:
                 lr_ = (j.copy(), fca, tca, _plist())
             if dd:
@@ -1163,7 +1283,13 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
         if dd and lm_ is not None:                            # (measurement) decode dump rows
             _dlog(fr, fhm_, th, rc, lm_, dm_, okm_, rq_, ok, rtry, c0_)
         first = ~have[fr]
-        out[fr[first]], have[fr[first]], f_fin[fr[first]] = d[first], True, fh[first]
+        do_ = d                                               # (fzstop) a stopped row delivers 2s (conservative: a real
+        if hd_ is not None and p["truth"] is not None:        # stopped decoder never computes the rest; verifier B4)
+            s_ = (d == 2).all(1) & hd_[1]                     # (measurement only, upper bound) stopped CRC-failed rows
+            if s_.any():                                      # whose full decode had right data bits
+                st["fzs_hd_right"] = st.get("fzs_hd_right", 0) + int(
+                    (first & s_ & (hd_[0] == p["truth"][fr]).all(1)).sum())
+        out[fr[first]], have[fr[first]], f_fin[fr[first]] = do_[first], True, fh[first]
         w = fr[ok]
         out[w], passed[w], f_fin[w] = d[ok], True, fh[ok]
         return ok
@@ -1183,6 +1309,11 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
         d, ok, _, h = code.decode_joint(Lj_, Lj)
         if fzo:                                               # (measurement) fz_diag: one row, the shared list
             _fzlog(fr[:1], fh, th, d[None], np.array([ok]), 2, h)
+        if fzs_on:                                            # fzstop: the shared list stopped = a CRC failure (one
+            d_, ok_ = d[None].copy(), np.array([ok])          # decode, no 4-decode rounds)
+            ctx["fz_hd"] = (d[None].copy(), ~ok_)             # (BER only) the output before the stop (decode's out)
+            _fzs(fr[:1], d_, ok_, Lj, "joint", rounds=False)
+            d, ok = d_[0], bool(ok_[0])
         if rdo:                                               # (measurement) ref_diag: the chosen hypothesis
             ctx["rd_h"] = int(h)
         if pns_on:                                            # (pns) the shared list's paths of hypothesis h
@@ -1325,26 +1456,35 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
             ok = decode(fr[j], hyp[t][0][j], hyp[t][1][j])
             act[j[ok]] = False
 
-    def refine_ddr(cand, sub_, T):
+    def refine_ddr(cand, sub_, T, pd_=None):
         """ddref (DEFAULT): each candidate (frame, cell CFO, phase) gets ONE list-1 SC pass at the cell centre; its
         hard-decision codeword strips the data off r (z = r s*) and 2 Newton steps on |sum z e^{-j 2 pi f nc}| give
         (f_dd, theta_dd) (bf.code_aided, as the CA retry); the hypotheses f_dd x (theta_dd + sub_) are scored with the
-        list-1 metric (when more than one) and the best T decoded, stopping at an accepted decode (as bf._refine2).
-        Returns the candidates none of whose DD hypotheses was accepted (packet not passed): the grid's fallback."""
+        list-1 metric (when more than one) and the best min(T, ddref_T) decoded, stopping at an accepted decode (as
+        bf._refine2). pd_ (n,) bool: the centre hypothesis was decoded to full length by the search (its SC hard
+        decisions are a by-product: the pass is not charged again; None = none). Returns the candidates none of whose
+        DD hypotheses was accepted (packet not passed): the grid's fallback."""
         fr = np.array([c[0] for c in cand])
         f = np.array([c[1] for c in cand], float)
         th = np.array([c[2] for c in cand], float)
         n_ = len(fr)
         _, cw = fs_.metric_cw(bc.llrs(r[fr], f, th, sigma2))
-        st["metric_evals"] += n_
-        c1 = m_met + derot                                    # the SC passes at the cell centres: in parallel on the
-        np.add.at(macs, fr, c1 + bf.CA_MACS(2))               # cores (as score); the Newton sums sample-wise (/ KP)
-        u, nu_ = np.unique(fr, return_counts=True)
+        pd_ = np.zeros(n_, bool) if pd_ is None else np.asarray(pd_, bool)
+        st["metric_evals"] += int((~pd_).sum())
+        c1 = m_met + derot                                    # the SC passes at the cell centres not paid by the
+        cc = np.where(pd_, 0.0, c1)                           # search: in parallel on the cores (as score); the
+        np.add.at(macs, fr, cc + bf.CA_MACS(2))               # Newton sums sample-wise (/ KP)
+        u, nu_ = np.unique(fr[~pd_], return_counts=True)
         pmac[u] += nu_ * c1
         crit[u] += np.ceil(nu_ / Kc) * c1
-        st["macs_ddref"] += float(n_ * (c1 + bf.CA_MACS(2)))
+        st["macs_ddref"] += float(cc.sum() + n_ * bf.CA_MACS(2))
+        st["ddref_paid"] += int(pd_.sum())
         fdd, tdd = bf.code_aided(r[fr], f, cw, 2)
         fdd = np.clip(fdd, -bc.MAX_CFO, bc.MAX_CFO)
+        for b_ in np.minimum((np.abs(fdd - f) / bc.STEP / 0.5).astype(int), 20):   # (measurement) the DD jump
+            st[f"ddref_jump_{b_:02d}"] = st.get(f"ddref_jump_{b_:02d}", 0) + 1     # (0.5-STEP bins, >= 10 STEP: 20)
+        if p["ddref_T"] is not None:
+            T = min(T, int(p["ddref_T"]))
         F = np.repeat(fdd[:, None], len(sub_), 1)
         TH = tdd[:, None] + np.array(sub_, float)[None]
         H = F.shape[1]
@@ -1519,8 +1659,10 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
         ctx["sc"], ctx["H"] = None, (len(a[1]) * len(a[2]), len(a[2]))   # (measurement) decode dump: score layout
         if p["s3_dd"] and a[1] is roffs:                     # (the fine_last rescue keeps its own fine grid)
             return refine_dd(a[0], a[3])
-        if ddo and a[1] is roffs and not ctx.get("ddfb"):    # ddref: the DD hypotheses first; the candidates they do
-            left = refine_ddr(a[0], a[2], a[3])               # not deliver get this grid refinement (fallback)
+        pd_ = ctx.pop("ddp", None)                            # (ddref) the caller's paid flags of these candidates
+        if (ddo and a[1] is roffs and not ctx.get("ddfb")    # ddref: the DD hypotheses first; the candidates they do
+                and (p["ddref_tags"] is None or ctx["tag"] in p["ddref_tags"])):   # not deliver get this grid
+            left = refine_ddr(a[0], a[2], a[3], pd_)          # refinement (fallback)
             if left:
                 ctx["ddfb"] = True
                 try:
@@ -1783,6 +1925,19 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
         il = np.array([max(1, int((lv <= c * bc.N_BITS).sum())) for c in CK_FR]) - 1
         jnn = cks.index(CK_FR[cnn])
         ck_mode = "pilots" if pos is not None else "blind"
+    def _lmz():                                               # lmarg: the survivors' z and phases by the lmarg metric
+        Mlm_, qlm_ = lm_rank(i, alive, qal, th, adj[:, -1], lmc)   # (packet i's current grid state)
+        ok_ = alive & np.isfinite(Mlm_)
+        zc_ = np.where(ok_, _rz(np.where(ok_, Mlm_, np.nan)), -np.inf)
+        st["lm_first_diff"] += int(np.argmax(zc_) != np.argmax(zf))   # (measurement) the top cell changed
+        if p["lmarg_lazy"] and not lmon[0]:
+            st["lm_lazy_runs"] += 1
+        lmon[0] = True
+        return zc_, np.where(np.isfinite(Mlm_), qlm_, qb[:, -1])   # (cells without a metric: their list-1 phase)
+
+    def _pdc(c, q):                                           # (ddref) cell c's centre hypothesis at phase index q
+        return bool(paid[c] >= sh[-1] - 1e-9 and qal[c, q] and qph[q] == qs[q])   # decoded to full by the search
+
     for i in rem:
         th = np.angle(Y4c[i, b4] * np.exp(2j * np.pi * nus * bc.CENTRE)) / 4     # the cells' 4th-power phases
         Pq = np.empty((nph, len(g), len(cks)), np.float32)
@@ -1841,6 +1996,7 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
         tried = set()
         spec_tried = set()                                    # cells decoded speculatively (win_spec)
         lmc = {}                                              # lmarg: (cell, phase index) -> list-marginalised metric
+        lmon = [False]                                        # lmarg: the survivors' list decode has run (lazy)
         if rdo:                                               # (measurement) ref_diag: this packet's grid state (qal,
             ctx["rdg"] = (i, Pq, qal, paid, th)               # paid updated in place)
         qcut = {}                                             # (accounting) phase pruning shares -> phases per cell
@@ -2045,12 +2201,14 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
             if skip:
                 continue
             zc, qc_ = zf, qb[:, -1]                           # the candidates' order and phase index (list-1 PM)
-            if lmo:                                           # lmarg: by the list-marginalised metric of the survivors
-                Mlm, qlm = lm_rank(i, alive, qal, th, adj[:, -1], lmc)
-                qc_ = np.where(np.isfinite(Mlm), qlm, qb[:, -1])   # (cells without a metric: their list-1 phase)
-                zc = np.where(alive & np.isfinite(Mlm), _rz(np.where(alive & np.isfinite(Mlm), Mlm, np.nan)), -np.inf)
-                st["lm_first_diff"] += int(np.argmax(zc) != np.argmax(zf))   # (measurement) the top cell changed
+            lz = lmo and p["lmarg_lazy"] and not lmon[0]      # lazy lmarg: the list-1 order's first candidate first
+            if lmo and not lz:                                # lmarg: by the list-marginalised metric of the survivors
+                zc, qc_ = _lmz()
             cs = [c for c in np.argsort(-zc)[:p["ncand"]] if zc[c] > p["z0"] and c not in tried]
+            if lz and not cs:                                 # (lazy, no cell with z > z0: the list decode at once)
+                lz = False
+                zc, qc_ = _lmz()
+                cs = [c for c in np.argsort(-zc)[:p["ncand"]] if zc[c] > p["z0"] and c not in tried]
             ctx["tag"] = "s2cand"
             if p["joint"] is not None:                        # the candidates decoded jointly, joint[2] at a time
                 for a in range(0, len(cs), p["joint"][2]):
@@ -2063,16 +2221,25 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
                         break
                 cs = []
             l4, solo = [], not have[i]
-            for c in cs:
+            n_cs, q_ = len(cs), list(cs)
+            while q_:
+                c = q_.pop(0)
                 if dd:                                        # (measurement) decode dump: grid state
                     ctx["meta"] = [_gm(c, qb[c, -1], len(frac) - 1, zf, pm, alive, paid, len((tried | spec_tried) - {c}))]
                 tried.add(c)
                 _rec(l4)
+                if ddo:                                       # (ddref) its centre hypothesis paid by the search?
+                    ctx["ddp"] = [_pdc(c, qc_[c])]
                 refine2([(i, g[c], th[c] + qph[qc_[c]] * np.pi / 4)], roffs, sub, p["T"], r, score, decode, passed)
                 if passed[i]:
                     break
-            if cs:
-                _d4b(i, l4, len(cs), T_s, H_s, solo)
+                if lz:                                        # lazy lmarg: the first candidate failed -> the list
+                    lz = False                                # decode; the rest (<= ncand - 1) by the lmarg z
+                    zc, qc_ = _lmz()
+                    q_ = [c for c in np.argsort(-zc)[:p["ncand"]] if zc[c] > p["z0"] and c not in tried][:p["ncand"] - 1]
+                    n_cs = 1 + len(q_)
+            if n_cs:
+                _d4b(i, l4, n_cs, T_s, H_s, solo)
             if passed[i]:
                 break
         if passed[i]:
@@ -2081,8 +2248,11 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
         qf_ = qb[:, -1]                                       # the final candidates' phase index (list-1 PM)
         if lmo:                                               # lmarg: the best `final` by the list-marginalised metric
             Mlm, qlm = lm_rank(i, alive, qal, th, adj[:, -1], lmc)
+            if p["lmarg_lazy"] and not lmon[0]:
+                st["lm_lazy_runs"] += 1
+            lmon[0] = True
             qf_ = np.where(np.isfinite(Mlm), qlm, qb[:, -1])   # (the dead cells padding the list: as the baseline)
-            cs = [c for c in np.argsort(np.where(alive, Mlm, np.inf))[:p["final"]] if c not in tried]
+            cs = [c for c in np.argsort(np.where(alive, Mlm, np.inf), kind="stable")[:p["final"]] if c not in tried]
         else:
             cs = [c for c in np.argsort(np.where(alive, pm[:, -1], np.inf))[:p["final"]] if c not in tried]
         ctx["tag"] = "final32"
@@ -2102,6 +2272,8 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
                 ctx["meta"] = [_gm(c, qb[c, -1], len(frac) - 1, zf, pm, alive, paid, len((tried | spec_tried) - {c}))]
             tried.add(c)
             _rec(l4)
+            if ddo:                                           # (ddref) its centre hypothesis paid by the search?
+                ctx["ddp"] = [_pdc(c, qf_[c])]
             refine2([(i, g[c], th[c] + qph[qf_[c]] * np.pi / 4)], roffs, sub, p["T"], r, score, decode, passed)
             if passed[i]:
                 break
@@ -2123,6 +2295,8 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
             for a in range(0, len(cand), 8):
                 if dd:
                     ctx["meta"] = pmeta[a:a + 8]
+                if ddo:                                       # (ddref) branch b = 0 of a cell decoded to full length
+                    ctx["ddp"] = [b == 0 and _pdc(c, qb[c, -1]) for c in cs for b in bs_][a:a + 8]
                 refine2(cand[a:a + 8], roffs, sub, p["T"], r, score, decode, passed)
                 if passed[i]:
                     break
@@ -2144,6 +2318,7 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
             if len(cs):
                 _d4b(i, l4, len(cs), p["T_fine"], len(fine) * len(subf), solo)
             stg[i] = 5 if passed[i] else 0
+    code.fz_stop = None                                       # (fzstop: off for whatever uses the shared code next)
     if p["cap_core"]:                                         # hard MAC cap per core (see DEFAULT)
         cp_ = crit + dcritp + seqc + (macs - pmac - dmac - seqm) / KP
         over = cp_ > p["cap_core"]
@@ -2178,6 +2353,12 @@ def small_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
     st["crit_par_d4b_macs"] = st.get("crit_par_d4b_macs", 0.0) + float((cpar + d4a + d4b).sum())   # decodes at once
     st["crit_par_h_d4a_macs"] = st.get("crit_par_h_d4a_macs", 0.0) + float((cpar - crit_g + crit_gh + d4a).sum())
     st["crit_par_h_d4b_macs"] = st.get("crit_par_h_d4b_macs", 0.0) + float((cpar - crit_g + crit_gh + d4a + d4b).sum())
+    if p["mac_acc"] is not None:                              # (measurement) per-packet MACs log (DEFAULT mac_acc): the
+        p["mac_acc"].append(dict(                             # search stops at its first accepted call, so a right
+            c_hd4a=(cpar - crit_g + crit_gh + d4a).astype(np.float32),   # decode's cost = its cost up to acceptance
+            c_d4a=(cpar + d4a).astype(np.float32), cpar=cpar.astype(np.float32), macs=macs.astype(np.float32),
+            passed=passed.copy(), right=(passed & (out == p["truth"]).all(1)) if p["truth"] is not None
+            else np.zeros(B, bool)))
     st["d4b_waste"] = st.get("d4b_waste", 0.0) + float(d4w.sum())   # (upper bound on d4b's extra total MACs)
     st["crit_par_serial"] = st.get("crit_par_serial", 0.0) + float((seqc + (macs - pmac - dmac - seqm) / KP).sum())
     st["crit_par_dec"] = st.get("crit_par_dec", 0.0) + float(dcritp.sum())

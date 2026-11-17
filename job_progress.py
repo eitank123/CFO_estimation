@@ -540,9 +540,29 @@ for _j, _p in (("e4-smoke", "e4-smoke-a"), ("e4-smoke", "e4-smoke-b"), ("e4-smok
     JOBS[f"est4_{_p}"] = (f"est4 BLER {_p}", "count", (f"run_{_j}.out", os.path.join(_E4, f"bler_{_p}.progress")))
 # est5: deployed preamble / pilot competitors on the est4 harness (expected_est5.md; parts in est4/logs)
 for _j, _p in (("e5-smoke", "e5-smoke-a"), ("e5-smoke", "e5-smoke-b"), ("e5-smoke", "e5-smoke-c"), ("e5-10", "e5-10"),
-               ("e5-15", "e5-15"), ("e5-25", "e5-25"), ("e5-2", "e5-2"), ("e5-pp", "e5-pp15"), ("e5-pp", "e5-pp10"),
-               ("e5-pp", "e5-pp25"), ("e5-pp", "e5-pp2")):
+               ("e5-15", "e5-15"), ("e5-25", "e5-25"), ("e5-2", "e5-2"), ("e5-ppA", "e5-pp15"), ("e5-ppA", "e5-pp10"),
+               ("e5-ppB", "e5-pp25"), ("e5-ppB", "e5-pp2"), ("e5-10lo", "e5-10lo-a"), ("e5-10lo", "e5-10lo-b"),
+               ("e5-10lo", "e5-10lo-c")):
     JOBS[f"est4_{_p}"] = (f"est5 BLER {_p}", "count", (f"run_{_j}.out", os.path.join(_E4, f"bler_{_p}.progress")))
+# ARS 2021 (Griebel et al.) variants on the rcs13 layout (expected_ars.md; est4/run_bler.py, parts in est4/logs)
+for _j, _p in (("ars-smoke", "ars-smoke-a"), ("ars-smoke", "ars-smoke-b"), ("ars-10", "ars-10"), ("ars-15", "ars-15"),
+               ("ars-25", "ars-25"), ("ars-2", "ars-2")):
+    JOBS[f"est4_{_p}"] = (f"ARS BLER {_p}", "count", (f"run_{_j}.out", os.path.join(_E4, f"bler_{_p}.progress")))
+# faithful variants of the est5 competitors (expected_variants.md; est4/run_bler.py, parts in est4/logs)
+for _j, _p in ([("v-smoke", f"v-smoke-{_g}{_r}") for _r in ("15", "25") for _g in ("m", "h", "p", "w", "s")]
+               + [(f"v-{_r}{_g}", f"v-{_r}{_g}") for _r in ("10", "15", "25", "2") for _g in ("", "h", "p", "w", "s")]
+               + [(_n, _n) for _n in ("v-15w2", "v-15h2", "v-15s2", "v-25h2", "v-25s2", "v-2h2", "v-2s2", "v-10p2", "v-15p2")]
+               + [(_n, _n) for _n in ("v-10ma", "v-10mb", "v-10ha", "v-10hb", "v-10pa", "v-10pb", "v-10wa", "v-10wb",
+                                      "v-10sa", "v-10sb", "v-15ma", "v-15mb", "v-15mc", "v-15pa", "v-15pb", "v-15sa",
+                                      "v-15sb", "v-25ma", "v-25mb", "v-25ha", "v-25hb", "v-25hc", "v-25sa", "v-25sb",
+                                      "v-25sc", "v-25s2a", "v-25s2b", "v-2ma", "v-2mb", "v-2ha", "v-2hb", "v-2sa",
+                                      "v-2sb", "v-2sc", "v-10hla", "v-10hlb")]                # (re-split after v-smoke, 2026-11-15)
+               + [("v-smoke", "v-smoke-id")] + [("v-smoke2", f"v-smoke2-{_x}") for _x in ("s15", "h15", "s10")]):                # (v-smoke-id: e5-smoke-a repeated, identity check)
+    JOBS[f"est4_{_p}"] = (f"variants BLER {_p}", "count", (f"run_{_j}.out", os.path.join(_E4, f"bler_{_p}.progress")))
+JOBS["est4_maclog-smoke-c"] =("est4 BLER maclog-smoke-c (per-packet MACs log)", "count",   # (2026-11-15)
+                               ("run_maclog-smoke.out", os.path.join(_E4, "bler_maclog-smoke-c.progress")))
+JOBS["est4_maclog-smoke-c0"] = ("est4 BLER maclog-smoke-c0 (MACs log off)", "count",
+                                ("run_maclog-smoke.out", os.path.join(_E4, "bler_maclog-smoke-c0.progress")))
 for _j, _p in (("more-10a", "more-10a"), ("more-10b", "more-10b"), ("more-10c", "more-10c"), ("more-hi", "more-25"),
                ("more-hi", "more-2"), ("cap-25", "cap-25"), ("b15a", "b15a"), ("b15b", "b15b"), ("b15c", "b15c"), ("cpar", "cpar-15"), ("cpar", "cpar-25"),
                ("cpar", "cpar-2"), ("cpar10", "cpar-10"),
@@ -557,7 +577,11 @@ for _j, _p in (("more-10a", "more-10a"), ("more-10b", "more-10b"), ("more-10c", 
                ("cnf15b", "t-cnf15b"), ("cnf15c", "t-cnf15c"), ("cnf15c", "t-cnf15e"), ("cnf15d", "t-cnf15d"), ("cnf15d", "t-cnf15f"),
                ("cnf15d", "t-cnf25"), ("cnf15d", "t-cnf2"),
                ("dec-smoke", "t-dec-smoke-a"), ("dec-smoke", "t-dec-smoke-b"), ("dec-smoke", "t-dec-smoke-c"), ("ddq-smoke", "t-ddq-smoke-a"), ("ddq-smoke", "t-ddq-smoke-b"), ("ddq-smoke", "t-ddq-smoke-c"), ("ddq25", "t-ddq25"), ("ddq25", "t-ddq2"), ("ddq10", "t-ddq10"), ("nnb-smoke", "t-nnb-smoke-a"), ("nnb-smoke", "t-nnb-smoke-b"), ("nnb-smoke", "t-nnb-smoke-c"), ("nnb10", "t-nnb10"), ("nnb15", "t-nnb15"), ("nnb25", "t-nnb25"), ("nnb2", "t-nnb2"), ("spec-smoke", "t-spec-smoke"), ("spec10a", "t-spec10a"), ("spec10b", "t-spec10b"), ("spec10c", "t-spec10c"), ("spec10d", "t-spec10d"), ("spec15", "t-spec15"), ("eq-smoke", "t-eq-smoke-a"), ("eq-smoke", "t-eq-smoke-b"), ("eq-smoke", "t-eq-smoke-c"),  ("eq15", "t-eq15b"), ("eq15", "t-eq15e"), ("eq10", "t-eq10b"), ("eq10", "t-eq10e"), ("eq25", "t-eq25b"), ("eq25", "t-eq25e"), ("eq2", "t-eq2b"), ("eq2", "t-eq2e"), ("x-smoke", "t-x-smoke-a"), ("x-smoke", "t-x-smoke-b"), ("x-smoke", "t-x-smoke-c"), ("x-smoke", "t-x-smoke-d"), ("x-smoke", "t-x-smoke-e"), ("x-smoke", "t-x-smoke-f"), ("cap15a", "t-cap15a"), ("cap15b", "t-cap15b"), ("cap25", "t-cap25"), ("cap25", "t-cap2"), ("capn15", "t-capn15"), ("capn25", "t-capn25"), ("pn1", "t-pn1a"), ("pn1", "t-pn1b"), ("pn2", "t-pn2a"), ("pn2", "t-pn2b"), ("pn3", "t-pn3a"), ("pn3", "t-pn3b"), ("dga", "t-dga"), ("dgb25", "t-dgb25"), ("dgb2", "t-dgb2"), ("comb10", "t-comb10"), ("comb15", "t-comb15"), ("spnoise", "t-spnoise"), ("spec1m-a", "t-spec1m-a"), ("spec1m-b", "t-spec1m-b"), ("spec1m-c", "t-spec1m-c"), ("s11-smoke", "t-s11-smoke"), ("s11-10a", "t-s11-10a"), ("s11-10b", "t-s11-10b"), ("s11-15a", "t-s11-15a"), ("s11-15b", "t-s11-15b"), ("s11g-smoke", "t-s11g-smoke"), ("pns-smoke", "t-pns-smoke-a"), ("pns-smoke", "t-pns-smoke-b"), ("pns-smoke2", "t-pns-smoke2-b"), ("pns0", "t-pns0a"), ("pns0", "t-pns0b"), ("pns1a", "t-pns1a"), ("pns1b", "t-pns1b"), ("pns1c", "t-pns1c"), ("pns1d", "t-pns1d"), ("pns1e", "t-pns1e"), ("pns3a", "t-pns3a"), ("pns3b", "t-pns3b"), ("pns3c", "t-pns3c"), ("pns3d", "t-pns3d"), ("pns3e", "t-pns3e"), ("pns3f", "t-pns3f"), ("rd-smoke", "t-rd-smoke-a"), ("rd-smoke", "t-rd-smoke-b"), ("rd-smoke", "t-rd-smoke-c"), ("rd1", "t-rd1"), ("rd2", "t-rd2a"), ("rd2", "t-rd2b"), ("eqrb-smoke", "t-eqrb-smoke-a-i"), ("eqrb-smoke", "t-eqrb-smoke-a-r"), ("eqrb-smoke", "t-eqrb-smoke-b-i"), ("eqrb-smoke", "t-eqrb-smoke-b-r"), ("eqrb-smoke", "t-eqrb-smoke-c-i"), ("eqrb-smoke", "t-eqrb-smoke-c-r"), ("eqrb15", "t-eqrb15b"), ("eqrb15", "t-eqrb15r"), ("eqrb10", "t-eqrb10b"), ("eqrb10", "t-eqrb10r"), ("eqrb25", "t-eqrb25b"), ("eqrb25", "t-eqrb25r"), ("eqrb2", "t-eqrb2b"), ("eqrb2", "t-eqrb2r"), ("eqrb25c", "t-eqrb25cb"), ("eqrb25c", "t-eqrb25cr"), ("eqrb2c", "t-eqrb2cb"), ("eqrb2c", "t-eqrb2cr"), ("fz-smoke", "t-fz-smoke-a"), ("fz-smoke", "t-fz-smoke-b"), ("fz1a", "t-fz1a"), ("fz1b", "t-fz1b"), ("fz2a", "t-fz2a"), ("fz2b", "t-fz2b"), ("fz3", "t-fz3a"), ("fz3", "t-fz3b"), ("onl-smoke", "t-onl-smoke"), ("onl15a", "t-onl15a"), ("onl15b", "t-onl15b"), ("onl10", "t-onl10"),
-               ("qfx10", "t-qfx10"), ("qfx25", "t-qfx25"), ("qfx25", "t-qfx2"), ("dec-a", "t-deca"), ("dec-b", "t-decb25"), ("dec-b", "t-decb2"), ("dec-b", "t-decbn")):              # more blind statistics for the est3 comparison (small_cfo study)
+               ("fzs-smoke", "t-fzs-smoke-a"), ("fzs-smoke", "t-fzs-smoke-b"), ("fzs25a", "t-fzs25a"), ("fzs25b", "t-fzs25b"),
+               ("fzs25c", "t-fzs25c"), ("fzs25d", "t-fzs25d"), ("fzs15", "t-fzs15"), ("fzs-lo", "t-fzs-lo-a"), ("fzs-lo", "t-fzs-lo-b"), ("tw10a", "t-tw10a"), ("tw10a2", "t-tw10a2"), ("fzs-r-smoke", "t-fzs-r-smoke-a"), ("fzs-r-smoke", "t-fzs-r-smoke-b"), ("fzs-r", "t-fzs-r2"), ("fzs-r", "t-fzs-r10"), ("tw15a2", "t-tw15a2"), ("tw10b", "t-tw10b"), ("tw15a", "t-tw15a"), ("tw15b", "t-tw15b"), ("tw25", "t-tw25"), ("tw25", "t-tw2"), ("twf", "t-twf25"), ("twf", "t-twf2"),
+               ("qfx10", "t-qfx10"), ("qfx25", "t-qfx25"), ("qfx25", "t-qfx2"), ("dec-a", "t-deca"), ("dec-b", "t-decb25"), ("dec-b", "t-decb2"), ("dec-b", "t-decbn"),
+               ("maclog-smoke", "t-maclog-smoke-a"), ("maclog-smoke", "t-maclog-smoke-b"),
+               ("maclog-smoke", "t-maclog-smoke-a0"), ("maclog-smoke", "t-maclog-smoke-b0")):              # more blind statistics for the est3 comparison (small_cfo study)
     JOBS[f"blind_{_p}"] = (f"blind more packets {_p}", "count",
                            (f"run_{_j}.out", os.path.join("small_cfo", "blind", "logs", f"blind_ber_{_p}.progress")))
 JOBS["snr_chain"] =("SNR-aware NN retraining (full chain)", "train", ("run_snr-chain.out",))
@@ -586,7 +610,8 @@ LOGS = {"train": lambda a: a[0], "count": lambda a: a[0], "polar": lambda a: a[1
 for _p in ("t-eqrb-chk15", "t-eqrb-chk25", "t-eqrb-chk10", "t-eqrb-chk2", "t-eqrb-chk15h", "t-eqrb-chk25h", "t-eqrb-chk2h", "t-eqrb-chk10h"):
     JOBS[f"lit_{_p}"] = (f"eqrb unit check {_p}", "count",
                          ("run_eqrb-chk.out", os.path.join("small_cfo", "blind", "logs", f"lit_{_p}.progress")))
-for _j, _p in (("lm-smoke", "t-lm-smoke"), ("lm15a", "t-lm15a"), ("lm15b", "t-lm15b"), ("lm10", "t-lm10")):
+for _j, _p in (("lm-smoke", "t-lm-smoke"), ("lm15a", "t-lm15a"), ("lm15b", "t-lm15b"), ("lm10", "t-lm10"),
+               ("lm-smoke2", "t-lm-smoke2")):
     JOBS[f"lit_{_p}"] = (f"lmarg F3 {_p}", "count", (f"run_{_j}.out", os.path.join("small_cfo", "blind", "logs", f"lit_{_p}.progress")))
 
 

@@ -18,6 +18,39 @@ CFO estimators
             restricted to f0 +- NDA_WIN / D (D = distance of the first and last field centres, the known-symbol lobe
             spacing 1/D): NDA_GRID-point grid, 2 Newton steps, clipped to the window. The 4-fold phase ambiguity
             (Eq. 13-14) needs no step: the LS gain on the known symbols absorbs any phase
+  est5 (deployed systems, expected_est5.md; "in its lobe" = the peak of the zero-filled known-symbol FFT restricted to
+  f_c +- 1 / (2 D_lobe) and |f| <= MAX_CFO (+ 1 bin), parabolic interpolation, as rb)
+    vde     VDE-SAT: ML (ml, 1 candidate) on the 27-symbol syncword -> f_c, then rb over all 66 known in its lobe
+            (D_lobe = 27)
+    mmml    DVB-S2 style: M&M (Mengali-Morelli 1997, est3's weights, M = N / 2, numpy) on the 90-symbol PL header -> f_c,
+            then joint ML over header + pilot block (zero-filled FFT on the span, nfft_for(span)) in its lobe
+            (D_lobe = 575), ML_ITERS Newton steps
+    nda4uw  ViaSat (US 7653150 + US 8243859): FFT (nfft_for(K)) of r^4 over the burst, the UW_TOP largest local maxima
+            inside |4f| <= 4 MAX_CFO (+ 1 bin), parabolic interpolation, f_i = nu_i / 4; each candidate checked on the
+            16-symbol UW: pick argmax_i |U(f_i)|^2 / (Nk s2) + UW_W |X4_i|^2 / mean_in-range |X4|^2 (U(f) = sum_k z_k
+            e^{-j 2 pi f n_k}; the two noise-normalised energies: the patent's weighted joint frequency + UW metric);
+            the pi/2 ambiguity is absorbed by the LS gain on the UW
+    nda4rb  sparse pilots 1/32 (400ZR-inspired): 4th-power coarse f_c (the nda4 FFT step), then rb on the 33 pilots
+            in its lobe (D_lobe = 32)
+    lag     Wi-Fi style: coarse f_c = arg(sum_n r[n + 16] r*[n]) / (2 pi 16) over the 8 x 16 repeated preamble (range
+            1/32), fine f_f = arg(sum_{n < 64} r[n + 64] r*[n]) / (2 pi 64) (range 1/128), f = f_f + round((f_c - f_f)
+            64) / 64 (the deployed coarse / fine pair; the repeats make r[n + D] r*[n] = z[n + D] z*[n])
+    hyb3    US 7590199 on prepost16: S(nu) = log|FFT(z zero-filled)|(nu) + HYB_W log|FFT(r^4)|(4 nu) (both nfft_for(K)),
+            the HYB_TOP largest local maxima inside |nu| <= MAX_CFO (+ 1 bin), parabolic interpolation on S: f_hat =
+            the best, the other 2 are extra hypotheses of the CRC search (run_bler, with their own lobes)
+    rb is also the estimator of ccsds8, dmrs7 and mil110 (R-B over all known symbols, full range)
+  faithful variants (expected_variants.md; hyb3 on pre48, mmml on dvbh90 / sof26 (M&M on the header, ML in f_c +-
+  1 / (2 Nh)), rb on mil110f / cc131, ml on asm32 are the generic chains above)
+    nda4pk  ViaSat US 7653150: FFT of r^4 over the burst with the patent's 2x zero padding (power of 2 >= 2 K), the
+            single largest bin k inside |4f| <= 4 MAX_CFO (+ 1 bin), nu = the |X|-weighted mean of bins k-1, k, k+1,
+            f = nu / 4 (phase: model x4)
+    lag320  Wi-Fi legacy (wifi320): coarse f_c = arg(sum r[n + 16] r*[n]) / (2 pi 16) over the 160-symbol L-STF (144
+            products), fine f_f = arg(sum_{n < 64} r[n + 64] r*[n]) / (2 pi 64) over the 2 x 64 L-LTF symbols after
+            its 32 guard, f = f_f + round((f_c - f_f) 64) / 64 (the real chip's coarse / fine pair)
+  ARS 2021 (Griebel et al., lit_ars2021.md section 6) on rcs13
+    rb4096, rb2048, rb2048n   rb with the FFT size 4096 / 2048 (+ 1 Newton step: rb2048n), peak inside |nu| <= MAX_CFO
+            + 1/N
+    rb2048f the paper's DA-KS as published: FFT 2048, peak over ALL bins (Eq. 4: |nu| <= 1/2), parabolic Eq. 15
 Phase models (complex gain per data symbol at a CFO hypothesis fh, from y_k = r[n_k] e^{-j 2 pi fh (n_k + D)} ks_k*)
     const   est3.gain_phase: g = sum_k y_k / sum_k |ks_k|^2 on all known symbols (one gain per burst)
     interp2, track   the phase-tracking models (split64: 2 fields; rcs13: 55 fields), in one of two modes:
@@ -37,6 +70,19 @@ Phase models (complex gain per data symbol at a CFO hypothesis fh, from y_k = r[
             (n - c_1) / (c_2 - c_1), amplitude (|g_1| + |g_2|) / 2; track = sliding window of W fields
             S_j = sum_{|i - j| <= W // 2} P_i (truncated at the ends), phi_j = unwrap_j(arg S_j), linear interpolation,
             a = Re(sum_j P_j e^{-j phi_j}) / sum |ks|^2 (phasors smoothed BEFORE arg, the ESA PA-SWI form)
+    blocks  per-field LS phase arg P_j, unwrapped, linear interpolation between the field centres, amplitude
+            |Re(sum_j P_j e^{-j phi_j})| / sum |ks|^2 (= track mode sw with W = 1; CCSDS 130.11 5.6 / DVB-S2 TR C.6.1;
+            independent of --track)
+    eq17    Griebel Eq. 17 / 20 (sign-corrected): k = round(fh N), Delta = fh N - k (N = EQ17_NFFT; the estimator's
+            bin and parabolic offset), X_j = sum_k z_k e^{-j 2 pi j n_k / N} at the bins k-1, k, k+1 (the estimator's
+            FFT bins; recomputed here as 3 DFT bins), phi = arg X_k + |Delta| wrap(arg X_nb - arg X_k) (nb = k - 1 if
+            Delta < 0 else k + 1; the printed Eq. 17 has the opposite sign), referred to l = 0 and converted to ours by
+            - 2 pi fh DELAY_SYM; amplitude |X(k~)| / sum |ks|^2 with Eq. 20 X(k~) = X_k + |Delta| (X_nb - X_k);
+            one gain per burst
+    x4      ViaSat US 7653150: phase from the 4th power over the whole burst, theta = arg(-Y4) / 4 with Y4 = sum_n (r[n]
+            e^{-j 2 pi fh (n + D)})^4 (QPSK s^4 = -1: the 4th-power bin at 4 fh, referred to our time origin), the
+            pi/2 quadrant q maximising Re(U e^{-j (theta + q pi/2)}) on the UW (U = sum_k y_k), amplitude
+            |Re(U e^{-j phi})| / sum |ks|^2; one gain per burst
     genie   g_n = e^{j (ph + phs_n)} (the true phase incl. the phase-noise path, the true gain 1), at the true f
 Lobes (2-field layouts split64, prepost16): the known-symbol likelihood has lobes 1/D_lobe apart (D_lobe = distance of
 the two block centres: 1088, 1040); the receiver's CRC search lets the decoder choose among them (run_bler --lobes).
@@ -57,6 +103,11 @@ KALMAN_ITERS = 1                               # linearisations about the consta
                                                # rms phase error up at every pn in the 400-burst -4 dB check)
 KALMAN_MEAS = "im"                             # field measurement: 'im' (linearised) or 'angle' (arg of the residual)
 NC_NFFT = 512                                  # noncoherent per-block estimate (measurement only)
+UW_TOP, UW_W = 32, 1.0                         # nda4uw: 4th-power peaks checked on the UW, weight of the 4th-power term
+HYB_TOP, HYB_W = 3, 1.0                        # hyb3: CFO candidates, weight of the 4th-power log spectrum
+RB_ARS = {"rb4096": (4096, 0, C.MAX_CFO), "rb2048": (2048, 0, C.MAX_CFO), "rb2048n": (2048, 1, C.MAX_CFO),
+          "rb2048f": (2048, 0, 0.5)}           # ARS variants: (nfft, Newton steps, peak range |nu| <=)
+EQ17_NFFT = 2048                               # eq17: the FFT of Griebel faithful
 KP = 32                                        # decoder cores (est3.plots.KP: the standard MACs-per-core model)
 PAR_DEC = KP // 8                              # CA-SCL-8 decodes that fit on the cores at once
 
@@ -76,6 +127,44 @@ def _fft_peak(x, nfft, fmax):
     den = nb[:, 0] - 2 * nb[:, 1] + nb[:, 2]                          # as est3.estimators.refine("parabolic")
     off = np.clip(np.where(den < 0, 0.5 * (nb[:, 0] - nb[:, 2]) / np.where(den < 0, den, -1.0), 0.0), -0.5, 0.5)
     return nu[k] + off / nfft
+
+
+def _parab(X, k):
+    """Parabolic-interpolation offset (bins, clipped to +-0.5) of X (B, nfft) at the peak bins k (B,) or (B, n), as
+    _fft_peak (also on a log spectrum)."""
+    nfft = X.shape[1]
+    rows = np.arange(len(X)).reshape((-1,) + (1,) * (k.ndim - 1))
+    a, b, c = X[rows, (k - 1) % nfft], X[rows, k], X[rows, (k + 1) % nfft]
+    den = a - 2 * b + c
+    return np.clip(np.where(den < 0, 0.5 * (a - c) / np.where(den < 0, den, -1.0), 0.0), -0.5, 0.5)
+
+
+def _win_mask(nfft, fc, half):
+    """Bins (B, nfft) inside fc +- (half + 1/nfft) and |nu| <= MAX_CFO + 1/nfft (fc (B,) clipped to the range first)."""
+    nu = np.fft.fftfreq(nfft)
+    fc = np.clip(fc, -C.MAX_CFO, C.MAX_CFO)
+    return (np.abs(nu[None] - fc[:, None]) <= half + 1.0 / nfft) & (np.abs(nu) <= C.MAX_CFO + 1.0 / nfft)[None]
+
+
+def _peak_in(X, mask):
+    """Peak of X (B, nfft) inside mask (B, nfft) + parabolic interpolation: nu (B,)."""
+    k = np.where(mask, X, -np.inf).argmax(1)
+    return np.fft.fftfreq(X.shape[1])[k] + _parab(X, k) / X.shape[1]
+
+
+def _top_in(X, mask, n):
+    """Bins (B, n) of the n largest local maxima of X inside mask, in descending order."""
+    loc = (X >= np.roll(X, 1, 1)) & (X >= np.roll(X, -1, 1)) & mask
+    return np.argsort(-np.where(loc, X, -np.inf), 1, kind="stable")[:, :n]
+
+
+def _rb_win(r, ks, kidx, fc, half, nfft=None):
+    """rb restricted to the lobe fc +- half: |FFT| of z placed at the known burst positions, peak in _win_mask."""
+    K = r.shape[1]
+    nfft = nfft or nfft_for(K)
+    x = np.zeros((len(r), K), complex)
+    x[:, kidx] = r[:, kidx] * np.conj(ks)
+    return _peak_in(np.abs(np.fft.fft(x, nfft, axis=1)), _win_mask(nfft, fc, half))
 
 
 # =====================================================================
@@ -107,13 +196,13 @@ def ml_known(r, ks, kidx, nfft=None, cand=ML_CAND, iters=ML_ITERS):
     return fc[np.arange(len(z)), val.argmax(1)]
 
 
-def rife_boorstyn(r, ks, kidx, nfft=None, iters=RB_NEWTON):
+def rife_boorstyn(r, ks, kidx, nfft=None, iters=RB_NEWTON, fmax=None):
     K = r.shape[1]
     nfft = nfft or nfft_for(K)
     z = r[:, kidx] * np.conj(ks)
     x = np.zeros((len(z), K), complex)
     x[:, kidx] = z
-    f = _fft_peak(x, nfft, C.MAX_CFO)
+    f = _fft_peak(x, nfft, C.MAX_CFO if fmax is None else fmax)
     return E3.newton(z[:, :, None], f, iters, t=kidx.astype(float)) if iters else f
 
 
@@ -133,11 +222,134 @@ def nda4(r, ks, L, nfft=None, win=NDA_WIN, grid=NDA_GRID, iters=NDA_ITERS):
     return np.clip(f1, f0 - W, f0 + W)
 
 
+def vde(r, ks, L):
+    kidx, ns = L["known_idx"], L["fsize"][0]                         # field 0 = the syncword
+    f0 = ml_known(r, ks[:, :ns], kidx[:ns], cand=1)
+    return _rb_win(r, ks, kidx, f0, 0.5 / C.lobe_D(L["name"]))
+
+
+def mm_known(z):
+    """Mengali-Morelli 1997 on contiguous z (B, N), M = N // 2 (est3 / train_snr_nn.mm_estimate weights, float64):
+    R(m) = mean_n z[n] z*[n - m], f = sum_m w_m arg(R(m) R*(m - 1)) / (2 pi)."""
+    N = z.shape[1]
+    M = N // 2
+    R = np.stack([np.sum(z[:, m:] * np.conj(z[:, :N - m]), 1) / (N - m) for m in range(1, M + 1)], 1)
+    dphi = np.angle(np.concatenate([R[:, :1], R[:, 1:] * np.conj(R[:, :-1])], 1))
+    m = np.arange(1, M + 1)
+    w = 3 * ((N - m) * (N - m + 1) - M * (N - M)) / (M * (4 * M ** 2 - 6 * M * N + 3 * N ** 2 - 1))
+    return dphi @ w / (2 * np.pi)
+
+
+def mmml(r, ks, L, iters=ML_ITERS):
+    kidx, nh = L["known_idx"], L["fsize"][0]                         # field 0 = the PL header
+    z = r[:, kidx] * np.conj(ks)
+    f0 = mm_known(z[:, :nh])
+    n0, span = kidx.min(), kidx.max() - kidx.min() + 1
+    nfft = nfft_for(span)
+    x = np.zeros((len(z), span), complex)
+    x[:, kidx - n0] = z
+    lam = np.abs(np.fft.fft(x, nfft, axis=1)) ** 2
+    k = np.where(_win_mask(nfft, f0, 0.5 / C.lobe_D(L["name"])), lam, -np.inf).argmax(1)
+    return E3.newton(z[:, :, None], np.fft.fftfreq(nfft)[k], iters, t=kidx.astype(float))
+
+
+def nda4uw(r, ks, L, snr_db, top=UW_TOP, w=UW_W):
+    K, kidx = r.shape[1], L["known_idx"]
+    nfft = nfft_for(K)
+    X = np.abs(np.fft.fft(r ** 4, nfft, axis=1))
+    nu = np.fft.fftfreq(nfft)
+    ins = (np.abs(nu) <= 4 * C.MAX_CFO + 1.0 / nfft)[None]
+    k = _top_in(X, ins, top)                                          # (B, top)
+    rows = np.arange(len(r))[:, None]
+    fc = (nu[k] + _parab(X, k) / nfft) / 4
+    z = r[:, kidx] * np.conj(ks)
+    t = kidx - kidx.mean()
+    U = np.abs(np.einsum("bk,bnk->bn", z, np.exp(-2j * np.pi * fc[:, :, None] * t[None, None]))) ** 2
+    met = U / (L["nk"] * 10 ** (-snr_db / 10)) + w * X[rows, k] ** 2 / np.mean(X[:, ins[0]] ** 2, 1)[:, None]
+    return fc[rows[:, 0], met.argmax(1)]
+
+
+def nda4rb(r, ks, L):
+    K = r.shape[1]
+    f0 = _fft_peak(r ** 4, nfft_for(K), 4 * C.MAX_CFO) / 4
+    return _rb_win(r, ks, L["known_idx"], f0, 0.5 / C.lobe_D(L["name"]))
+
+
+def lag(r, L, rep=C.WIFI_REP, fine=C.WIFI_FINE):
+    k0 = L["known_idx"][0]
+    p = r[:, k0:k0 + L["nk"]]                                         # the contiguous repeated preamble
+    fc = np.angle(np.sum(p[:, rep:] * np.conj(p[:, :-rep]), 1)) / (2 * np.pi * rep)
+    ff = np.angle(np.sum(p[:, fine:2 * fine] * np.conj(p[:, :fine]), 1)) / (2 * np.pi * fine)
+    return ff + np.round((fc - ff) * fine) / fine
+
+
+def nda4pk(r):
+    K = r.shape[1]
+    nfft = 1 << int(np.ceil(np.log2(2 * K)))                          # the patent's 2x zero padding (512 -> 1024)
+    X = np.abs(np.fft.fft(r ** 4, nfft, axis=1))
+    nu = np.fft.fftfreq(nfft)
+    k = np.where((np.abs(nu) <= 4 * C.MAX_CFO + 1.0 / nfft)[None], X, -1.0).argmax(1)
+    d = np.arange(-1, 2)
+    w = X[np.arange(len(r))[:, None], (k[:, None] + d[None]) % nfft]  # |X| of bins k-1, k, k+1
+    return (nu[k] + np.sum(w * d[None], 1) / np.sum(w, 1) / nfft) / 4
+
+
+def lag320(r, L, rep=C.WIFI_REP, fine=C.WIFI_FINE):
+    k0 = L["known_idx"][0]
+    s = r[:, k0:k0 + C.WIFI_STF]                                      # L-STF (10 x 16)
+    a = k0 + C.WIFI_STF + C.WIFI_GI
+    lt = r[:, a:a + 2 * fine]                                         # the 2 L-LTF symbols after the guard
+    fc = np.angle(np.sum(s[:, rep:] * np.conj(s[:, :-rep]), 1)) / (2 * np.pi * rep)
+    ff = np.angle(np.sum(lt[:, fine:] * np.conj(lt[:, :fine]), 1)) / (2 * np.pi * fine)
+    return ff + np.round((fc - ff) * fine) / fine
+
+
+def hyb3(r, ks, L, top=HYB_TOP, w=HYB_W):
+    """(B, top) CFO candidates, best first."""
+    K = r.shape[1]
+    nfft = nfft_for(K)
+    x = np.zeros((len(r), K), complex)
+    x[:, L["known_idx"]] = r[:, L["known_idx"]] * np.conj(ks)
+    tiny = 1e-300
+    S = np.log(np.abs(np.fft.fft(x, nfft, axis=1)) + tiny)
+    S = S + w * np.log(np.abs(np.fft.fft(r ** 4, nfft, axis=1))[:, (4 * np.arange(nfft)) % nfft] + tiny)
+    nu = np.fft.fftfreq(nfft)
+    k = _top_in(S, (np.abs(nu) <= C.MAX_CFO + 1.0 / nfft)[None], top)
+    return nu[k] + _parab(S, k) / nfft
+
+
+def candidates(est, r, ks, L, snr_db, f):
+    """(f_hat (B,), extra CFO candidates (B, n) or None): hyb3 returns its 2 other candidates, the rest None."""
+    if est == "hyb3":
+        c = hyb3(r, ks, L)
+        return c[:, 0], c[:, 1:]
+    return estimate(est, r, ks, L, snr_db, f), None
+
+
 def estimate(est, r, ks, L, snr_db, f):
     """CFO (B,) of estimator est on the burst MF output r (B, K); f (the true CFO) only for the genie."""
     kidx = L["known_idx"]
     if est == "genie":
         return f.copy()
+    if est == "vde":
+        return vde(r, ks, L)
+    if est == "mmml":
+        return mmml(r, ks, L)
+    if est == "nda4uw":
+        return nda4uw(r, ks, L, snr_db)
+    if est == "nda4rb":
+        return nda4rb(r, ks, L)
+    if est == "lag":
+        return lag(r, L)
+    if est == "hyb3":
+        return hyb3(r, ks, L)[:, 0]
+    if est == "nda4pk":
+        return nda4pk(r)
+    if est == "lag320":
+        return lag320(r, L)
+    if est in RB_ARS:
+        n, it, fm = RB_ARS[est]
+        return rife_boorstyn(r, ks, kidx, nfft=n, iters=it, fmax=fm)
     if est == "ml128":
         return ml128(r, ks, kidx)
     if est == "mm128":
@@ -177,10 +389,53 @@ def est_macs(est, L):
     rb     4 Nk + FFT(nfft) + 2 nfft + 10 (parabolic) + RB_NEWTON x 20 Nk
     nda4   8 K (r^4: 2 complex squarings) + FFT(nfft) + 2 nfft + 10 + 4 Nk (z) + 8 Nk (twiddles at f0; the grid offsets
            e^{-j 2 pi delta_g n_k} are fixed) + G (4 Nk + 2) (grid) + iters x 20 Nk
+    vde    4 Nk (z, once) + syncword ml with 1 candidate: FFT(nfft_for(Ns)) + 2 nfft + ML_ITERS x 20 Ns + 12 Ns
+           + rb over all known: FFT(nfft_for(K)) + 2 nfft + 10                       (Ns = 27)
+    mmml   4 Nk + M&M on the Nh-symbol header: 4 sum_{m=1..M} (Nh - m) (lags) + 4 M (R(m) R*(m-1)), as est3's
+           MM_MACS = 24,704 at N = 128 + joint ML: FFT(nfft_for(span)) + 2 nfft + ML_ITERS x 20 Nk   (Nh = 90, M = 45)
+    nda4uw 8 K (r^4) + FFT(nfft) + 2 nfft (|X|^2) + nb (floor mean over the nb in-range bins) + UW_TOP x 10 (parabolic)
+           + 4 Nk (z) + UW_TOP x (8 Nk (twiddles) + 4 Nk (correlation) + 2 (|U|^2) + 4 (metric))
+    nda4rb 8 K + FFT(nfft) + 2 nfft + 10 (4th-power coarse) + 4 Nk + FFT(nfft) + 2 nfft + 10 (rb in the lobe)
+    lag    4 (Nk - 16) (coarse lag products) + 4 x 64 (fine) + 2 x 20 (two arguments) + 4 (lobe pick)
+    hyb3   4 Nk + FFT(nfft) + 2 nfft (DA) + 8 K + FFT(nfft) + 2 nfft (4th power) + nb x (2 x 8 (two logs, charged as
+           exponentials) + 2 (weight, add)) + HYB_TOP x 10 (parabolic)      (nb = in-range bins, nfft = nfft_for(K))
+    nda4pk 8 K (r^4) + FFT(n) + 2 n (|X|) + 10 (3-bin weighted mean)    (n = power of 2 >= 2 K: 4096 on viasat16)
+    lag320 4 (160 - 16) (coarse lag products on the L-STF) + 4 x 64 (fine, L-LTF) + 2 x 20 (two arguments) + 4
+    rb4096 / rb2048 / rb2048f / rb2048n   4 Nk + FFT(N) + 2 N + 10 (+ 20 Nk for the Newton step): rcs13 106,970 /
+           49,626 / 49,626 / 51,946 (lit_ars2021.md section 6)
     genie  0"""
     nk, K, kidx = L["nk"], L["K"], L["known_idx"]
+    if est in RB_ARS:
+        n, it, _ = RB_ARS[est]
+        return 4 * nk + FFT_MACS(n) + 2 * n + 10 + it * 20 * nk
+    nb = lambda n, fmax: 2 * int(np.ceil(fmax * n)) + 3                # in-range bins (+ 1 bin each side)
     if est == "genie":
         return 0
+    if est == "vde":
+        ns, n, n1 = L["fsize"][0], nfft_for(L["fsize"][0]), nfft_for(K)
+        return 4 * nk + FFT_MACS(n) + 2 * n + ML_ITERS * 20 * ns + 12 * ns + FFT_MACS(n1) + 2 * n1 + 10
+    if est == "mmml":
+        nh = L["fsize"][0]
+        M = nh // 2
+        n = nfft_for(kidx.max() - kidx.min() + 1)
+        return 4 * nk + 4 * sum(nh - m for m in range(1, M + 1)) + 4 * M + FFT_MACS(n) + 2 * n + ML_ITERS * 20 * nk
+    if est == "nda4uw":
+        n = nfft_for(K)
+        return (8 * K + FFT_MACS(n) + 2 * n + nb(n, 4 * C.MAX_CFO) + UW_TOP * 10 + 4 * nk
+                + UW_TOP * (12 * nk + 6))
+    if est == "nda4rb":
+        n = nfft_for(K)
+        return 8 * K + 4 * nk + 2 * (FFT_MACS(n) + 2 * n + 10)
+    if est == "lag":
+        return 4 * (nk - C.WIFI_REP) + 4 * C.WIFI_FINE + 2 * 20 + 4
+    if est == "hyb3":
+        n = nfft_for(K)
+        return 4 * nk + 8 * K + 2 * (FFT_MACS(n) + 2 * n) + nb(n, C.MAX_CFO) * 18 + HYB_TOP * 10
+    if est == "nda4pk":
+        n = 1 << int(np.ceil(np.log2(2 * K)))
+        return 8 * K + FFT_MACS(n) + 2 * n + 10
+    if est == "lag320":
+        return 4 * (C.WIFI_STF - C.WIFI_REP) + 4 * C.WIFI_FINE + 2 * 20 + 4
     if est == "ml128":
         return E3.ml_direct_macs()
     if est == "mm128":
@@ -284,6 +539,29 @@ def gain_kalman(r, ks, L, fh, q, s2, iters=KALMAN_ITERS, meas=None):
     return a[:, None] * np.exp(1j * _interp(phi, L))
 
 
+def gain_eq17(r, ks, L, fh, nfft=EQ17_NFFT):
+    kidx = L["known_idx"]
+    z = r[:, kidx] * np.conj(ks)
+    k = np.round(fh * nfft)
+    dl = fh * nfft - k
+    nb = np.where(dl < 0, k - 1, k + 1)
+    X = lambda j: np.sum(z * np.exp(-2j * np.pi * j[:, None] * kidx[None] / nfft), 1)
+    Xk, Xn = X(k), X(nb)
+    a = np.abs(dl)
+    phi = np.angle(Xk) + a * np.angle(Xn * np.conj(Xk)) - 2 * np.pi * fh * C.DELAY_SYM
+    amp = np.abs(Xk + a * (Xn - Xk)) / np.sum(np.abs(ks) ** 2, 1)
+    return amp * np.exp(1j * phi)
+
+
+def gain_x4(r, ks, L, fh):
+    n = np.arange(r.shape[1])
+    y4 = np.sum((r * np.exp(-2j * np.pi * fh[:, None] * (n + C.DELAY_SYM)[None])) ** 4, 1)
+    phi = np.angle(-y4) / 4                                           # QPSK: s^4 = -1
+    U = np.sum(_y(r, ks, L, fh), 1)                                   # the UW: quadrant only
+    phi = phi + np.round(np.angle(U * np.exp(-1j * phi)) / (np.pi / 2)) * (np.pi / 2)
+    return np.abs(np.real(U * np.exp(-1j * phi))) / np.sum(np.abs(ks) ** 2, 1) * np.exp(1j * phi)
+
+
 def gain_genie(ph, phs, L):
     return np.exp(1j * (ph[:, None] + phs[:, L["data_idx"]]))
 
@@ -298,6 +576,12 @@ def gain(model, r, ks, L, fh, ph=None, phs=None, W=TRACK_W, mode=TRACK_MODE, q=0
         return gain_interp2(r, ks, L, fh)
     if model == "track":
         return gain_track(r, ks, L, fh, W)
+    if model == "blocks":
+        return gain_track(r, ks, L, fh, 1)
+    if model == "eq17":
+        return gain_eq17(r, ks, L, fh)
+    if model == "x4":
+        return gain_x4(r, ks, L, fh)
     if model == "genie":
         return gain_genie(ph, phs, L)
     raise ValueError(model)
@@ -313,8 +597,20 @@ def phase_macs(model, L, mode=TRACK_MODE, pn=None):
              pn = None keeps the conservative kalman charge)
     interp2, mode sw   4 Nk + 40 (2 gains, 2 angles) + 14 x 1024
     track, mode sw     4 Nk + 32 F (sliding sums 8, arg + unwrap 20, amplitude projection 4 per field) + 14 x 1024
+    blocks             4 Nk + 24 F (arg + unwrap 20, amplitude projection 4 per field) + 14 x 1024
+    eq17               40 (3 CORDIC angles / interpolation on the estimator's FFT bins, lit_ars2021.md 6.2; the
+                       3-bin DFT recomputed in the simulation is not charged: the bins exist in the receiver)
+    x4                 12 K (the 4th-power bin at 4 fh: twiddle 8 + complex multiply 4 per burst symbol on the
+                       estimator's r^4) + 4 Nk (UW correlation) + 44 (angle 20, 4 quadrant projections 16, e^{j phi} 8);
+                       charged as computed (the patent reads it off its 3 FFT bins, ~0 MACs)
     genie              12 x 1024 (exponential + complex multiply per data symbol)"""
     nk, F = L["nk"], len(L["fstart"])
+    if model == "eq17":
+        return 40
+    if model == "x4":
+        return 12 * L["K"] + 4 * nk + 44
+    if model == "blocks":
+        return 4 * nk + 24 * F + 14 * C.N_SYM
     if model in ("interp2", "track") and mode == "kalman" and pn is not None and pn <= 0:
         return 4 * nk
     if model in ("interp2", "track") and mode == "kalman":
