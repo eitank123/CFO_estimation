@@ -77,11 +77,10 @@ def save(model, path):
              a1=sd["a1"][:, 0], f1=sd["f1"][:, 0], a2=sd["a2"][:, 0], f2=sd["f2"][:, 0])
 
 
-def train(a):
+def ck_net():
+    """The CkNet class (torch imported here; also fullsys/ck_nn_fs.py)."""
     import torch
     import torch.nn as nn
-    torch.manual_seed(a.seed)
-    torch.set_num_threads(a.threads)
     SK = sr.NF                                               # index of the z-test feature (skip input)
 
     class CkNet(nn.Module):
@@ -101,6 +100,16 @@ def train(a):
             h = torch.relu(self.c2(h) * (1 + self.a2 * s) + self.f2 * s)
             return self.c3(h)[:, 0] + (self.w0 + self.w1 * s[:, 0]) * x[..., SK]
 
+    return CkNet
+
+
+def train(a):
+    import torch
+    import torch.nn as nn
+    torch.manual_seed(a.seed)
+    torch.set_num_threads(a.threads)
+    SK = sr.NF                                               # index of the z-test feature (skip input)
+    CkNet = ck_net()
     models = {c: CkNet() for c in CKS}
     print(f"CkNet ({a.mode}) params {sum(p.numel() for p in models[CKS[0]].parameters())}, "
           f"{sr.ck_macs(201) / 1e3:.0f}k MACs at 201 cells, {sr.ck_macs(401) / 1e3:.0f}k at 401", flush=True)

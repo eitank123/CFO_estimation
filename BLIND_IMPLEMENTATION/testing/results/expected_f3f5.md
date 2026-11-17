@@ -122,8 +122,8 @@ At the 1e-4 setting (3 lost / ~31.7k, UB 2.4e-4 - not certifiable at 1e-4 with 3
   needs the planned 400k confirmation. (2) SNR dependence of t untested: right-decode psn rises at lower SNR (one point
   per rate measured); the 0-loss t is nearly rate-independent (0.75-0.78). (3) Per-core saving assumes the d4a
   4-at-once rounds; a stopped decode only shortens its round when all 4 stop.
-- Plots: `results/plots/fz_roc.png` (wrong decodes stopped vs right packets lost per checkpoint, psn, 0.15 and 2/5),
-  `results/plots/fz_saving_vs_loss.png` (total MACs saved vs right-packet loss 95 % UB, best checkpoints of each metric,
+- Plots: `results/plots/original_study/fz_roc.png` (wrong decodes stopped vs right packets lost per checkpoint, psn, 0.15 and 2/5),
+  `results/plots/original_study/fz_saving_vs_loss.png` (total MACs saved vs right-packet loss 95 % UB, best checkpoints of each metric,
   union in-sample and half-split).
 
 ## F5 online (`fzstop`), predictions 2026-11-15, before code

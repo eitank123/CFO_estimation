@@ -16,11 +16,12 @@ How the curves are smoothed (statistics only, no curve fit):
   wrong CRC passes (1-6 per 480k per point, which made the old curves jitter). Those are pooled over the flat region;
   the legend gives the count, for example "16 in 2.4M packets".
 
-What they show (numbers updated 2026-11-17 for the adopted testing receiver; the figures' receiver set is the est4
+What they show (numbers updated 2026-11-17 for the adopted testing receiver and the fixed DVB-RCS2 search, which the
+figures now show solid next to the old search dashed; the figures' receiver set is the est4
 one above; every deployed competitor is in [../testing/results/scoreboard.md](../testing/results/scoreboard.md)):
 | Rate | BLER (required SNR, blind vs best pilot receiver in these figures) | MACs per core at blind's crossing |
 |---|---|---|
-| 1/10 @1e-4 | blind -4.78 vs 128 ML -4.68: blind 0.10 dB better (DVB-RCS2 -4.09, +0.69) | blind 0.194 M = 5.7x DVB-RCS2, 2.2x 128 ML |
+| 1/10 @1e-4 | blind -4.78 vs 128 ML -4.72: tie (+0.06); DVB-RCS2 with the fixed search -4.58 (+0.20; old search -4.09, +0.69) | blind 0.194 M = 5.7x DVB-RCS2, 2.2x 128 ML |
 | 0.15 @1e-3 | blind -3.60 vs DVB-RCS2 -3.45: blind 0.15 dB better | blind 0.262 M = 7.5x DVB-RCS2 |
 | 0.15 @1e-4 | blind -2.93 vs DVB-RCS2 / 128 ML -3.12: blind 0.19 dB worse | blind 0.180 M = 5.1x DVB-RCS2 |
 | 2/5 @1e-3 | blind 0.58 vs DVB-RCS2 1.10: blind 0.52 dB better | blind 0.183 M = 4.6x DVB-RCS2 |

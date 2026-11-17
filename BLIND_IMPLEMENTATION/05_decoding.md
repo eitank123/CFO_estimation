@@ -52,3 +52,39 @@ For the statistics, every right decode is tagged with the stage that accepted it
 
 The share of packets still undecoded after each stage, vs SNR, is plotted per rate in `est3/plots/stages_R*.png`
 (also in [presentation/](presentation/)).
+
+## 5.8 F5: frozen-bit early stop inside every CA-SCL-8 decode (testing receiver, R = 2/5 and 1/2; adopted 2026-11-15)
+Most CA-SCL-8 decodes the receiver runs are at a **wrong** (CFO, phase) hypothesis: they end in a CRC failure, but they
+still cost a full decode. F5 stops such a decode early, from the frozen bits it has already seen.
+
+**Metric.** While the list decoder walks the code tree, every frozen leaf adds a penalty to the path metric of each
+list path when the path's LLR disagrees with the known 0. F5 keeps that frozen-only part apart:
+psn = (sum of frozen-leaf penalties of the path so far) / (number of frozen leaves seen so far).
+At the right hypothesis the frozen bits look like pilots that agree, so psn stays small; at a wrong one it grows.
+
+**Rule (one check per decode).** At the first node boundary where at least ceil(q · F) of the F frozen leaves have been
+decided, the decode is stopped if min over the alive list paths of psn > t. A stopped decode is treated exactly like
+a CRC failure (the rest of the receiver flow is unchanged) and is charged the work done up to the stop.
+
+| Rate | q (share of frozen leaves seen) | t (threshold on psn) | Receiver |
+|---|---|---|---|
+| 2/5 | 0.7 | 0.774 | `base25_qfix_fzs` (adopted) |
+| 1/2 | 0.7 | 0.776 | `base2_qfix_fzs` (adopted) |
+| 1/10 | 0.8 | 0.751 | available, not adopted (only -1.4 % MACs per core) |
+| 0.15 | 0.9 | 0.763 | available, not adopted |
+
+The thresholds come from an offline study on decode dumps (every list path's frozen metric at 1/4, 1/2, 3/4 of the
+frozen set, right vs wrong decodes): t is the largest value that keeps the right decodes (0 lost in-sample, half-split
+check). MACs per core: a round of 4 parallel decodes shortens only when all 4 of its decodes stop.
+
+**Measured (paired packets, same seeds as the baseline).**
+
+| Point | MACs per core | Lost right packets | Effect on the 1e-3 crossing |
+|---|---|---|---|
+| 2/5, 0.5 dB (403k packets) | 0.2308 -> 0.1965 M (**-14.9 %**) | 11 (2.7e-5) | <= 0.003 dB |
+| 1/2, 1.5 dB (128k) | 0.2328 -> 0.1852 M (**-20.4 %**) | 18 (1.4e-4, +1.3 % of that point's errors) | ~0.001 dB |
+| 2/5 0 dB / 1 dB | -21 % / -7.6 % | - | - |
+| 1/2 2 dB and up, 1/10 -5 dB | -0 ... -2 % | 0 | - |
+
+Code: `small_rx.py` flag `fzstop` (per code rate), `polar.PolarCode.fz_stop`; receivers in `testing/run.py`. Full study,
+predictions and kill rules: [testing/results/expected_f3f5.md](testing/results/expected_f3f5.md).

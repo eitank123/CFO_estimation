@@ -16,7 +16,7 @@ sys.path.insert(0, PROJ)
 import agg_S as A                      # noqa: E402
 from est3 import plots as EP           # noqa: E402  (pilot_macs, bler_rows)
 
-OUT = os.path.join(HERE, "results", "plots")
+OUT = os.path.join(HERE, "results", "plots", "original_study")
 os.makedirs(OUT, exist_ok=True)
 STY = {"S blind final v2": ("baseline (S blind final v2)", "#d62728", "o"),
        "T nofast": ("nofast (no fast-path decode)", "#1f77b4", "s"),

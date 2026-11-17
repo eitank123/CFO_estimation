@@ -1,0 +1,188 @@
+{
+ "meta": {
+  "args": {
+   "calib": [
+    "fs-flv32am62",
+    "fs-flv32am58",
+    "fs-flv32bm54",
+    "fs-flv32bm50",
+    "fs-flv32cm46"
+   ],
+   "test": [],
+   "name": "v32chk",
+   "setting": null,
+   "grid": null,
+   "rel": 0.02,
+   "restarts": 2,
+   "seed": 1,
+   "workers": 8,
+   "no_honest_kc": false,
+   "check_only": true,
+   "no_strict": false
+  },
+  "approx": "unlogged decodes counted failed (n_unl per setting)"
+ },
+ "selfcheck": {
+  "ok": true,
+  "mismatch": {
+   "passed": 0,
+   "right": 0,
+   "stage": 0
+  },
+  "max_rel_cost_err": {
+   "macs": 0.0,
+   "cpar": 0.0,
+   "c_d4a": 0.0,
+   "c_hd4a": 0.0
+  },
+  "unlogged": 0,
+  "side_vs_own_mismatch": 0,
+  "packets": 50000,
+  "errors": 1603
+ },
+ "calib": {
+  "parts": [
+   "fs-flv32am62",
+   "fs-flv32am58",
+   "fs-flv32bm54",
+   "fs-flv32bm50",
+   "fs-flv32cm46"
+  ],
+  "points": [
+   [
+    "fs-flv32am62",
+    -6.2
+   ],
+   [
+    "fs-flv32am58",
+    -5.8
+   ],
+   [
+    "fs-flv32bm54",
+    -5.4
+   ],
+   [
+    "fs-flv32bm50",
+    -5.0
+   ],
+   [
+    "fs-flv32cm46",
+    -4.6
+   ]
+  ],
+  "frames": [
+   2000,
+   4000,
+   8000,
+   16000,
+   20000
+  ],
+  "err_base": [
+   750,
+   525,
+   257,
+   63,
+   8
+  ],
+  "allowed": [
+   15,
+   10,
+   5,
+   1,
+   0
+  ],
+  "base_logged": {
+   "err": [
+    750,
+    525,
+    257,
+    63,
+    8
+   ],
+   "err_tot": 1603,
+   "mean": 923355.1350689844,
+   "mean_pooled": 497692.53490625,
+   "p99": 5173310.25,
+   "max": 5173820.875,
+   "mean_pt": [
+    2357983.916609375,
+    1091856.9091328124,
+    515465.85647265625,
+    337968.8597050781,
+    313500.133425
+   ],
+   "unl_near": 0,
+   "unl_far": 0,
+   "unl_retry": 0
+  },
+  "base_replay": {
+   "err": [
+    750,
+    525,
+    257,
+    63,
+    8
+   ],
+   "err_tot": 1603,
+   "mean": 923355.1350689844,
+   "mean_pooled": 497692.53490625,
+   "p99": 5173310.25,
+   "max": 5173820.875,
+   "mean_pt": [
+    2357983.916609375,
+    1091856.9091328124,
+    515465.85647265625,
+    337968.8597050781,
+    313500.133425
+   ],
+   "unl_near": 0,
+   "unl_far": 0,
+   "unl_retry": 0
+  },
+  "receiver": {
+   "ck": [
+    0.5,
+    0.75
+   ],
+   "ck_keep": 0.001,
+   "ck_min": 8,
+   "ck_win": null,
+   "tau": -0.5,
+   "kmin": 16,
+   "win": 6.0,
+   "final": 16,
+   "batch": null,
+   "first_k": null,
+   "phase_keep": [
+    0.5,
+    2
+   ],
+   "ncand": 4,
+   "z0": 4.0,
+   "T": 2,
+   "T_fine": 6,
+   "final_post": 256,
+   "fine_last": 4,
+   "cores": 32,
+   "ck_charge_all": true,
+   "old_acct": false,
+   "ca_retry": true,
+   "premf_dec": true,
+   "reencode": true,
+   "bpsk_sq": true,
+   "nopi": false,
+   "equiv": false,
+   "q_fix": true,
+   "cost": "tree",
+   "ck_useful": true,
+   "rate": "1/10",
+   "code_rate": "0.15"
+  }
+ },
+ "chosen": null,
+ "log": [
+  "calibration: 460 chunks, 50000 packets, 5 points, std c_hd4a, logged Kc {32}, numpy (log) {'2.4.6'} / here 2.4.6, side rows 166753, far-cell CRC passes in the search's own rows 12 (82 s)",
+  "SELF-CHECK OK: {'mismatch': {'passed': 0, 'right': 0, 'stage': 0}, 'max_rel_cost_err': {'macs': 0.0, 'cpar': 0.0, 'c_d4a': 0.0, 'c_hd4a': 0.0}, 'unlogged': 0, 'side_vs_own_mismatch': 0, 'packets': 50000, 'errors': 1603}",
+  "baseline (logged settings, cores 32): errors [750, 525, 257, 63, 8] mean 0.9234 M (logged cores 0.9234 M) max 5.174 M; allowed extra [15, 10, 5, 1, 0]"
+ ]
+}

@@ -31,3 +31,15 @@ docs/
 **/dumps/
 small_cfo/results/backup_re/
 logs/archive/
+
+# AFF3CT clone (2026-11-17, test vectors for fullsys/turbo_db.py; MIT, built only in Run:ai jobs)
+third_party/
+
+# 2026-11-18 full-system push: per-job blind part files (88 MB, kept on the cluster and locally), run progress files,
+# and the copyrighted ETSI / ITU standards (not redistributed in a public repo)
+fullsys/results/blind_fs_*.json
+fullsys/results/*.prog
+fullsys/results/*_dump/
+fullsys/__pycache__/
+BLIND_IMPLEMENTATION/testing/results/standards/*.pdf
+BLIND_IMPLEMENTATION/testing/results/standards/*.txt

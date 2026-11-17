@@ -3,7 +3,7 @@
 ## Source
 
 - Script: `py BLIND_IMPLEMENTATION/testing/nn_offline.py`, which writes every number to `results/nn_offline.json`.
-- Plots: `results/plots/nn_auc_headB.png` and `nn_pm_vs_rho.png` (heads A, C dropped: their plots removed; numbers below).
+- Plots: `results/plots/original_study/nn_auc_headB.png` and `nn_pm_vs_rho.png` (heads A, C dropped: their plots removed; numbers below).
 - Data: the decode dumps t-deca, t-decb25, t-decb2 and t-decbn.
 - Train / test split by chunk: the last 2 of 8 chunks are the test set (8000 packets per point).
 - No receiver simulation; this is fits on the logged rows only.

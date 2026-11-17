@@ -33,6 +33,8 @@ def where(rel):
 BAR = 40
 EST_LINE = re.compile(r"^estimator errors (\d+)/(\d+)")
 SNR_LINE = re.compile(r"^SNR\s+-?[\d.]+ dB \|")
+PRG_LINE = re.compile(r"progress .*frames (\d+) err (\d+) \(([\d.]+) s\)")   # run_rcs2 / run_blind_fs running point
+PT_LINE = re.compile(r"^SNR\s+[+-]?[\d.]+ dB \|")          # fullsys/run_rcs2.py: one per finished point ("SNR +0.13 dB |")
 
 EPOCH_LINE = re.compile(r"^Epoch\s+(\d+)/(\d+) .*\|\s*(\d+)s")
 
@@ -559,6 +561,111 @@ for _j, _p in ([("v-smoke", f"v-smoke-{_g}{_r}") for _r in ("15", "25") for _g i
                                       "v-2sb", "v-2sc", "v-10hla", "v-10hlb")]                # (re-split after v-smoke, 2026-11-15)
                + [("v-smoke", "v-smoke-id")] + [("v-smoke2", f"v-smoke2-{_x}") for _x in ("s15", "h15", "s10")]):                # (v-smoke-id: e5-smoke-a repeated, identity check)
     JOBS[f"est4_{_p}"] = (f"variants BLER {_p}", "count", (f"run_{_j}.out", os.path.join(_E4, f"bler_{_p}.progress")))
+# fixed CFO searches of RCS2-13 / VDE-SAT (code review 2026-11-17; est4/run_bler.py, parts in est4/logs)
+for _p in ("fx-smoke", "fx-10a", "fx-10b", "fx-15a", "fx-15b", "fx-25", "fx-2", "fx-s10", "fx-s15", "fx-25p1", "fx-25p2", "fx-25r", "fx-2p", "fx-2r"):
+    JOBS[f"est4_{_p}"] = (f"fixed-search BLER {_p}", "count", (f"run_{_p}.out", os.path.join(_E4, f"bler_{_p}.progress")))
+# full-system competitors (fullsys/, 2026-11-17): key = --part; run_vde.py / run_polar_genie.py write
+# fullsys/results/<vde|polar_genie>_<part>.prog, run_rcs2.py writes no .prog (key = job, "SNR ..." log lines / total)
+_FS = os.path.join("fullsys", "results")
+for _j, _p in (("fs-vdev32", "fs-vdev32"), ("fs-vdev32", "fs-vdev32ml"),
+               ("fs-vdev88", "fs-vdev88"), ("fs-vdev88", "fs-vdev88ml"), ("fs-vdev88", "fs-vdev88rnd"),
+               ("fs-v32a", "fs-v32a"), ("fs-v32b", "fs-v32b"), ("fs-v32lo", "fs-v32lo")):
+    JOBS[_p] = (f"fullsys VDE {_p}", "count", (f"run_{_j}.out", os.path.join(_FS, f"vde_{_p}.prog")))
+JOBS["fs-vda32"] = ("fullsys VDE DA fs-vda32", "count", ("run_fs-vda32.out", os.path.join(_FS, "da_fs-vda32.prog")))
+JOBS["fs-vda32lo"] = ("fullsys VDE DA fs-vda32lo", "count", ("run_fs-vda32lo.out", os.path.join(_FS, "da_fs-vda32lo.prog")))
+for _j, _p in (("fs-bv32a", "fs-bv32smoke"), ("fs-bv32a", "fs-bv32m42"), ("fs-bv32a", "fs-bv32m38"),
+               ("fs-bv32b", "fs-bv32m50"), ("fs-bv32b", "fs-bv32m48"), ("fs-bv32c", "fs-bv32m44"), ("fs-bv32c", "fs-bv32m40"),
+               ("fs-t3nn", "fs-t3nnm08"), ("fs-t3nn", "fs-t3nnp00"), ("fs-t3nn", "fs-t3nnp04"),
+               ("fs-bv32la", "fs-bv32m66"), ("fs-bv32la", "fs-bv32m62"), ("fs-bv32lb", "fs-bv32m58"), ("fs-bv32lb", "fs-bv32m54"),
+               # 2026-11-17 FINAL curves (tuned F5 + retrained NN)
+               ("fs-g13a", "fs-g13m08"), ("fs-g13a", "fs-g13m06"), ("fs-g13a", "fs-g13m04"), ("fs-g13b", "fs-g13m02"),
+               ("fs-g13c", "fs-g13p00"), ("fs-g42a", "fs-g42m42"), ("fs-g42a", "fs-g42m40"), ("fs-g42a", "fs-g42m38"),
+               ("fs-g42a", "fs-g42m36"), ("fs-g42b", "fs-g42m34"), ("fs-g42b", "fs-g42m32"), ("fs-g14a", "fs-g14p12"),
+               ("fs-g14a", "fs-g14p14"), ("fs-g14a", "fs-g14p16"), ("fs-g14a", "fs-g14p18"), ("fs-g14b", "fs-g14p20"),
+               ("fs-g14b", "fs-g14p22"), ("fs-g3a", "fs-g3m10"), ("fs-g3a", "fs-g3m06"), ("fs-g3a", "fs-g3m02"),
+               ("fs-g3a", "fs-g3p00"), ("fs-g3b", "fs-g3p02"), ("fs-g3b", "fs-g3p04"), ("fs-g3b", "fs-g3p06"), ("fs-g3b", "fs-g3p08"),
+               ("fs-g42c", "fs-g42m30"), ("fs-g3c", "fs-g3p10"), ("fs-bv32e", "fs-bv32m38b"), ("fs-g14c", "fs-g14p10"),
+               ("fs-g3d", "fs-g3m08"), ("fs-g3d", "fs-g3m04"),
+               # vde32 with its own checkpoint NN: smoke, paired test (seed 32), FINAL curve (seed 7032 / 7033)
+               ("fs-cktrsmokev", "fs-cktrsmokev-bl"), ("fs-tv32nn", "fs-tv32nnm54"), ("fs-tv32nn", "fs-tv32nnm50"),
+               ("fs-tv32nn", "fs-tv32nnm46"), ("fs-gv32a", "fs-gv32m66"), ("fs-gv32a", "fs-gv32m62"),
+               ("fs-gv32a", "fs-gv32m58"), ("fs-gv32a", "fs-gv32m54"), ("fs-gv32a", "fs-gv32m50"),
+               ("fs-gv32b", "fs-gv32m46"), ("fs-gv32b", "fs-gv32m42"), ("fs-gv32c", "fs-gv32m38"),
+               ("fs-gv32d", "fs-gv32m38s2")):
+    JOBS[_p] = (f"fullsys blind {_p}", "count", (f"run_{_j}.out", os.path.join(_FS, f"blind_fs_{_p}.prog")))
+# z-test live tuning on calibration packets (run_blind_fs --sps, fullsys/zt_compare.py), 2026-11-17: job fs-zt<fmt>k<k>
+# (k 0 control, 1-4 tighter settings), one part per SNR point = job + point
+for _f, _pts in (("13", ("m08", "m06")), ("3", ("m06", "m02")), ("42", ("m40", "m38")), ("14", ("p14", "p16")),
+                 ("v32", ("m54", "m50"))):
+    for _k in range(10):
+        for _q in _pts:
+            _j = f"fs-zt{_f}k{_k}"
+            JOBS[_j + _q] = (f"fullsys blind {_j + _q}", "count", (f"run_{_j}.out", os.path.join(_FS, f"blind_fs_{_j + _q}.prog")))
+# 2026-11-17: --charge-all reruns of the final curves (jobs/fs-qg*.sh, fs-qh*.sh): register every run_blind_fs part found
+for _sh in sorted(__import__("glob").glob(os.path.join(os.path.dirname(os.path.abspath(__file__)), "jobs", "fs-[qcgjfu][ghvl]*.sh"))):
+    _j = os.path.basename(_sh)[:-3]
+    for _p in re.findall(r"run_blind_fs\.py[^\n]*--part (\S+)", open(_sh, encoding="utf-8", errors="replace").read()):
+        JOBS[_p] = (f"fullsys blind {_p}", "count", (f"run_{_j}.out", os.path.join(_FS, f"blind_fs_{_p}.prog")))
+for _j, _p in ([("fs-pg13", "fs-pg13"), ("fs-pg14", "fs-pg14s"), ("fs-pg14", "fs-pg14p"), ("fs-pg3", "fs-pg3"),
+                ("fs-pg42", "fs-pg42b"), ("fs-pg42", "fs-pg42q"), ("fs-pgvde", "fs-pgvde")]
+               + [("fs-pgsmoke", f"fs-pgsmoke-{_x}") for _x in ("13", "14s", "14p", "3", "3c16", "42b", "42q", "vde")]):
+    JOBS[_p] = (f"fullsys polar {_p}", "count", (f"run_{_j}.out", os.path.join(_FS, f"polar_genie_{_p}.prog")))
+for _j, _n in (("fs-rcs2v3", 8), ("fs-rcs2v13", 8), ("fs-rcs2v14", 8), ("fs-rcs2v42", 8), ("fs-rcs2a3008", 10),
+               ("fs-rcs2a4512", 6), ("fs-rcs2va", 4), ("fs-rcs2vb", 14)):   # _n = SNR points over all run_rcs2 lines
+    JOBS[_j] = (f"fullsys RCS2 {_j}", "lines", (f"run_{_j}.out", _n))
+# DA synchroniser runs (fullsys/run_fullsys_da.py -> fullsys/results/da_<part>.prog; key = --part), 2026-11-17
+_DA = ([("fs-dasmoke", f"fs-dasmoke-{_x}") for _x in ("13s", "13t", "13g", "13i", "13n", "13d", "3t", "14t", "42t",
+                                                       "v32s", "v32t", "v32g", "v32i")]
+       + [("fs-dasmoke2", f"fs-dasmoke2-{_x}") for _x in ("13t", "13s", "13n", "13g", "13i", "13d", "13w", "13c", "3t",
+                                                           "14t", "42t", "v32t", "v32g", "v32i")]
+       + [(f"fs-da{_t}{_i}", f"fs-da{_t}{_i}{_b}") for _t in ("rs", "rn") for _i in (3, 13, 14, 42) for _b in ("", "b")]
+       + [("fs-davde32", "fs-davde32")])
+for _j, _p in _DA:
+    JOBS[_p] = (f"fullsys DA {_p}", "count", (f"run_{_j}.out", os.path.join(_FS, f"da_{_p}.prog")))
+JOBS["fs-q13pg"] = ("fullsys polar fs-q13pg", "count", ("run_fs-q13pg.out", os.path.join(_FS, "polar_genie_fs-q13pg.prog")))
+JOBS["fs-q13da"] = ("fullsys DA fs-q13da", "count", ("run_fs-q13da.out", os.path.join(_FS, "da_fs-q13da.prog")))
+for _j, _p in (("fs-q13bc", "fs-q13bc-smoke"), ("fs-q13bc", "fs-q13bc-cal"), ("fs-q13bla", "fs-q13bla"), ("fs-q13blb", "fs-q13blb")):
+    JOBS[_p] = (f"fullsys blind {_p}", "count", (f"run_{_j}.out", os.path.join(_FS, f"blind_fs_{_p}.prog")))
+for _p in ("fs-b13m10", "fs-b13m08", "fs-b13m06", "fs-b13m04", "fs-b13m02",   # blind ID 13, one point per job
+           "fs-k13m08", "fs-k13m06", "fs-k13m04"):                              # + its calibration packets
+    JOBS[_p] = (f"fullsys blind {_p}", "count", (f"run_{_p}.out", os.path.join(_FS, f"blind_fs_{_p}.prog")))
+# 2026-11-17: the channel-interleaver fix (blind_fmt chan) + GA design: smoke, cap smoke (2 parts), one point per job
+for _j, _p in (("fs-b13s", "fs-b13s"), ("fs-b13cap", "fs-b13cap-nc"), ("fs-b13cap", "fs-b13cap-c5"),
+               ("fs-c13m08", "fs-c13m08"), ("fs-c13m06", "fs-c13m06"), ("fs-c13m04", "fs-c13m04"),
+               ("fs-c13m02", "fs-c13m02"), ("fs-c13p00", "fs-c13p00")):
+    JOBS[_p] = (f"fullsys blind {_p}", "count", (f"run_{_j}.out", os.path.join(_FS, f"blind_fs_{_p}.prog")))
+# 2026-11-17: ID 42 and ID 3 full comparisons (q = DVB-RCS2 + polar genie, c = blind points, k = calibration)
+for _j, _p in (("fs-c42a", "fs-c42m42"), ("fs-c42a", "fs-c42m40"), ("fs-k13m02", "fs-k13m02"),
+               ("fs-c3a", "fs-c3smoke"), ("fs-c3a", "fs-c3m10"), ("fs-c3a", "fs-c3m08"), ("fs-c3b", "fs-c3m06"),
+               ("fs-c3b", "fs-c3m04"), ("fs-c3c", "fs-c3m02"), ("fs-c3c", "fs-c3p00"), ("fs-k3", "fs-k3"), ("fs-k3b", "fs-k3b"),
+               ("fs-l13", "fs-l13m06"), ("fs-l13", "fs-l13m04"),
+               ("fs-d42a", "fs-d42m34"), ("fs-d42b", "fs-d42m32"), ("fs-d3a", "fs-d3p02"), ("fs-d3b", "fs-d3p04"),
+               ("fs-c14a", "fs-c14smoke"), ("fs-c14a", "fs-c14p14"), ("fs-c14a", "fs-c14p16"),
+               ("fs-c14b", "fs-c14p18"), ("fs-c14b", "fs-c14p20"), ("fs-e14a", "fs-e14p18"), ("fs-e14b", "fs-e14p20"),
+               ("fs-e14c", "fs-e14p10"), ("fs-e14c", "fs-e14p12"), ("fs-d42c", "fs-d42m36"), ("fs-e3", "fs-e3p06"),
+               ("fs-f13a", "fs-f13m02"), ("fs-f13b", "fs-f13p00"), ("fs-f13c", "fs-f13m04"), ("fs-f42", "fs-f42m30"),
+               ("fs-f14", "fs-f14p22"), ("fs-f3", "fs-f3p08"),
+               ("fs-l42", "fs-l42m40"), ("fs-l42", "fs-l42m38"), ("fs-l14", "fs-l14p14"), ("fs-l14", "fs-l14p16"),
+               ("fs-nn3", "fs-nn3m04"), ("fs-nn3", "fs-nn3p00"), ("fs-nn13", "fs-nn13m06"), ("fs-nn13", "fs-nn13m04")):
+    JOBS[_p] = (f"fullsys blind {_p}", "count", (f"run_{_j}.out", os.path.join(_FS, f"blind_fs_{_p}.prog")))
+for _j, _p in (("fs-q42pg", "fs-q42pg16"), ("fs-q3pg", "fs-q3pg8"), ("fs-q3pg", "fs-q3pg16")):
+    JOBS[_p] = (f"fullsys polar {_p}", "count", (f"run_{_j}.out", os.path.join(_FS, f"polar_genie_{_p}.prog")))
+for _j, _p in (("fs-q42t", "fs-q42td"), ("fs-q3t", "fs-q3td"), ("fs-q14td", "fs-q14td"),
+               ("fs-n13", "fs-n13"), ("fs-n42", "fs-n42"), ("fs-n14", "fs-n14"), ("fs-n3", "fs-n3")):
+    JOBS[_p] = (f"fullsys DA {_p}", "count", (f"run_{_j}.out", os.path.join(_FS, f"da_{_p}.prog")))
+for _L in (16, 32):                                                      # fs-pgl16 / fs-pgl32 parts (2026-11-17)
+    for _f in ("14s", "13", "3", "vde", "42b"):
+        JOBS[f"fs-pgl{_L}-{_f}"] = (f"fullsys polar L{_L} {_f}", "count",
+                                    (f"run_fs-pgl{_L}.out", os.path.join(_FS, f"polar_genie_fs-pgl{_L}-{_f}.prog")))
+for _f in ("13", "14s", "l16-13", "l16-14s"):                            # fs-pgga parts: GA design (2026-11-17)
+    JOBS[f"fs-pgga-{_f}"] = (f"fullsys polar GA {_f}", "count",
+                             ("run_fs-pgga.out", os.path.join(_FS, f"polar_genie_fs-pgga-{_f}.prog")))
+for _j, _p in ([(f"fs-cktr{_x}", f"fs-cktr{_x}") for _x in ("3", "13", "14", "42")]     # fullsys/ck_nn_fs.py: the
+               + [("fs-cktrsmoke", f"fs-cktrsmoke-{_x}") for _x in ("3", "13", "14s", "42b")]   # format's ck NN
+               + [("fs-cktrv32", "fs-cktrv32"), ("fs-cktrsmokev", "fs-cktrsmokev-v32")]):         # (vde32)
+    JOBS[_p] = (f"fullsys ck NN {_p}", "count", (f"run_{_j}.out", os.path.join(_FS, f"ck_nn_fs_{_p}.prog")))
+for _j in ("fs-dasmoke", "fs-dasmoke2"):                                 # their run_vde reference parts
+    JOBS[f"{_j}-vref"] = (f"fullsys VDE {_j}-vref", "count", (f"run_{_j}.out", os.path.join(_FS, f"vde_{_j}-vref.prog")))
 JOBS["est4_maclog-smoke-c"] =("est4 BLER maclog-smoke-c (per-packet MACs log)", "count",   # (2026-11-15)
                                ("run_maclog-smoke.out", os.path.join(_E4, "bler_maclog-smoke-c.progress")))
 JOBS["est4_maclog-smoke-c0"] = ("est4 BLER maclog-smoke-c0 (MACs log off)", "count",
@@ -604,7 +711,7 @@ for _ch in ("multipath", "awgn"):   # Stage 3: NN receivers (zero_overhead_mp.py
         JOBS[f"zo2nn_{_ch}_p{_i}"] = (f"Stage 3 NN receiver, {_ch}, job {_i + 1}", "polar",
                                       ("zo", os.path.join(_d, f"run_p{_i}.log"), os.path.join(_d, f"run_p{_i}.progress")))
 LOGS = {"train": lambda a: a[0], "count": lambda a: a[0], "polar": lambda a: a[1] if len(a) > 1 else f"polar_{a[0]}.log",
-        "uncoded": lambda a: a[0]}
+        "uncoded": lambda a: a[0], "lines": lambda a: a[0], "tune": lambda a: a[0]}
 
 
 for _p in ("t-eqrb-chk15", "t-eqrb-chk25", "t-eqrb-chk10", "t-eqrb-chk2", "t-eqrb-chk15h", "t-eqrb-chk25h", "t-eqrb-chk2h", "t-eqrb-chk10h"):
@@ -637,9 +744,9 @@ def polar_rows(name, mode, log_rel=None, prog_rel=None):
     prog_rel = prog_rel or f"polar_{mode}.progress"
     log = read_lines(where(log_rel))
     if log is None:
-        return [f"{name:<30} {bar(0)}  waiting"], False
+        return [f"{name:<46} {bar(0)}  waiting"], False
     if any(l.startswith("Traceback") for l in log):
-        return [f"{name:<30} {bar(0)}  FAILED (see {log_rel})"], True
+        return [f"{name:<46} {bar(0)}  FAILED (see {log_rel})"], True
     finished = any(l.startswith("=====") for l in log)
 
     rows = []
@@ -675,53 +782,128 @@ def polar_rows(name, mode, log_rel=None, prog_rel=None):
 def uncoded_row(name, log_name, total):
     log = read_lines(where(log_name))
     if log is None:
-        return f"{name:<30} {bar(0)}  waiting", False
+        return f"{name:<46} {bar(0)}  waiting", False
     if any(l.startswith("Traceback") for l in log):
-        return f"{name:<30} {bar(0)}  FAILED (see {log_name})", True
+        return f"{name:<46} {bar(0)}  FAILED (see {log_name})", True
     done = sum(bool(SNR_LINE.match(l)) for l in log)
-    return f"{name:<30} {bar(done / total)}  {done}/{total} SNRs", done >= total
+    return f"{name:<46} {bar(done / total)}  {done}/{total} SNRs", done >= total
+
+
+def lines_row(name, log_name, total):
+    """Jobs without a progress file: finished points = "SNR ... dB |" log lines (fullsys/run_rcs2.py), then ALL DONE."""
+    log = read_lines(where(log_name))
+    if log is None:
+        return f"{name:<46} {bar(0)}  waiting", False
+    if any(l.startswith("Traceback") for l in log):
+        return f"{name:<46} {bar(0)}  FAILED (see {log_name})", True
+    if any(l.startswith("ALL DONE") for l in log):
+        return f"{name:<46} {bar(1.0)}  done", True
+    done = sum(bool(PT_LINE.match(l)) for l in log)
+    # 2026-11-17: the running point's share too (a 10M-frame point sat at "7/8" for hours): the last
+    # "progress ... frames F err E (T s)" line after the last finished point, against that run's frames / max_err
+    part, info = 0.0, ""
+    last_pt = max([i for i, l in enumerate(log) if PT_LINE.match(l)], default=-1)
+    prg = [m for m in (PRG_LINE.search(l) for l in log[last_pt + 1:]) if m]
+    if prg:
+        F, E, T = int(prg[-1].group(1)), int(prg[-1].group(2)), float(prg[-1].group(3))
+        hdr = [l for l in log if l.startswith("run_rcs2 {")]
+        mf = re.search(r"'frames': (\d+)", hdr[-1]) if hdr else None
+        me = re.search(r"'max_err': (\d+)", hdr[-1]) if hdr else None
+        if mf and me:
+            part = min(1.0, max(F / int(mf.group(1)), E / int(me.group(1))))
+        info = f"  (point {min(done + 1, total)}: {F} frames, {E} err, {fmt(T)})"
+    return f"{name:<46} {bar(min(1.0, (done + part) / total))}  {done}/{total} points{info}", False
 
 
 def train_row(name, log_name):
     log = read_lines(where(log_name))
     if log is None:
-        return f"{name:<30} {bar(0)}  waiting", False
+        return f"{name:<46} {bar(0)}  waiting", False
     if any(l.startswith("Traceback") for l in log):
-        return f"{name:<30} {bar(0)}  FAILED (see {log_name})", True
+        return f"{name:<46} {bar(0)}  FAILED (see {log_name})", True
     if any(l.startswith(("EVAL DONE", "TRAIN DONE")) for l in log):
-        return f"{name:<30} {bar(1.0)}  done", True
+        return f"{name:<46} {bar(1.0)}  done", True
     ep = [m for m in (EPOCH_LINE.match(l) for l in log) if m]
     if not ep:
-        return f"{name:<30} {bar(0)}  starting", False
+        return f"{name:<46} {bar(0)}  starting", False
     k, n = int(ep[-1].group(1)), int(ep[-1].group(2))
     if k >= n:
-        return f"{name:<30} {bar(1.0)}  {k}/{n} epochs, final evaluation running", False
+        return f"{name:<46} {bar(1.0)}  {k}/{n} epochs, final evaluation running", False
     sec = sum(int(m.group(3)) for m in ep) / len(ep)
-    return f"{name:<30} {bar(k / n)}  {k}/{n} epochs  ETA ~{fmt(sec * (n - k))}", False
+    return f"{name:<46} {bar(k / n)}  {k}/{n} epochs  ETA ~{fmt(sec * (n - k))}", False
 
 
 def count_row(name, log_name, prog_name):
     """Jobs that write "done total elapsed_s" into a progress file (coarse_nn.py --eval)."""
     log = read_lines(where(log_name))
     if log is not None and any(l.startswith("Traceback") for l in log):
-        return f"{name:<30} {bar(0)}  FAILED (see {log_name})", True
+        return f"{name:<46} {bar(0)}  FAILED (see {log_name})", True
     prog = read_lines(where(prog_name))
     if log is not None and any(l.startswith("ALL DONE") for l in log):
-        return f"{name:<30} {bar(1.0)}  done", True
+        return f"{name:<46} {bar(1.0)}  done", True
     if prog:                                              # several parts can share one log: a part is done when its
         v = [float(x) for x in prog[-1].split()]          # own progress file says so, not at the log's first EVAL DONE
         if len(v) == 3 and v[1] and v[0] >= v[1]:
-            return f"{name:<30} {bar(1.0)}  done", True
+            return f"{name:<46} {bar(1.0)}  done", True
     elif "blind_ber_" not in prog_name and log is not None and any(l.startswith(("EVAL DONE", "TRAIN DONE")) for l in log):
-        return f"{name:<30} {bar(1.0)}  done", True
+        return f"{name:<46} {bar(1.0)}  done", True
     if not prog:
-        return f"{name:<30} {bar(0)}  {'starting' if log is not None else 'waiting'}", False
+        return f"{name:<46} {bar(0)}  {'starting' if log is not None else 'waiting'}", False
     v = [float(x) for x in prog[-1].split()]
     if len(v) == 1:                                       # a bare fraction (no counts / time)
-        return f"{name:<30} {bar(min(v[0], 1.0))}  {100 * v[0]:.0f}%", False
+        return f"{name:<46} {bar(min(v[0], 1.0))}  {100 * v[0]:.0f}%", False
     d, n, sec = v
     eta = f"  ETA ~{fmt(sec * (n - d) / d)}" if d else ""
-    return f"{name:<30} {bar(d / n)}  {int(d)}/{int(n)} chunks{eta}", False
+    return f"{name:<46} {bar(d / n)}  {int(d)}/{int(n)} chunks{eta}", False
+
+
+TUNE_LINE = re.compile(r"^\s+\*?\s*mean\s")
+
+
+def tune_row(name, log_name, total):
+    """fullsys/joint_tune_fs.py jobs (no progress file): settings evaluated so far (log lines "  [*] mean ...") of an
+    expected ~total, then CHOSEN / ALL DONE."""
+    log = read_lines(where(log_name))
+    if log is None:
+        return f"{name:<46} {bar(0)}  waiting", False
+    if any(l.startswith("Traceback") for l in log):
+        return f"{name:<46} {bar(0)}  FAILED (see {log_name})", True
+    ch = [l for l in log if l.startswith("CHOSEN")]
+    if any(l.startswith("ALL DONE") for l in log):
+        return f"{name:<46} {bar(1.0)}  done" + (f"  {ch[-1][:110]}" if ch else ""), True
+    n = sum(bool(TUNE_LINE.match(l)) for l in log)
+    st = "self-check OK, searching" if any(l.startswith("SELF-CHECK OK") for l in log) else "loading logs / self-check"
+    return f"{name:<46} {bar(min(0.99, n / total))}  {n} settings evaluated (~{total})  {st}", False
+
+
+def describe(key):
+    """Readable label: what the job is (2026-11-18, user: clearer job names in progress.txt)."""
+    m = re.match(r"fs-(gv32[a-z]?|jv32[a-z]+\d?|flv32t?[a-z]?|zt(?:13|3|42|14|v32)k\d+|g(?:13|3|42|14)|h(?:13|42|14))m?p?(\d*)(.*)$", key)
+    D = {"gv32": "VDE final, before tuning", "gv32p": "VDE fresh: batch null + final 16", "gv32q": "VDE fresh: live winner r3",
+         "gv32j": "VDE fresh: tuner pick 1 (rejected)", "gv32k": "VDE FINAL jointly tuned (fresh pkts)",
+         "gv32n": "VDE fresh: batch null (249-core cost)", "gv32o": "VDE fresh: tuned + ONE phase guess"}
+    if key.startswith("fs-jtv32"):
+        return f"VDE joint tuner {key[8:]}"
+    if key.startswith(("fs-g", "fs-h")) and key.endswith("jt"):
+        m2 = re.match(r"fs-[gh](\d+)([mp]\d+)jt", key)
+        if m2:
+            return f"DVB ID {m2.group(1)} FINAL jointly tuned {m2.group(2)} ({key})"
+    if key.startswith("fs-jv32f"):
+        return f"VDE F5 live check {key[8:]}"
+    if key.startswith("fs-jv32w"):
+        return f"VDE floor cut {key[7:]}"
+    if key.startswith("fs-jv32u"):
+        return f"VDE tuner pick live check {key[8:]}"
+    if key.startswith("fs-zt") and "k" in key:
+        return f"DVB/VDE z-test calib {key[5:]}"
+    for pre, lab in sorted(D.items(), key=lambda kv: -len(kv[0])):
+        if key.startswith("fs-" + pre + "m"):
+            return f"{lab} {key[len(pre) + 3:]}"
+    return None
+
+
+for _t in ("a", "b", "c", "d", "e", "f", "g", "h", "n", "v", "chk"):
+    JOBS[f"fs-jtv32{_t}"] = (f"VDE joint tuner fs-jtv32{_t}", "tune", (f"run_fs-jtv32{_t}.out", 240))
 
 
 def render(keys):
@@ -729,11 +911,12 @@ def render(keys):
     all_done = True
     for key in keys:
         name, kind, a = JOBS[key]
+        name = describe(key) or name
         if kind == "polar":
             rows, done = polar_rows(name, *a)
             out += rows + [""]
         else:
-            row, done = {"train": train_row, "count": count_row, "uncoded": uncoded_row}[kind](name, *a)
+            row, done = {"train": train_row, "count": count_row, "uncoded": uncoded_row, "lines": lines_row, "tune": tune_row}[kind](name, *a)
             out.append(row)
         all_done &= done
     return "\n".join(out), all_done

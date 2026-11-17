@@ -6,7 +6,8 @@ usage: py plot_e4.py   (reads est4/results/bler_e4-{10,15,25,2,pp*}.json and the
        py plot_e4.py --ars  (+ the ARS 2021 variants on rcs13, bler_ars-{10,15,25,2}.json -> ars_{bler,macs}_R*.png;
                              their RCS2-13 rows are the e4 packets again and are not drawn twice; combinable with --e5)
        py plot_e4.py --e5 --var   (+ the faithful variants, bler_v-{10,15,25,2}{,h,p,w,s}.json -> e5var_*.png; their
-                             parent rows are other seeds and pool with the e4 / e5 rows)"""
+                             parent rows are other seeds and pool with the e4 / e5 rows; + the fixed-search parts
+                             bler_fx-*.json: RCS2-13 wide, VDE-SAT fixed)"""
 import json, os, sys
 from collections import defaultdict
 import numpy as np
@@ -21,7 +22,7 @@ import agg_cmp as C
 import common as E4C
 import estimators as E4E
 
-OUT = os.path.join(HERE, "results", "plots")
+OUT = os.path.join(HERE, "results", "plots", "original_study")
 RES = os.path.join(PROJ, "est4", "results")
 MAIN = {"1/10": "e4-10", "0.15": "e4-15", "2/5": "e4-25", "1/2": "e4-2"}
 PP = {"1/10": "e4-pp10", "0.15": "e4-pp15", "2/5": "e4-pp25", "1/2": "e4-pp2"}
@@ -56,13 +57,20 @@ STY5 = {"VDE-SAT": ("VDE-SAT: 27 syncword + 1 pilot per 27, 66 known", "#17becf"
         "WiFi real320": ("Wi-Fi legacy L-STF + L-LTF (320), lag 16 / 64, no lobe search", "#8ca252", ">", "-"),
         "WiFi real320 lobes": ("Wi-Fi legacy L-STF + L-LTF (320) + the +-4 fine-lobe search", "#b5cf6b", ">", ":"),
         "hyb3-pre48 wide": ("Advantech 48 preamble, hybrid, window from the 48-symbol DA CRB", "#7b4173", "d", "--"),
-        "split64 ML L4": ("64 pre + 64 post, joint ML, +-4 lobes", "#e6550d", "o", ":")}
+        "split64 ML L4": ("64 pre + 64 post, joint ML, +-4 lobes", "#e6550d", "o", ":"),
+        # fixed CFO searches (code review 2026-11-17; their parts fx-* with --var)
+        "RCS2-13 wide": ("DVB-RCS2 ID13 layout, 116 known, CRC search +-1e-2 (pre/post fringes)", "#1f77b4", "s", "-"),
+        "VDE-SAT fixed": ("VDE-SAT, 66 known, unclipped alias window, +-2 alias lobes", "#17becf", "P", "--"),
+        "VDE-SAT scan": ("VDE-SAT, 66 known, full-range CRC scan", "#9467bd", "X", "-")}
 VARP = {r: tuple(f"v-{t}{s}" for s in ("", "h", "h2", "p", "p2", "w", "w2", "s", "s2",
                                          "ma", "mb", "mc", "ha", "hb", "hc", "pa", "pb", "wa", "wb", "sa", "sb", "sc", "s2a", "s2b", "hla", "hlb"))
         for r, t in (("1/10", "10"), ("0.15", "15"), ("2/5", "25"), ("1/2", "2"))}
                                                      # --var: the variant parts (absent parts, e.g. v-10w2, load empty;
                                                      # *a/*b/*c: the re-split after v-smoke, 2026-11-15; never submit a
                                                      # replaced job with its split, or its rows pool twice)
+FIXP = {"1/10": ("fx-10a", "fx-10b", "fx-s10"), "0.15": ("fx-15a", "fx-15b", "fx-s15"), "2/5": ("fx-25p1", "fx-25p2", "fx-25r"), "1/2": ("fx-2p", "fx-2r")}
+                                                     # --var: + the fixed-search parts (fx-smoke is never loaded); their
+                                                     # pre128 ML rows are other seeds and pool with the e4 rows
 ARSP = {"1/10": "ars-10", "0.15": "ars-15", "2/5": "ars-25", "1/2": "ars-2"}
 STYA = {"G4096": ("RCS2-13, FFT 4096 + parabolic (ARS 2021)", "#aec7e8", "s", ":"),
         "G2048": ("RCS2-13, FFT 2048 + parabolic (ARS 2021)", "#6baed6", "s", "-."),
@@ -81,7 +89,7 @@ def load(part):
     return json.load(open(p))["results"] if os.path.exists(p) else []
 
 
-def e4(rate, e5=False, ars=False, var=False):
+def e4(rate, e5=False, ars=False, var=False, fx=False):
     """{src: {snr_plot: dict(err, n, und, core, est_core, snr)}}; e5: + the est5 parts (without their Genie); ars: + the
     ARS parts (without their RCS2-13); var: + the variant parts v-* (their parents pool with the e4 / e5 rows: other
     seeds); a (src, snr_plot) in several parts is pooled (pool)"""
@@ -94,6 +102,9 @@ def e4(rate, e5=False, ars=False, var=False):
         rows += [r for r in load(ARSP[rate]) if r["src"] != "RCS2-13"]
     if var:
         rows += [r for p in VARP[rate] for r in load(p) if r["src"] != "Genie"]
+        rows += [r for p in FIXP[rate] for r in load(p) if r["src"] != "Genie"]
+    elif fx:                                               # fx: only the fixed-search DVB-RCS2 + the pre128 ML control
+        rows += [r for p in FIXP[rate] for r in load(p) if r["src"] in ("RCS2-13 wide", "pre128 ML")]   # (2026-11-17)
     for r in rows:
         if r["rate"] != rate or r["pn"] != 0:
             continue
@@ -139,18 +150,19 @@ def curve(ax, pts, key, lab, c, m, ls="-", lw=1.8, ms=6):
         ax.plot(xs, y, color=c, marker=m, ls=ls, lw=lw, ms=ms, label=lab)
 
 
-def styles(e5=False, ars=False, var=False):
-    return dict(STY, **(STY5 if e5 or var else {}), **(STYA if ars else {}))
+def styles(e5=False, ars=False, var=False, fx=False):
+    return dict(STY, **(STY5 if e5 or var else {}), **(STYA if ars else {}),
+                **({"RCS2-13 wide": STY5["RCS2-13 wide"]} if fx and not (e5 or var) else {}))
 
 
-def fig(rate, key, e5=False, ars=False, var=False):
-    P, B = e4(rate, e5, ars, var), blind(rate)
+def fig(rate, key, e5=False, ars=False, var=False, fx=False):
+    P, B = e4(rate, e5, ars, var, fx), blind(rate)
     allx = [s for d in P.values() for s in d]
     lo, hi = min(allx) - 0.25, max(allx) + 0.25
     B = {s: v for s, v in B.items() if lo <= s <= hi}
     f, ax = plt.subplots(figsize=(10, 7.8))
     curve(ax, B, key, BLIND[0], BLIND[1], BLIND[2], lw=2.8, ms=9)
-    for src, (lab, c, m, ls) in styles(e5, ars, var).items():
+    for src, (lab, c, m, ls) in styles(e5, ars, var, fx).items():
         if src in P and src != "Genie":   # genie not drawn (user 2026-11-15)
             curve(ax, P[src], key, lab, c, m, ls=ls, lw=1.4 if src == "Genie" else 1.9)
     if key == "bler":
@@ -161,7 +173,7 @@ def fig(rate, key, e5=False, ars=False, var=False):
     ax.grid(True, which="both", ls=":", alpha=0.6)
     ax.legend(fontsize=8.5, loc="upper center", bbox_to_anchor=(0.5, -0.11), ncol=2, frameon=False)
     f.tight_layout()
-    pre = ("e5" if e5 else "") + ("ars" if ars else "") + ("var" if var else "") or "e4"
+    pre = ("e5" if e5 else "") + ("ars" if ars else "") + ("var" if var else "") + ("fx" if fx else "") or "e4"
     p = os.path.join(OUT, f"{pre}_{'bler' if key == 'bler' else 'macs'}_R{tag(rate)}.png")
     f.savefig(p, dpi=150)
     plt.close(f)

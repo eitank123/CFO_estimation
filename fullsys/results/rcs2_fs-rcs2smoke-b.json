@@ -1,0 +1,98 @@
+{
+ "meta": {
+  "args": {
+   "wf": [
+    "3"
+   ],
+   "fmt": null,
+   "snrs": [
+    -0.27
+   ],
+   "ebn0_aff3ct": null,
+   "frames": 100,
+   "max_err": 100,
+   "batch": 50,
+   "seed": 901,
+   "part": "fs-rcs2smoke-b",
+   "algo": "maxlog",
+   "iters": 8,
+   "sf": "0.7",
+   "early_stop": false,
+   "itl": "aff3ct",
+   "sync": "ideal",
+   "exact_demap": false,
+   "workers": 16
+  },
+  "rolloff": 0.2,
+  "chain": "txrx_chain.transmit (SPS 8, span 10)",
+  "assumptions": [
+   "Constituent encoder update (AFF3CT vectors): f = S3^S4^A^B; S1' = f; S2' = S1^B; S3' = S2; S4' = S3^B; Y = f^S1^S2^S4; W = f^S2^S3^S4; state integer S = 8 S1 + 4 S2 + 2 S3 + S4 (S1 = MSB).",
+   "Couple bit order: A_j = bit 2j, B_j = bit 2j+1 of the encoder input (MSB of the first byte = A_0).",
+   "Circulation table = AFF3CT circ_states (EN Table 7-13 garbled); row = (N mod 15) - 1, column = S_N^0; the self-test rebuilds all 14 x 16 entries from (I + G^n) Sc = S_N^0.",
+   "Interleaver INTERLEAVER_DIR (three readings, the swap always follows its own reading): 'aff3ct' (default) = natural couple k written to interleaved position Pi(k), natural even couples swapped (AFF3CT lut_inv gather; its published curves and, per the coordinator, the TR values); 'en' = EN 301 545-2 V1.3.1 cl. 7.3.5.1.0-1 read literally: Pi(j) gives the natural index i of interleaved couple j, and the j-th OUTPUT couple is (B, A) when j mod 2 = 0 (Eq. 7-2 / 7-4 sentence) = natural odd couples swapped (the IEEE 802.16 CTC structure); 'en-natswap' = read form with natural even couples swapped (the lit_rcs2_fullsystem.md reading, the earlier 'std'). MATLAB dvbrcs2TurboEncode would be the arbiter.",
+   "Puncturing: keep masks indexed by the couple index of each constituent (natural for Y1/W1, interleaved for Y2/W2); Z_i = kept Y_i followed by kept W_i.",
+   "LLR sign: L = ln P(0)/P(1) (AFF3CT); symbol metric -(a La + b Lb) (= AFF3CT's halved form up to a constant).",
+   "Circular trellis: alpha_0 / beta_N uniform in iteration 1, then the previous iteration's alpha_N / beta_0 (metric passing, AFF3CT; no prologue).",
+   "Extrinsic scaling applied to both SISO outputs every half-iteration; the decision uses the unscaled APP of SISO 2 (TR: 0.7 except the last iteration). Default sf = 'adaptive' = AFF3CT ADAPTIVE: 0.5 in iteration 1, then 0.85 (coordinator, 2026-11-17; lit_turbo_db.md 4.1 says iterations 1-2: ADAPTIVE_LOW_ITERS sets it). sf = 0.7 gives the TR 101 545-4 cl. 6.3.2 setting.",
+   "Bit decision: L(A) = red(L10, L11) - red(L00, L01), L(B) = red(L01, L11) - red(L00, L10), red = max (max-log) or exact log-sum (log-MAP); bit = 1 if L > 0 here (metrics are log-probabilities).",
+   "Table A-1 payload bytes = Frame PDU + CRC = turbo input K = 8 x bytes; traffic bursts carry CRC32 (k = K - 32).",
+   "Energy dispersal: output = SR14 ^ SR15 fed back into SR1 (DVB-S randomiser form), XOR on every Frame PDU bit, reset per burst; the CRC and the UW are not scrambled; CRC computed over the scrambled PDU.",
+   "CRC16 = poly 0x8005, init 0, no reflection, no final XOR (CRC-16/UMTS); CRC32 = CRC-32/MPEG-2 (init all 1, no reflection, no final XOR); bits fed MSB first, register appended MSB first.",
+   "QPSK map (Fig. 7-20 not legible): Gray, I = (1 - 2 u0)/sqrt2, Q = (1 - 2 u1)/sqrt2; symbol k < N carries (A_k, B_k), symbol N + k carries (Z1_k, Z2_k).",
+   "pi/2-BPSK (EN 7.3.7.1.4.1, read from the local EN text): bits A0 B0 A1 B1 ... Z1_0 Z2_0 Z1_1 ..., bit 0 -> +1, s(n) = u(n) exp(j (pi n / 2 + pi / 4)); 'the integer n for the very first symbol in the burst is arbitrary': we use n = burst index from the first preamble symbol (UW symbols mapped the same way, EN 7.3.7.1.2-3).",
+   "UW (EN 6.4.6.1 UW_symbol: m bits per symbol of the concatenated preamble | one pilot block | postamble; hex strings re-read from the local EN Table A-1 for IDs 3, 13, 14, 42, identical): read MSB first, trailing pad bits dropped (pilot = (0,0) for the QPSK IDs, bit 0 for ID 42); every pilot block repeats the same symbols.",
+   "Pilot layout (EN 6.4.6.1 pilot_period, 7.3.6.1): the last symbol of the first pilot block lies one pilot period after the last preamble symbol, period = distance between block starts, blocks inserted while P - 1 payload symbols remain to sustain the period (zero or more payload after the last block); block length 1: l = Lpre - 1 + k P, k = 1 ... min(pilot sum, n_data // (P - 1)); postamble = the last Lpost symbols.",
+   "Eb/N0 per information bit: EbN0 = EsN0 + 10 log10(L_burst / k), k = K - CRC bits, every burst symbol charged (lit_rcs2_fullsystem.md 0). AFF3CT convention: EsN0 = EbN0 + 10 log10(m k / n_coded) (no UW).",
+   "Demapper: QPSK Gray and BPSK per-dimension LLRs, where max-log and exact are identical (both implemented generically over the constellation); N0 = Es / SNR is known (ideal sync).",
+   "Waveforms 'A12' / 'A13' / 'A23' (= --fmt aff3ct-N3008 / N4512 / N2256) are code-only (no UW / pilots) K = 1504 QPSK rate 1/2 / 1/3 / 2/3 with the N = 752 P/Q (A12 = the ID 14 code), as the AFF3CT reference curves (K_info 1472 + CRC32, PSK 2 bps, MAX, ADAPTIVE, 8 it); not Table A-1 waveforms. AFF3CT runs a symbol-rate channel; we keep the RRC chain (identical in AWGN up to the truncated-filter ISI). AFF3CT FER = any K_info bit wrong (our 'mismatch'); its turbo decoder stops on the CRC from iteration 2 (--dec-crc-start), so the fmt runs use early stop."
+  ]
+ },
+ "points": [
+  {
+   "wf": "3",
+   "esn0": -0.27,
+   "ebn0_burst": 2.676,
+   "ebn0_aff3ct": 1.974,
+   "L_burst": 536,
+   "k": 272,
+   "N": 152,
+   "frames": 100,
+   "frame_err": 0,
+   "crc_fail": 0,
+   "undetected": 0,
+   "mismatch": 0,
+   "bit_err": 0,
+   "iters_sum": 800,
+   "first_pass": [
+    0,
+    13,
+    74,
+    11,
+    0,
+    1,
+    1,
+    0,
+    0
+   ],
+   "time_s": 1.1,
+   "per": 0.0,
+   "fer_aff3ct": 0.0,
+   "iters_mean": 8.0,
+   "ops_per_frame": 1000464.0,
+   "ops": {
+    "adds": 613168.0,
+    "cs": 380000.0,
+    "muls": 7296.0,
+    "lut": 0.0,
+    "total": 1000464.0,
+    "per_info_bit": 3291.0
+   },
+   "ref_tr": {
+    "table": "10.5",
+    "0.001": -0.27,
+    "1e-05": 0.22
+   },
+   "ref_aff3ct_fer": null
+  }
+ ]
+}

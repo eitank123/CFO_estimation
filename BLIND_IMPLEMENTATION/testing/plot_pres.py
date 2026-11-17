@@ -22,12 +22,13 @@ sys.path.insert(0, HERE)
 import agg_cmp as C
 import plot_e4 as P4
 
-OUT = os.path.join(HERE, "results", "plots")
+OUT = os.path.join(HERE, "results", "plots", "original_study")
 XLIM = {"1/10": (-5.1, -1.8), "0.15": (-4.7, -1.3), "2/5": (-0.1, 2.6), "1/2": (1.4, 3.6)}
 LOW10 = []          # the 1/10 low-SNR extension was cancelled 2026-11-15: the user does not care below -5 dB
 BL10 = []
 STY = [("Genie", "genie: true CFO and phase (no pilots, lower bound)", "#7f7f7f", "x", ":"),
-       ("RCS2-13", "DVB-RCS2 pilots (ID 13 layout, 116 known symbols), Rife-Boorstyn FFT", "#1f77b4", "s", "-"),
+       ("RCS2-13", "DVB-RCS2 pilots (ID 13 layout, 116 known symbols), Rife-Boorstyn FFT, old search (+-3 steps)", "#1f77b4", "s", "--"),
+       ("RCS2-13 wide", "DVB-RCS2 pilots (ID 13), fixed search (+-1e-2, covers the pre/post side peaks)", "#1f77b4", "s", "-"),
        ("pre128 ML", "128-symbol preamble, ML", "#2ca02c", "^", "-"),
        ("pre128 M&M", "128-symbol preamble, Mengali-Morelli", "#bcbd22", "v", "--"),
        ("split64 ML", "64 + 64 symbols (pre + post), joint ML", "#ff7f0e", "o", "-"),
@@ -41,6 +42,7 @@ def pilots(rate, e5=False):
     out = defaultdict(lambda: defaultdict(lambda: [0, 0, 0]))
     parts = [P4.MAIN[rate], P4.PP[rate]] + (LOW10 if rate == "1/10" else [])
     rows = sum((P4.load(p) for p in parts), [])
+    rows += [r for p in P4.FIXP[rate] for r in P4.load(p) if r["src"] in ("RCS2-13 wide", "pre128 ML")]   # fixed search
     if e5:
         rows += [r for r in sum((P4.load(p) for p in (P4.MAIN5[rate], P4.PP5[rate])), []) if r["src"] != "Genie"]
     for r in rows:
@@ -150,7 +152,7 @@ if __name__ == "__main__":
         sys.exit(0)
     for rate in ("1/10", "0.15", "2/5", "1/2"):
         fig(rate)
-        P4.fig(rate, "core")
+        P4.fig(rate, "core", fx=True)
         shutil.copy(os.path.join(OUT, f"pres_bler_R{P4.tag(rate)}.png"), os.path.join(PRES, f"bler_fair_R{tag2(rate)}.png"))
-        shutil.copy(os.path.join(OUT, f"e4_macs_R{P4.tag(rate)}.png"), os.path.join(PRES, f"macs_fair_R{tag2(rate)}.png"))
+        shutil.copy(os.path.join(OUT, f"fx_macs_R{P4.tag(rate)}.png"), os.path.join(PRES, f"macs_fair_R{tag2(rate)}.png"))
     print("copied to", os.path.abspath(PRES))

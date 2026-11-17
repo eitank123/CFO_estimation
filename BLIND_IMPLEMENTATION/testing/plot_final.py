@@ -21,7 +21,7 @@ sys.path.insert(0, HERE)
 import plot_e4 as P4
 import plot_pres as PP
 
-OUT = os.path.join(HERE, "results", "plots")
+OUT = os.path.join(HERE, "results", "plots", "original_study")
 TAB = os.path.join(HERE, "results", "final_table.md")
 RATES = ("1/10", "0.15", "2/5", "1/2")
 TARGET = {"1/10": [1e-4], "0.15": [1e-3, 1e-4], "2/5": [1e-3], "1/2": [1e-3]}

@@ -4,6 +4,11 @@ One registry of every paper, standard, patent and application note cited in the 
 `testing/results/lit_blind_cfo.md` (survey 1), `lit_polar_sync.md` (survey 2), `lit_dvbrcs2.md`,
 `lit_checks_results.md`, `expected_*.md`, `DEAD_ENDS.md`, `01`-`08`, `est3/README.md` and the root `README.md`). Merged 2026-11-15: the "Reference entries" of `lit_card_sat.md`, `lit_card_space.md`, `lit_card_terr.md`
 and `lit_rates.md` (C1-C4, C13, C16, C17 updated; A16, C18-C83 added).
+Merged 2026-11-17: the "Reference entries" of `lit_turbo_db.md`, `lit_vde_fec.md` and `lit_polar_ratematch.md` (A6, A7,
+A16, C1, C16, C84, C86-C88 updated; A17-A22, C90-C94, C96, C97, C99, C100, C104-C106, C108-C110, C112 added; index rows for the
+earlier C84-C88 added). Numbers
+C89, C95, C98, C101-C103, C107, C111, C113, C114 are not used (the scouts' duplicates of existing entries, or polar
+papers moved to section A); the lit files cite the registry numbers.
 Each source has its own section below: full reference, link, type, read depth (as recorded in the lit file that cited
 it), what it does, what we took / could take, and a dated "Used in" log.
 
@@ -44,6 +49,12 @@ benchmark receiver / estimator), **reference only**.
 | A14 | Wang, Liu, Hou 2014, joint SC over ISI | paper | none (SC trellis too costly) | reference only |
 | A15 | Fazeli, Mansour, Zhu, Jalloul 2026, partially polarized codes | paper | none (needs a code change) | reference only |
 | A16 | Polyanskiy, Poor, Verdu 2010, finite blocklength | paper | normal-approximation bound for a 1024-symbol packet (section E) | reference only |
+| A17 | Bioglio, Condo, Land 2021, Design of polar codes in 5G NR | paper | NR mother-length rule, 7/16 switch, pre-freezing (rate matching) | reference only (rate matching proposed) |
+| A18 | Bioglio, Gabry, Land 2017, puncturing and shortening of polar codes | paper | N-agnostic bit-reversal puncture / shorten rule (n_max = 12) | reference only (rate matching proposed) |
+| A19 | Niu et al. 2023, A golden decade of polar codes | paper | polar vs LTE turbo numbers (code-only gain) | reference only |
+| A20 | Stitched polar codes 2025 (arXiv 2511.19249) | paper | rate-matching sub-optimality <= 0.3 dB (SC) | reference only |
+| A21 | Niu, Chen, Lin 2013, rate-compatible punctured polar codes (ICC) | paper | QUP puncturing, "> 0.7 dB" vs turbo (snippet) | reference only |
+| A22 | Miloslavskaya 2015, Shortened polar codes (T-IT) | paper | none (shortening-pattern search, snippet) | reference only |
 | **B** | **Classic and NN CFO / phase estimators** | | | |
 | B1 | Rife & Boorstyn 1974 | paper | periodogram ML = our 4th-power FFT core; DVB-RCS2 competitor CFO | adopted + competitor |
 | B2 | Kay 1989 | paper | benchmark estimator (A.17.3) | competitor |
@@ -145,6 +156,27 @@ benchmark receiver / estimator), **reference only**.
 | C81 | Furman, Nieto 2012; Jorgenson et al. 2013 (110C App D) | paper | none (not read) | reference only |
 | C82 | Wang et al. 2025 (Chinese Optics Letters), 400ZR pilot-only sync | paper | 400ZR coarse CFO uses training sequences (C11 note) | reference only |
 | C83 | Comtech DMD1050TS datasheet | datasheet | real-modem thresholds (SE comparison) | reference only |
+| C84 | ITU-R Report M.2435-0 (2018), VDES simulations | report | VDE-SAT turbo PER / BER validation target (-1.5 dB at PER 1e-2) | reference only |
+| C85 | CEAS Space Journal, VDES satellite component | paper | E-SSA receiver, CRC + SIC (full-system VDE-SAT) | reference only |
+| C86 | AFF3CT DVB-RCS2 duo-binary turbo source | code | P / Q table, circulation table, reference encoder / decoder for RCS2 turbo | reference only |
+| C87 | MathWorks dvbrcs2TurboEncode / dvbrcs2TurboDecode | app note | bit-exact arbiter for the RCS2 turbo codec | reference only |
+| C88 | Boxerman, Bensimon, Greenberg, Ben-Shimol 2023, RCS2 turbo interleaver | paper | second source for the RCS2 ARP interleaver formula | reference only |
+| C90 | AFF3CT error_rate_references, TURBO_DB DVB-RCS2 | data | reference FER for the RCS2 turbo decoder | reference only |
+| C91 | AFF3CT documentation (Turbo DB / RSC DB, turbo, interleaver) | app note | test-vector dump flags, decoder scaling options | reference only |
+| C92 | Martina, Masera 2011, NoC turbo decoders | paper | max-log-MAP near log-MAP on duo-binary | reference only |
+| C93 | IEEE 802.16 maint. contributions 05_149 / 05_151 (CTC interleaver) | standard | precedent for the interleaver-direction ambiguity | reference only |
+| C94 | ETSI EN 302 583 V1.2.1 (DVB-SH), turbo code 5.3 | standard | confirms the VDE constituent code and tail | reference only |
+| C96 | Kim 2025 (J. KICS), VDES turbo decoder on FPGA | paper | VDE turbo PER points and decoder settings | reference only |
+| C97 | MathWorks comm.TurboEncoder / comm.TurboDecoder | app note | independent cross-check of the VDE codec (no MATLAB) | reference only |
+| C99 | Robertson, Villebrun, Hoeher 1995, log-domain MAP | paper | log-MAP vs max-log-MAP choice for the VDE baseline | reference only |
+| C100 | Iterative decoding algorithm for VDES signals (ICDSP 2020) | paper | none (not read) | reference only |
+| C104 | NVIDIA Sionna Polar5GEncoder source | code | NR rate-matching P table, 9/8 rule, pre-freezing (off-by-one noted) | reference only (rate matching proposed) |
+| C105 | MathWorks 5G NR polar coding example | app note | rate-recovery LLR conventions | reference only |
+| C106 | MathWorks nrUCIEncode | app note | NR segmentation condition (not adopted) | reference only |
+| C108 | Coskun et al. 2019, codes in the short blocklength regime | paper | polar CRC-16 L = 32 ~ turbo at (512, 256) | reference only |
+| C109 | Liva, Gaudio, Ninacs, Jerkovits 2016, code design for short blocks | paper | 16-state turbo 0.4 dB from the RCB at (128, 64) | reference only |
+| C110 | Shirvanimoghaddam et al. 2019, short codes for URLLC | paper | CA-polar 0.5 dB from the NA, turbo > 1 dB (N = 128) | reference only |
+| C112 | Sybis et al. 2016, channel coding for URLLC in 5G | paper | none (snippet only) | reference only |
 | **D** | **Blind / non-coherent polar, phase ambiguity, blind detection** | | | |
 | D1 | Yuan, Coskun, Kramer 2021, polar-coded non-coherent | paper | list-marginalised metric (F3, `lmarg`) | in test (offline gate passed) |
 | D2 | Geiselhart, Gauger, Krieg, Clausius, ten Brink 2023, phase-equivariant PCM | paper | `equiv` and the 2 rotation bits `eqrb` | passed / proposed at 2/5, 1/2; dropped at 1/10, 0.15 |
@@ -254,17 +286,25 @@ The frozen set: PW reliability order with beta = 2^(1/4) (`polar.py` header).
 #### Used in
 - (project base) `polar.py` construction for all rates; `eqrb` takes the K + 2 most reliable positions of the same order
   (expected_eqrb.md, 2026-11-15).
+- 2026-11-17: `testing/results/lit_polar_ratematch.md`: PW kept for the N = 2048 / 4096 rate-matched codes (proposed).
 
 ### A7. 3GPP TS 38.212, "NR; Multiplexing and channel coding" (ETSI TS 138 212)
 - Link: https://www.etsi.org/deliver/etsi_ts/138200_138299/138212/17.11.00_60/ts_138212v171100p.pdf   - Type: standard
-- Read depth: bib (version list only; the polynomial table was not re-read for this registry)
+- Read depth: bib (version list only; the polynomial table was not re-read for this registry). 2026-11-17: V15.5.0
+  (https://www.etsi.org/deliver/etsi_ts/138200_138299/138212/15.05.00_60/ts_138212v150500p.pdf) clauses 5.3.1,
+  5.4.1, 6.3.2.2 cited by `lit_polar_ratematch.md`: NOT read (binary PDF), the rules taken from A17 and C104.
 #### What it does
-5G NR CRC polynomials (clause 5.1), polar coding for control channels (5.3.1), rate matching.
+5G NR CRC polynomials (clause 5.1), polar coding for control channels (5.3.1), rate matching (5.4.1: sub-block
+interleaver, bit selection by puncturing / shortening / repetition, pre-freezing).
 #### What we took / could take
 CRC polynomials (`polar.CRC_POLYS`; CRC-16 in the blind study). Not taken: rate matching by shortening (PiCode would
 need 4 phase branches, 08_parameters_results.md "PiCode's assumption"); distributed CRC (G5) would be a code change.
+Could take (2026-11-17, proposed, not implemented): the 5.3.1 / 5.4.1 rate matching for the native competitor formats
+(DVB-RCS2, VDE-SAT), with n_max lifted to 12 (lit_polar_ratematch.md 1.7).
 #### Used in
 - (project base) `polar.py` CRC_POLYS; CRC-16 in every blind / pilot receiver.
+- 2026-11-17: `testing/results/lit_polar_ratematch.md`: rate-matching clauses proposed for the native formats (sections
+  1.1-1.7; proposed, not implemented).
 
 ### A8. B. Yuan, K. K. Parhi, "LLR-based successive-cancellation list decoder for polar codes with multibit decision", 2016
 - Link: https://arxiv.org/pdf/1603.07055   - Type: paper   - Read depth: snippet (survey 1, #22)
@@ -351,6 +391,68 @@ at our 1/10 / 0.15 / 2/5 / 1/2 points; ours reach 62 / 67 / 82 / 86 % of it. The
 the same Es/N0 is mostly block length, not pilots.
 #### Used in
 - 2026-11-15: lit_rates.md section 2 (hand estimate) and last section (recomputed); `comparison_full.md` section E.
+- 2026-11-17: `testing/results/lit_polar_ratematch.md`: normal approximation at each native (K, E) recommended as the
+  reference.
+
+### A17. V. Bioglio, C. Condo, I. Land, "Design of polar codes in 5G New Radio", IEEE Commun. Surveys & Tutorials, 2021, arXiv 1804.04389
+- Link: https://arxiv.org/abs/1804.04389   - Type: paper   - Read depth: full text (ar5iv; lit_polar_ratematch.md)
+#### What it does
+Tutorial of the 38.212 polar chain (NR control channels, SCL-8): mother-code length rule (0.17 term), sub-block
+interleaver, puncture / shorten switch at 7/16, Q1 / Q2 / Q3 pre-freezing formulas; its Fig. 13 has no numbers in the
+text.
+#### What we took / could take
+The mother-length rule, the 7/16 switch and the pre-freezing formulas for rate matching the native competitor formats
+(proposed, not implemented).
+#### Used in
+- 2026-11-17: `testing/results/lit_polar_ratematch.md` sections 1.2-1.4, 1.6 (proposed).
+
+### A18. V. Bioglio, F. Gabry, I. Land, "Low-complexity puncturing and shortening of polar codes", IEEE WCNC Workshops 2017, arXiv 1701.06458
+- Link: https://arxiv.org/abs/1701.06458   - Type: paper   - Read depth: full text (ar5iv; lit_polar_ratematch.md)
+#### What it does
+Bit-reversal puncture / shorten sets plus the reliability order, independent of N; matches the DE / GA sets on (320,160),
+(160,120), (160,40) with CRC-24, L = 32, QPSK AWGN (qualitative only in the text).
+#### What we took / could take
+The N-agnostic puncture / shorten rule, which justifies lifting n_max to 12 (proposed).
+#### Used in
+- 2026-11-17: `testing/results/lit_polar_ratematch.md` 1.2, 1.4 (proposed).
+
+### A19. K. Niu et al., "A golden decade of polar codes: from basic principle to 5G applications", 2023, arXiv 2303.14614
+- Link: https://arxiv.org/abs/2303.14614   - Type: paper   - Read depth: ~78 % of the html (first 100k of 128k chars)
+#### What it does
+Survey; polar vs LTE turbo at K = 400, N = 1024, L = 32, CRC-8: R 1/5-1/2 polar equal to turbo or better (0.5-1 dB at
+1/5); N = 1024, R = 1/2: 0.5-1 dB at 1e-4.
+#### What we took / could take
+The polar vs turbo numbers for the code-only gain (section 3 of the lit file).
+#### Used in
+- 2026-11-17: `testing/results/lit_polar_ratematch.md` section 3.
+
+### A20. "Stitched polar codes", 2025, arXiv 2511.19249 (authors not captured)
+- Link: https://arxiv.org/abs/2511.19249   - Type: paper   - Read depth: html, results section text only
+#### What it does
+New length-flexible construction, N = 256-8192, R = 1/3, 2/5, 1/2, SC and SCL-8 with CRC-11 at BLER 0.01: up to 0.3 dB
+better than QUP / BRS rate matching (SC).
+#### What we took / could take
+The size of the rate-matching sub-optimality: <= 0.3 dB (SC).
+#### Used in
+- 2026-11-17: `testing/results/lit_polar_ratematch.md` section 2.
+
+### A21. K. Niu, K. Chen, J.-R. Lin, "Beyond turbo codes: rate-compatible punctured polar codes", IEEE ICC 2013, pp. 3423-3427
+- Link: https://arxiv.org/abs/1612.01352 (journal follow-up)   - Type: paper   - Read depth: abstract snippet
+#### What it does
+QUP puncturing; M = 512, R = 0.5: "> 0.7 dB" gain at 1e-4 (snippet).
+#### What we took / could take
+Nothing (unverified number).
+#### Used in
+- 2026-11-17: `testing/results/lit_polar_ratematch.md` section 3 (unverified).
+
+### A22. V. Miloslavskaya, "Shortened polar codes", IEEE Trans. Inf. Theory 61(9), 4852-4865, 2015
+- Link: https://rune.une.edu.au/web/handle/1959.11/64594   - Type: paper   - Read depth: snippet
+#### What it does
+Shortening-pattern search for long codes; beats LDPC (snippet only).
+#### What we took / could take
+Nothing.
+#### Used in
+- 2026-11-17: `testing/results/lit_polar_ratematch.md` table 5 (reference only).
 
 ---
 
@@ -544,6 +646,10 @@ below our 0.03, so DA-KS over all known symbols is needed.
   `presentation/bler_fair_R*.png`.
 - 2026-11-15: `lit_card_sat.md` card 1 (V1.5.1 read; ID 13 unchanged): citation updated to V1.5.1 in
   `testing/comparison_data.py` / `comparison_full.md` (RCS2-13 card + "Real system" block) and `competitors.md` C1 / C15.
+- 2026-11-17: `testing/results/lit_rcs2_fullsystem.md` (full TC-LM transmitter spec: scrambler, CRC16 / CRC32,
+  turbo encoder, interleaver, puncturing, mapping, UW hex of IDs 2-4, 13, 14, 40-43; Table A-2 SS waveforms).
+- 2026-11-17: `testing/results/lit_turbo_db.md`: PDF not legible to the scout's tool; EN items taken from the
+  `lit_rcs2_fullsystem.md` extraction.
 
 ### C2. ETSI TR 101 545-4 V1.1.1 (2014), DVB-RCS2 Part 4: Guidelines for implementation and use of EN 301 545-2
 - Link: https://www.etsi.org/deliver/etsi_tr/101500_101599/10154504/01.01.01_60/tr_10154504v010101p.pdf   - Type: standard
@@ -559,6 +665,8 @@ assumption, a fair classic baseline, not a modern one.
 - 2026-11-15: `lit_dvbrcs2.md`; est4 `pre128 ML` / `pre128 M&M` design (expected_est4.md).
 - 2026-11-15: `comparison_full.md` RCS2 "Real system" blocks (CFO range 0.5-3 %, bench loss 0.5-0.6 dB;
   lit_card_sat.md 1.3-1.4).
+- 2026-11-17: `testing/results/lit_rcs2_fullsystem.md` (decoder: max-log-MAP, scaling 0.7, up to 8 iterations;
+  complexity 267 add + 159 CS per stage per SISO; Table 10.4 full rows ID 2 and BPSK ID 41).
 
 ### C3. ETSI TR 101 545-4 V1.2.1 (2026)
 - Link: https://www.etsi.org/deliver/etsi_tr/101500_101599/10154504/01.02.01_60/tr_10154504v010201p.pdf   - Type: standard
@@ -575,6 +683,7 @@ Confirms C2's "no algorithm" finding (ToC only). The DVB-RCS2 MODCOD thresholds 
 #### Used in
 - 2026-11-15: lit_dvbrcs2.md.
 - 2026-11-15: `lit_rates.md` 4.3; `comparison_full.md` RCS2 "Real system" blocks (rates) and section E.
+- 2026-11-17: `testing/results/lit_rcs2_fullsystem.md` (confirms Tables 10.4 / 10.8; no SS-TC-LM PER table).
 
 ### C4. O. Griebel, U. Wasenmüller et al., "Communication Performance vs. Implementation Trade-offs of Interpolation Techniques for FFT-Based Carrier Synchronization exemplified on DVB-RCS2", Adv. Radio Sci. 19, 59-70, 2021, doi:10.5194/ars-19-59-2021 (author initials and title corrected 2026-11-15 from the full text; full analysis: testing/results/lit_ars2021.md)
 - Link: https://ars.copernicus.org/articles/19/59/2021/   - Type: paper   - Read depth: full HTML (tables 1-2 are images, not read)
@@ -595,6 +704,7 @@ parabolic fast path is the deployed NDA baseline.
   2/5, 1/2. Blind's gaps to the best DVB-RCS2 variant unchanged: +0.80 / +0.15 / -0.14 / +0.49 / +0.54 dB.
 - 2026-11-15: `comparison_full.md` RCS2 "Real system" blocks (the one documented RCS2 implementation: loss 0.12-0.15 dB,
   |f| <= 0.015, constant phase; lit_card_sat.md 1); `competitors.md` fidelity table (C1, C15: ours stronger).
+- 2026-11-17: `testing/results/lit_rcs2_fullsystem.md` (decoder settings 0.75 / 8 it / 6-bit, genie FER anchors).
 
 ### C5. A. Ali, M. Wasenmuller, N. Wehn, "Feedforward carrier synchronization for pilotless bursts of DVB-RCS2", CSNDSP 2014, 342-347
 - Link: https://ieeexplore.ieee.org/document/6923851/   - Type: paper   - Read depth: abstract snippet only
@@ -622,6 +732,7 @@ DVB-RCS2 waveform generation; pilot period field 0 ... 4095.
 Field ranges (cross-check of C1).
 #### Used in
 - 2026-11-15: lit_dvbrcs2.md.
+- 2026-11-17: `testing/results/lit_rcs2_fullsystem.md` (payload = Frame PDU + CRC; P in [9, 255], Q in [0, 15]; SF 2-16).
 
 ### C8. MathWorks, "End-to-end DVB-RCS2 simulation with RF impairments and corrections for TC-LM bursts"
 - Link: https://www.mathworks.com/help/satcom/ug/end-to-end-dvb-rcs2-simulation-with-rf-impairments-and-corrections-for-tc-lm-bursts.html   - Type: app note   - Read depth: full page
@@ -735,6 +846,16 @@ est5 competitor C6 layout `vde27`: in the 1090-symbol window [k27][d13][k1]([d26
 - 2026-11-15: `lit_card_space.md` card 3 (resolves link ID 0, pi/4-QPSK, ramp 14), `lit_rates.md` 4.5;
   `competitors.md` C6 design-SNR correction (-2.4 / -0.6 dB; -4.5 dB is another format) and fidelity table;
   `comparison_full.md` VDE-SAT card (link-ID text fixed, "Real system" block) and section E.
+- 2026-11-17: `testing/results/lit_vdesat_fullsystem.md`: Annex 2 FEC (Tables 4-6), CRC-32, scrambler, Tables 9-11,
+  A5-2.5 spreading, A5-2.13 / Table 63 interleaver; phase-1 native formats Links 32, 33, 26, 34. G1139: cross-check of
+  the turbo code; the syncword must work at -2 dB; its Table 65 is measured data, not AWGN.
+- 2026-11-17: `testing/results/lit_vde_fec.md`: A2-1.2.4 to A2-1.2.6 turbo / CRC / scrambler, Table 4 re-aligned for
+  all Link IDs with arithmetic checks, Tables 5-6, A3-8 full test vector (scrambler seed 100101010000000 and pi/4-QPSK
+  map recovered from it), Table 63 re-read (Ac / Bc differ from lit_vdesat_fullsystem.md).
+- 2026-11-17: `testing/results/lit_vde_fec.md` sections 1-3, G1139 ed. 3 Annex A A1.2.4 (turbo code; chars 0-100k via a
+  reader): same turbo law, Table 4 rows (4, 8, 20, 34) and puncturing strings (IDs 2, 6, 7, 7a, 7b, 8) as M.2092-2,
+  so a second source for the puncturing positions; its OCR transfer-function order [1, n1/d, n0/d] is contradicted by
+  the M.2092-2 A3-8 example.
 
 ### C17. S. Ma, K. Shi, X. Meng, X. Li, "Frequency Offset Estimation Algorithm of VDES Signals Based on Cross-Correlation", IEEE ICCC 2018, pp. 1234-1238, doi:10.1109/CompComm.2018.8780774 (metadata corrected 2026-11-15 from Crossref; earlier "about 2019", authors unknown)
 - Link: https://ieeexplore.ieee.org/abstract/document/8780774   - Type: paper
@@ -1093,6 +1214,7 @@ demodulated.
 Real VDE-SAT receivers use DA R-B-type estimation on preamble + pilots: the same family as C6.
 #### Used in
 - 2026-11-15: `comparison_full.md` VDE-SAT "Real system" block (deployments, estimator).
+- 2026-11-17: `testing/results/lit_vdesat_fullsystem.md` section 3 (VDE-SAT receiver).
 
 ### C48. L. Nanna, R. Andreotti, M. Andrenacci, N. Alagha, "VDE-SAT Link ID 20 performance assessment under different random access conditions", IET Conference Proceedings 2022(29):241-247, published 2023, doi:10.1049/icp.2023.1393
 - Link: http://digital-library.theiet.org/doi/10.1049/icp.2023.1393   - Type: paper   - Read depth: metadata only
@@ -1467,6 +1589,236 @@ The only real-modem threshold table read (implementation losses included): 0.73-
   and section E (1/2 row).
 
 ---
+
+### C84. ITU-R Report M.2435-0 (2018), VDES characteristics and simulations
+- Link: https://www.itu.int/dms_pub/itu-r/opb/rep/R-REP-M.2435-2018-PDF-E.pdf   - Type: report
+- Read depth: search snippet only (the PDF / DOCX are over 10 MB and could not be fetched by the agent).
+#### What it does
+ITU-R simulations of the VDES / VDE-SAT links; snippet: "QPSK turbo 1/4: -1.5 dB at PER 1e-2" (unverified).
+#### What we took / could take
+The only AWGN PER reference found for VDE-SAT formats; needs to be opened by hand to validate our VDE-SAT implementation.
+#### Used in
+- 2026-11-17: `testing/results/lit_vdesat_fullsystem.md` section 4 (-1.5 dB at PER 1e-2, unverified).
+- 2026-11-17: `testing/results/lit_vde_fec.md` 0.4: 4.3.1 read in the local text: 88 info bits, QPSK turbo 1/4,
+  -1.5 dB at PER 1e-2, -0.3 dB at BER 1e-5 (AWGN) as the validation target.
+
+### C85. VDES satellite-component article, CEAS Space Journal, doi:10.1007/s12567-018-0214-8
+- Link: https://doi.org/10.1007/s12567-018-0214-8   - Type: paper
+- Read depth: full page.
+#### What it does
+Describes the VDE-SAT receiver side: E-SSA style detection, CRC check and successive interference cancellation.
+#### What we took / could take
+Receiver structure for the full-system VDE-SAT implementation (CRC-based acceptance).
+#### Used in
+- 2026-11-17: `testing/results/lit_vdesat_fullsystem.md` section 3 (E-SSA receiver, CRC + SIC).
+
+### C86. AFF3CT (A Fast Forward Error Correction Toolbox), DVB-RCS2 duo-binary turbo: `Interleaver_core_ARP_DVB_RCS2.cpp`, `Encoder_RSC_DB.cpp` (MIT licence)
+- Link: https://github.com/aff3ct/aff3ct (files under src/Tools/Interleaver/ARP/ and src/Module/Encoder/RSC_DB/)   -
+  Type: open-source code   - Read depth: interleaver file full; encoder file: polynomial vectors, circ_states table,
+  state-update logic (via a summariser)
+#### What it does
+Implements the EN 301 545-2 V1.3.1 16-state duo-binary RCS2 turbo code: P / Q0-Q3 for all 30 Table A-1 block sizes
+(56-2396 couples), the ARP permutation (P j + Q(j mod 4) + 3) mod N, the 14 x 16 circulation-state table, encoder taps
+A 1000, B 1101, Y 11101, W 10111, feedback 0011.
+#### What we took / could take
+The P / Q table and the circulation table (EN text garbled) for the RCS2 turbo implementation; a reference encoder to
+check ours bit-exactly.
+#### Used in
+- 2026-11-17: lit_rcs2_fullsystem.md 1.4.
+- 2026-11-17: `testing/results/lit_turbo_db.md`: encoder taps, circulation table (3 hand checks), ARP table, puncturing
+  masks, **AFF3CT interleaves with lut_inv (inverse of the EN 'read' form)**, decoder metric passing, op count.
+
+### C87. MathWorks, `dvbrcs2TurboDecode` / `dvbrcs2TurboEncode` (Satellite Communications Toolbox)
+- Link: https://www.mathworks.com/help/satcom/ref/dvbrcs2turbodecode.html   - Type: app note / reference code   - Read
+  depth: full page
+#### What it does
+Standard-compliant RCS2 duo-binary turbo decoder, default 8 iterations, rates 1/3-7/8; algorithm not named.
+#### What we took / could take
+A bit-exact cross-check of our encoder (level-1 / level-2 order, Z1 / Z2 order) if MATLAB is available.
+#### Used in
+- 2026-11-17: lit_rcs2_fullsystem.md 3.2, 6.
+- 2026-11-17: `testing/results/lit_turbo_db.md`: named as the bit-exact arbiter for the interleaver direction; LLR sign
+  positive = 1; 8 iterations default.
+
+### C88. O. Boxerman, M. Bensimon, S. Greenberg, Y. Ben-Shimol, "A novel reconfigurable vector-processed interleaving algorithm for a DVB-RCS2 turbo encoder", arXiv:2308.14128, 2023
+- Link: https://arxiv.org/abs/2308.14128 (HTML: https://arxiv.org/html/2308.14128, v2)   - Type: paper   - Read depth:
+  abstract; 2026-11-17 HTML full text via a summariser (lit_turbo_db.md)
+#### What it does
+Parallel DSP interleaving for the RCS2 turbo encoder; speed-up up to 3.4x total cycles vs serial. Vectorised DSP
+(CEVA-XC4500) version of the two-level interleaver; quotes eq. 1 (swap if j mod 2 = 1), eq. 2-3 (Pi(j) = (P j + Q + 3)
+mod N, Q = 0 / 4Q1 / 4Q0P + 4Q2 / 4Q0P + 4Q3); 11 block sizes 56-2396.
+#### What we took / could take
+Nothing for the hardware side (encoder only). Second source for the ARP formula; its "j odd" swap equals AFF3CT's
+"natural even" by the odd/even rule [derived] (lit_turbo_db.md).
+#### Used in
+- 2026-11-17: lit_rcs2_fullsystem.md source table (low relevance).
+- 2026-11-17: `testing/results/lit_turbo_db.md` sec. 2.1-2.2 (second copy of the interleaver equations; the scout's
+  entry C89 merged here).
+
+### C90. AFF3CT error_rate_references, TURBO_DB DVB-RCS2 curves
+- Link: https://github.com/aff3ct/error_rate_references (TURBO_DB/AWGN/BPSK/RSC_DB_RSC_DB/BCJR/)   - Type: data
+- Read depth: 4 files (N1880 / N2256 / N3008 ref + fnc / N4512, K = 1504)
+#### What it does
+Reference BER / FER of the RCS2 code with the exact AFF3CT command line (QPSK AWGN, max-log, adaptive SF, 8 it).
+#### What we took / could take
+FER validation targets for our Python decoder (e.g. rate 1/2 FER 1.22e-2 at Eb/N0 1.4 dB).
+#### Used in
+- 2026-11-17: `testing/results/lit_turbo_db.md` sec. 5.
+
+### C91. AFF3CT documentation: v4.5.0 Turbo DB / RSC DB codec parameters and simulation debug; turbo encoder and interleaver parameters (latest)
+- Link: https://aff3ct.readthedocs.io/en/v4.5.0/user/simulation/parameters/codec/turbo_db/decoder.html ;
+  https://aff3ct.readthedocs.io/en/latest/user/simulation/parameters/interleaver/interleaver.html   - Type: docs
+- Read depth: 4 doc pages (lit_turbo_db.md); turbo / interleaver pages (lit_vde_fec.md)
+#### What it does
+Flags: `--enc-sub-std DVB-RCS2`, `--dec-max MAX|MAXL|MAXS`, `--dec-sf-type ADAPTIVE (0.5, then 0.85) | LTE (0.75) |
+CST | ARRAY`, `--dec-crc-start`, `--sim-dbg` (prints every task's frames, hex option). The binary turbo codec has LTE /
+CCSDS presets and a USER interleaver read from a file; one-parity RSC.
+#### What we took / could take
+Recipe to dump bit-exact test vectors and the scaling options for the RCS2 competitor decoder. For VDE only a partial
+cross-check (Y0-only puncturing).
+#### Used in
+- 2026-11-17: `testing/results/lit_turbo_db.md` sec. 4.1, 5.
+- 2026-11-17: `testing/results/lit_vde_fec.md` section 5 (the scout's AFF3CT-docs entry merged here).
+
+### C92. M. Martina, G. Masera, "Improving Network-on-Chip-based turbo decoder architectures", arXiv 1105.1014 (2011)
+- Link: https://ar5iv.labs.arxiv.org/html/1105.1014   - Type: paper
+- Read depth: HTML (via a summariser)
+#### What it does
+NoC turbo decoders incl. WiMAX duo-binary (8-state, N = 1920, 8 iterations, max-log-MAP).
+#### What we took / could take
+Support for max-log-MAP being near log-MAP on duo-binary codes (no 16-state number).
+#### Used in
+- 2026-11-17: `testing/results/lit_turbo_db.md` sec. 4.1.
+
+### C93. IEEE 802.16 maintenance contributions C80216maint-05_149 and C80216maint-05_151 (CTC interleaver clarification)
+- Link: https://grouper.ieee.org/groups/802/16/maint/contrib/C80216maint-05_149.pdf ,
+  https://grouper.ieee.org/groups/802/16/maint/contrib/C80216maint-05_151.pdf   - Type: standards contribution
+- Read depth: search snippets only (PDF text not legible)
+#### What it does
+Reports that the 802.16 CTC text was ambiguous about the order of the couple swap and the permutation and about the
+address meaning of P(j).
+#### What we took / could take
+Precedent for our interleaver-direction ambiguity #1.
+#### Used in
+- 2026-11-17: `testing/results/lit_turbo_db.md` sec. 2.3.
+
+### C94. ETSI EN 302 583 V1.2.1, "DVB-SH: Framing structure, channel coding and modulation for satellite services to handheld devices below 3 GHz", section 5.3 (turbo code)
+- Link: https://www.etsi.org/deliver/etsi_EN/302500_302599/302583/01.02.01_60/en_302583v010201p.pdf   - Type: standard
+- Read depth: section 5.3 via a text reader
+#### What it does
+3GPP2 (cdma2000) turbo code: 8-state RSC, d = 1+D^2+D^3, n0 = 1+D+D^3, n1 = 1+D+D^2+D^3, rates 1/5-2/3 by puncturing,
+6-clock tail (RSC1 then RSC2), own bit-reversal interleaver (L = 1146 / 12282).
+#### What we took / could take
+Confirms the VDE constituent code and termination; its interleaver is not used by VDE.
+#### Used in
+- 2026-11-17: `testing/results/lit_vde_fec.md` sections 1, 3.
+
+### C96. J. H. Kim, "SIMULINK Modeling and FPGA Implementation of Turbo Decoder for VDES Receiver", J. KICS 50(3), 489-, March 2025, doi:10.7840/kics.2025.50.3.489
+- Link: https://d2j16w31g89z0j.cloudfront.net/journal/jkics/fullText/1387/jkics-2503-12.pdf   - Type: paper
+- Read depth: text via a reader (figures not readable)
+#### What it does
+VDES turbo decoder: log-MAP (128-entry max* LUT), sliding window 32, 6 iterations, on-the-fly interleaver, max input
+6032 bits, Xilinx ZCU104 at 43.008 MHz, < 10 ms per block. PER 1 % at Es/N0 2.1 dB (Link 11, 432 bits, 1/2,
+pi/4-QPSK), 1.5 dB (Link 17, 1872), 13 dB (Link 19, 5616, 3/4, 16QAM).
+#### What we took / could take
+Reference PER points and decoder settings for the VDE turbo baseline.
+#### Used in
+- 2026-11-17: `testing/results/lit_vde_fec.md` sections 4, 6.
+
+### C97. MathWorks, comm.TurboEncoder / comm.TurboDecoder System objects
+- Link: https://www.mathworks.com/help/comm/ref/comm.turboencoder-system-object.html   - Type: vendor documentation
+- Read depth: page
+#### What it does
+Turbo encoder with any rate-1/N RSC trellis (e.g. `poly2trellis(4,[13 15 17],13)` = the VDE RSC), any interleaver
+permutation, custom output indices, per-encoder tails at the end.
+#### What we took / could take
+Independent cross-check of our Python codec (not run: no MATLAB).
+#### Used in
+- 2026-11-17: `testing/results/lit_vde_fec.md` section 5.
+
+### C99. P. Robertson, E. Villebrun, P. Hoeher, "A comparison of optimal and sub-optimal MAP decoding algorithms operating in the log domain", Proc. IEEE ICC 1995, 1009-1013
+- Link: https://ieeexplore.ieee.org/document/524253   - Type: paper   - Read depth: abstract (search result)
+#### What it does
+Log-MAP = MAP; SOVA ~0.7 dB worse at BER 1e-4; max-log-MAP in between; complexity in the same order.
+#### What we took / could take
+Log-MAP vs max-log-MAP choice for the VDE baseline; the op counts are the scout's own derivation.
+#### Used in
+- 2026-11-17: `testing/results/lit_vde_fec.md` section 4.
+
+### C100. "Iterative Decoding Algorithm for VDES Signals", Proc. ICDSP 2020 (ACM), doi:10.1145/3408127.3408158
+- Link: https://dl.acm.org/doi/10.1145/3408127.3408158   - Type: paper   - Read depth: search snippet only (ACM 403)
+#### What it does
+BCJR / factor-graph iterative decoding for VDES (QPSK, 8PSK, 16QAM, 16APSK); results not read.
+#### What we took / could take
+Nothing yet.
+#### Used in
+- 2026-11-17: `testing/results/lit_vde_fec.md` section 6 (unread).
+
+### C104. NVIDIA Sionna, `Polar5GEncoder` source
+- Link: https://raw.githubusercontent.com/NVlabs/sionna/main/src/sionna/phy/fec/polar/encoding.py   - Type: code
+- Read depth: code read
+#### What it does
+38.212 polar encoding with rate matching in Python; K <= 1013, E <= 1088, no segmentation.
+#### What we took / could take
+The 32-entry sub-block interleaver P table and the 9/8 rule; its extra (pre-)freezing is off by one vs A17 (noted).
+#### Used in
+- 2026-11-17: `testing/results/lit_polar_ratematch.md` 1.3-1.4 (proposed).
+
+### C105. MathWorks, "5G New Radio polar coding" example
+- Link: https://www.mathworks.com/help/5g/gs/polar-coding.html   - Type: vendor doc   - Read depth: page
+#### What it does
+NR polar chain with rate recovery, K = 54, E = 124, L = 8; no BLER numbers.
+#### What we took / could take
+Rate-recovery LLR conventions: punctured LLR 0, shortened LLR large.
+#### Used in
+- 2026-11-17: `testing/results/lit_polar_ratematch.md` 1.4.
+
+### C106. MathWorks, `nrUCIEncode`
+- Link: https://www.mathworks.com/help/5g/ref/nruciencode.html   - Type: vendor doc   - Read depth: search snippet
+#### What it does
+NR UCI encoding with code-block segmentation when A >= 1013, or A >= 360 and E >= 1088.
+#### What we took / could take
+The NR segmentation condition (not adopted: we lift n_max instead).
+#### Used in
+- 2026-11-17: `testing/results/lit_polar_ratematch.md` 1.2.
+
+### C108. B. Coskun et al., "Efficient error-correcting codes in the short blocklength regime", Physical Communication 2019, arXiv 1812.08562
+- Link: https://arxiv.org/abs/1812.08562   - Type: paper   - Read depth: ~93 % of the html
+#### What it does
+Survey with simulations at (128,64) and (512,256): polar with CRC-16, L = 32 ~ turbo at (512,256); LTE turbo -0.4 dB vs
+the 16-state turbo at (128,64).
+#### What we took / could take
+The closest published polar vs turbo comparison to our K (code-only gain).
+#### Used in
+- 2026-11-17: `testing/results/lit_polar_ratematch.md` section 3.
+
+### C109. G. Liva, L. Gaudio, T. Ninacs, T. Jerkovits, "Code design for short blocks: a survey", 2016, arXiv 1610.00873
+- Link: https://arxiv.org/abs/1610.00873   - Type: paper   - Read depth: html
+#### What it does
+Survey at (128,64) only: the 16-state turbo is 0.4 dB from the RCB at 1e-4.
+#### What we took / could take
+Nothing (k = 64 only).
+#### Used in
+- 2026-11-17: `testing/results/lit_polar_ratematch.md` section 3 (reference only).
+
+### C110. M. Shirvanimoghaddam et al., "Short block-length codes for ultra-reliable low latency communications", IEEE Commun. Mag. 2019, arXiv 1802.09166
+- Link: https://arxiv.org/abs/1802.09166   - Type: paper   - Read depth: html
+#### What it does
+Survey, N = 128; K = 40 and 1000 curves: CA-polar 0.5 dB from the normal approximation, turbo > 1 dB.
+#### What we took / could take
+Nothing.
+#### Used in
+- 2026-11-17: `testing/results/lit_polar_ratematch.md` section 3 (reference only).
+
+### C112. M. Sybis, K. Wesolowski, K. Jayasinghe, V. Venkatasubramanian, V. Vukadinovic, "Channel coding for ultra-reliable low-latency communication in 5G systems", IEEE VTC-Fall 2016
+- Link: https://nokia.com/bell-labs/publications-and-media/publications/channel-coding-for-ultra-reliable-low-latency-communication-in-5g-systems
+- Type: paper   - Read depth: search snippet only (HTTP 403)
+#### What it does
+Comparison of 5G candidate codes at 40 / 200 bits (not read).
+#### What we took / could take
+Nothing.
+#### Used in
+- 2026-11-17: `testing/results/lit_polar_ratematch.md` section 3 (unverified).
 
 ## D. Blind / non-coherent polar, phase ambiguity, blind detection
 

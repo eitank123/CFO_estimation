@@ -2,7 +2,7 @@
 
     py BLIND_IMPLEMENTATION/testing/plot_thresholds.py
 
-results/plots/thresholds/
+results/plots/original_study/thresholds/
   thr_gate_<point>.png   retry gate: x = share of the code-aided retries the gate skips, left = MACs per core saved,
                          right = BLER (with the gate vs without); the two chosen settings marked and explained.
                          Offline replay on the test packets of the decode dumps.
@@ -25,7 +25,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 ROOT = os.path.dirname(os.path.dirname(HERE))
 RES = os.path.join(ROOT, "small_cfo", "blind", "results")
-PL = os.path.join(HERE, "results", "plots", "thresholds")
+PL = os.path.join(HERE, "results", "plots", "original_study", "thresholds")
 os.makedirs(PL, exist_ok=True)
 BLUE, ORANGE, GREY, GREEN, RED = "#2a78b8", "#e07b28", "#5a5a5a", "#2e9e4f", "#c8423b"
 plt.rcParams.update({"font.size": 11})

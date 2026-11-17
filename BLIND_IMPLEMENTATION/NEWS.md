@@ -4,6 +4,74 @@ Newest first. One item per research result. Details in the linked files; sources
 
 ---
 
+## 2026-11-18 01:05 (full system, VDE-SAT) — One phase guess: the VDE MAC floor drops from 0.31 to 0.21 M per core
+- The floor (~0.31 M per core at every SNR above -5 dB) was 58 % CFO-grid work: 513 frequency x phase hypotheses per
+  packet, each partly decoded. For BPSK the squared signal already fixes the phase mod pi, so the second phase guess per
+  cell was insurance; dropping it halves the grid.
+- Paired over three fresh seeds (180k packets at -4.6 dB, 60k at -5.0): 58 vs 59 and 215 vs 214 errors (within the 2 %
+  rule), mean MACs -31 ... -33 % at every SNR; vs the receiver before tuning -50 ... -65 %. Blind ~8x VDE-SAT's cost at
+  the operating point (was ~16x), still 1.15 dB ahead in Eb/N0.
+- Also tested: NN checkpoint 1/8 or 3/16 (no gain), CFO grid step 6 (fails). Retune around one phase guess (fs-jtv32n)
+  found final 0 + other changes, not adopted without a live check.
+- Plots updated: VDE-SAT/overview/fs_vde32_final.png, VDE-SAT/MACs/. Summary: testing/results/summary_fullsys_2026-11-18.md.
+
+## 2026-11-18 00:40 (full system, DVB-RCS2) — Jointly tuned blind: same BLER, MACs down only in the waterfall
+- Settings per ID (live combinations on calibration packets; the offline replay cannot model DVB's joint list
+  decodes): ID 13 final 16 + win 4.5 + shortlist 99.7 %/8; ID 42 final 8 + win 4.0 + 99.7 %/8; ID 3 final 8 + win 4.5;
+  ID 14 final 8 + win 4.0 + 99 %/4. F5 thresholds as before.
+- Fresh test packets, paired with the receiver before tuning: BLER unchanged; gap to DVB-RCS2 at BLER 1e-3 +0.29 /
+  +0.29 / +0.58 / +0.24 dB (ID 13 / 42 / 3 / 14). Mean MACs per core: ID 14 -46 ... -23 % and ID 42 -14 ... -7 % in the
+  waterfall, ~0 % at the operating point; ID 13 ~0 %; ID 3 +1 ... +9 %. DVB had little slack left (no batch schedule,
+  F5 already tuned), unlike VDE.
+- Plots: [DVB-RCS2/overview/fs_tuned_*.png](testing/results/plots/DVB-RCS2/overview/). Tables:
+  fullsys/results/dvb_tuned_tables.md. Record: testing/results/tuning_fullsys.md.
+
+## 2026-11-18 00:30 (full system, VDE-SAT) — Jointly tuned blind: same BLER, 26-63 % fewer MACs, worst case 8.4 -> 3.0 M
+- New tooling: a full-search log mode (`run_blind_fs --fulllog`) and an offline joint tuner (`fullsys/joint_tune_fs.py`)
+  that replays the whole search for any combination of shortlist / z-test / final-list settings; its self-check
+  reproduces all 50k logged packets exactly, and the live check of its pick matched the replay to 0.002 M per core.
+- Adopted VDE receiver: VDE-trained checkpoint NN + batch null on 32 cores + final 4 + z-test window 4.0 + shortlist
+  99.7 % / at least 4 cells; F5 tuned but left out (~2 % for extra risk).
+- Fresh test packets, paired with the receiver before tuning: identical failing packets; mean MACs per core 2.20 / 0.74 /
+  0.33 / 0.31 M at -6.6 / -5.8 / -5.0 / -4.6 dB (was 5.88 / 1.67 / 0.46 / 0.42). BLER 1e-3 still 1.15 dB below VDE-SAT
+  (sync word + pilots charged); blind costs ~11x VDE-SAT's ~0.03 M at the operating point (was ~16x).
+- Caught on the way: `batch: null` without `cores` costed the search on one core per grid cell (~249 cores); the first
+  "-41 ... -69 %" numbers were that artefact (fair: -26 ... -36 % for batch null + final 16 alone).
+- Plots: [fs_vde32_final.png](testing/results/plots/VDE-SAT/overview/fs_vde32_final.png),
+  [fs_vde_tuned_macs_capped.png](testing/results/plots/VDE-SAT/MACs/fs_vde_tuned_macs_capped.png),
+  [fs_vde_tuned_capped.png](testing/results/plots/VDE-SAT/MACs/fs_vde_tuned_capped.png). Record: testing/results/tuning_fullsys.md.
+
+## 2026-11-17 14:00 (full system, ID 13) — Blind beats DVB-RCS2 by 0.34 dB at BLER 1e-3, at ~3-4x the MACs
+- DVB-RCS2 ID 13 (rate 1/3, 952-bit payload, 140 known symbols) with its own data-aided CFO estimate at +-0.03 vs blind
+  (no known symbols, same payload, same 2952 coded bits, rate-matched polar N 4096 with GA construction, CA-SCL-8).
+- Eb/N0 per payload bit at BLER 1e-3, known symbols charged: blind 1.28 dB vs DVB-RCS2 1.62 (+0.34); at 1e-4 +0.13
+  (few errors). Blind sends 9.5 % fewer symbols for the same payload.
+- MACs per core: blind 0.39-0.80 M vs DVB-RCS2 0.175 M (early stops not yet tuned; tuning on separate calibration
+  packets, validated by replay on the test packets).
+- Two fixes were needed: a rate-matching-aware polar construction (GA, +0.35-0.4 dB) and a random channel interleaver
+  (without it a pi/2 QPSK rotation maps codewords to codewords and 37 % of packets fail; see 01_signal_model.md).
+- Plot: [fs_id13_blind.png](testing/results/plots/DVB-RCS2/superseded/fs_id13_blind.png). Next: ID 42, then ID 3.
+
+## 2026-11-17 11:40 (full-system build) — DVB-RCS2 and polar rate matching coded; their published curves collected
+- `fullsys/turbo_db.py` + `rcs2.py`: DVB-RCS2 TC-LM (IDs 3, 13, 14, 42), self-test 36/36; `fullsys/polar_rm.py`: NR-style
+  polar rate matching up to N = 4096, self-test 43/43, verifier PASS WITH FIXES (fixes in progress). VDE-SAT being coded.
+- Their published curves: [plots/DVB-RCS2/BLER/fullsys_refs.png](testing/results/plots/DVB-RCS2/BLER/fullsys_refs.png). AFF3CT's full K = 1504
+  rate-1/2 curve hits the TR 101 545-4 ID 14 values (1e-3 at 1.47 vs 1.49 dB): two independent targets agree.
+- User decisions: blind carries the same payload + CRC-32 (952 + 32 at ID 13); ID 14 run both shortened and punctured;
+  ID 42 blind on pi/2-BPSK and on QPSK. Standards PDFs in [testing/results/standards/](testing/results/standards/).
+
+## 2026-11-17 10:20 (fixed-search test done) — With a correct CFO search, DVB-RCS2 is 0.20 dB behind blind at 1/10 (was 0.69)
+- Three code reviews found holes in several competitors' CFO searches (blind's lead overstated). Re-run of the three key
+  ones, 9 jobs, all clean, done in ~25 min:
+  - **DVB-RCS2 ID 13**, search widened to +-1e-2 (its split pre/postamble makes side peaks across the range): 1/10
+    **-4.58 dB (+0.20)**, was -4.09 (+0.69); 0.15 and 2/5 unchanged. Predicted -4.80 ... -4.65: missed (some loss remains).
+  - **128-symbol preamble ML** (control): reproduces its old numbers; pooled 1/10 now **-4.72 (+0.06): a tie with blind**.
+  - **VDE-SAT** with the unclipped window: still misses 0.6-2 % of packets at 1/10, still fails 1e-4; the full-range scan
+    is running (fx-s10, fx-s15).
+- At 0.15 @1e-4 the pilot receivers still beat blind (DVB-RCS2 -0.16 ... -0.19, 128 ML -0.17); 2/5, 1/2 unchanged.
+- Updated: scoreboard.md, curves_* and fx_R* figures, presentation bler_fair / macs_fair (fixed DVB-RCS2 solid, old dashed),
+  READMEs. Details: testing/results/expected_fx.md.
+
 ## 2026-11-17 (DVB-S2 header runs done at 0.15 and 2/5) — The DVB-S2 90-symbol header beats blind by 0.30 dB at R = 0.15, BLER 1e-4
 - Real DVB-S2 PL header (90 known symbols, CFO scanned over the whole range): R = 0.15 **-3.23 dB @1e-4 vs blind -2.93
   (-0.30)**, the largest loss for blind so far (DVB-RCS2 / 128 ML were -0.19 / -0.20). @1e-3 -3.57 vs -3.60: tie.

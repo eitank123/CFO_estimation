@@ -77,6 +77,10 @@ if NOINT:
 # code (sc_code: N-2, N-1 decoded as free bits) and the blind decoder (PiCodeRB). Read at import, as BLIND_NOINT
 ROTBITS = os.environ.get("BLIND_ROTBITS", "") == "1"
 assert not ROTBITS or NOINT, "BLIND_ROTBITS=1 needs BLIND_NOINT=1 (no interleaver)"
+# (fullsys/blind_fmt.py) the active rate-matched format, None = the 1024-symbol N = 2048 packet (the baseline). Set only
+# inside blind_fmt.BlindFormat's context manager, which also sets N_SYM / N_BITS / NC / STEP / NFFT4 / INTERLEAVER (the
+# virtual-bit -> mother x position map) and restores them on exit; llrs then rate-recovers to N mother LLRs
+FMT = None
 
 
 def path(kind, name):
@@ -192,6 +196,15 @@ def phase4(r, f):
     return th if f.ndim == 2 else th[:, 0]
 
 
+def phase2(r, f):
+    """(blind_fmt, BPSK as virtual QPSK b (1 + j) / sqrt2) centre phase mod pi from the square at CFO f (B,) or (B, P):
+    r^2 = j exp(j (2 pi 2f nc + 2 theta_c)), theta_c = (angle - pi/2) / 2."""
+    f2 = f if f.ndim == 2 else f[:, None]
+    A = np.einsum("bn,bpn->bp", r ** 2, np.exp(np.einsum("bp,n->bpn", -2j * np.pi * 2 * f2, NC)))
+    th = (np.angle(A) - np.pi / 2) / 2
+    return th if f.ndim == 2 else th[:, 0]
+
+
 _tmpl = None
 
 
@@ -226,6 +239,8 @@ def resolve(nu, f_ref):
 def llrs(r, fh, th, sigma2, interleave=True):
     """De-interleaved channel LLRs (B, N_BITS) of r (B, N) de-rotated by CFO fh (B,) and centre phase th (B,)."""
     y = r * np.exp(-1j * (2 * np.pi * fh[:, None] * NC + th[:, None]))
+    if FMT is not None:                                      # (blind_fmt) rate-matched: virtual QPSK -> N mother LLRs
+        return FMT.llrs(y, sigma2)
     llr = np.empty((len(r), N_BITS))
     llr[:, 0::2] = np.sqrt(2) * y.real / sigma2
     llr[:, 1::2] = np.sqrt(2) * y.imag / sigma2

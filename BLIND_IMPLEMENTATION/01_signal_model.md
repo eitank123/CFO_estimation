@@ -5,7 +5,8 @@
 - **Polar code:** N = 2048. The information set is chosen by the polarization-weight (PW) reliability order, and the frozen bits are 0.
   - In u, the CRC bits follow the data in the same order (`polar.PolarCode`).
   - Codeword: x = u·G_N, with G_N = F^{⊗11} and F = [[1,0],[1,1]].
-- **Interleaver:** a fixed random permutation of the 2048 coded bits (seed 12345).
+- **Interleaver:** a fixed random permutation of the 2048 coded bits (seed 12345). **It is a required part of the
+  blind system, not an option** (see "Why the bit interleaver is required" below).
 - **QPSK mapping:** bits (2n, 2n+1) map to the symbol
 
 $$s_n = \frac{(1-2c_{2n}) + j(1-2c_{2n+1})}{\sqrt2},\qquad n=0,\dots,1023 .$$
@@ -24,6 +25,31 @@ $$r_n = g(f)\,s_n\,e^{j(2\pi f (n+5)+\varphi)} + w_n,\qquad w_n\sim\mathcal{CN}(
 
 - **SNR:** the matched-filter output SNR equals E_s/N_0 exactly (unit-energy RRC).
 - **CFO loss:** g(f) = Σ_k h_k² cos(2πfk/8) ≤ 1 is the MF's CFO loss. It is removed by the pre-MF correction (stage 1).
+
+## Why the bit interleaver is required (found 2026-11-17)
+The receiver tests the carrier phase only modulo π/2 by search and resolves π with PiCode. This works only if the
+**four QPSK rotations of a codeword are distinguishable by the decoder**. Without a bit interleaver they are not:
+- A Gray-QPSK symbol carries two adjacent code bits (x_2m, x_2m+1). Rotating it by π/2 maps them to
+  (x_2m+1 ⊕ 1, x_2m).
+- For a polar code that is the index translation i → i ⊕ 1 (an automorphism of the code) plus the word "ones at
+  the even positions", which is itself a codeword (u = e_{N-2}, an information bit).
+- So **a π/2-rotated codeword is another codeword**. The two π/2 phase branches give *identical* path metrics, the
+  receiver cannot tell them apart, and it picks branch 0 whenever they tie. Every packet whose true phase lies in the
+  other π/2 half fails (or, worse, passes the CRC with the wrong data if the CRC cannot tell).
+
+A fixed pseudo-random permutation of the coded bits before QPSK mapping (seed 12345 here) splits the pairs, so a
+rotation no longer maps codewords to codewords. The decoder's metric then identifies the right branch. A GF(2) rank
+check confirms it: for the rate-matched ID 13 code, rank([G; rotated G]) is 984 = K without the interleaver (the
+rotated code equals the code) and 1967 with it.
+
+How it was found: on the full-system formats (fullsys/blind_fmt.py) the 5G NR sub-block interleaver of the rate
+matching keeps bit pairs together and the extra random interleaver had been left out. Blind then failed 37 % of the
+packets at every SNR, with p_m_br0 == p_m_br1 in 199 of 200 packets and 72 of 73 failures in one π/2 half of the true
+phase, while the same code with genie sync (true phase given) was fine. The fix restores the random channel
+interleaver over the E sent bits (same on Tx and Rx). The earlier dead end "OLD receiver without the bit
+interleaver" ([DEAD_ENDS.md](DEAD_ENDS.md)) is the same effect at the native format. A receiver that instead uses
+the symmetry (PiCode4, one decode for all 4 rotations) works only when the interleaver is absent and has its own
+undetected-error problem ([testing/results/expected_eq.md](testing/results/expected_eq.md)).
 
 ## Conventions used everywhere
 - **f:** CFO in **cycles per symbol**, |f| ≤ MAX_CFO = 0.03. It is uniform per packet, and the phase φ is uniform.

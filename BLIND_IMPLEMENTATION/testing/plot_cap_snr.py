@@ -25,7 +25,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 RES = os.path.join(ROOT, "small_cfo", "blind", "results")
 EST3 = os.path.join(ROOT, "est3", "results")
-OUT = os.path.join(HERE, "results", "plots", "cap")
+OUT = os.path.join(HERE, "results", "plots", "original_study", "cap")
 CAPS = {"0.5 M": 34, "1 M": 40, "2 M": 46, "5 M": 54, "10 M": 60}   # bin index k: cap = 10^(4 + k/20)
 PRES = {"1/10": "S blind final v2", "0.15": "S blind final v2", "2/5": "S blind final 2/5, 1/2, best-first 32",
         "1/2": "S blind final 2/5, 1/2"}

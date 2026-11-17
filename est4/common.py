@@ -161,6 +161,31 @@ NDA4_WIN = ("hyb3-pre48",)                                # run_bler window from
                                                           # precision of the summed spectrum, not the 48 DA symbols)
 WIN_MAX = ("hyb3-pre48 wide",)                            # run_bler window from max(crb_nda4, crb_known): at 1/10, 0.15 the
                                                           # 4th power is noise and f_hat has the 48-symbol DA precision
+# fixed CFO search of two competitors (code review 2026-11-17); new sources, their parents unchanged (McNemar-paired:
+# the same layouts, so the same bursts packet for packet)
+SOURCES.update({
+    "RCS2-13 wide": ("rcs13", "rb", "const"),             # F1: RCS2-13, CRC-search window >= +-WIN_HALF (the noise-free
+                                                          # known-symbol spectrum has pre/post fringes at +-9.72e-4,
+                                                          # +-1.84e-3, +-2.73e-3 (|X| 62.6 / 60.8 / 60.1 vs 116), 13 / 25
+                                                          # / 36 steps away: M = 3 missed them); est4 branch as RCS2-13
+                                                          # (metric-ordered, as pre128 ML with its M = 36), 1st decode f_hat
+    "VDE-SAT fixed": ("vde27", "vdef", "const")})         # F2: VDE-SAT, R-B window f0 +- 1/54 not clipped to |nu| <= MAX_CFO
+                                                          # (always one full alias period), +-2 alias lobes, alias window
+                                                          # x ALIAS_WIN; est5 branch (range-filtered lobe centres)
+FIX = ("RCS2-13 wide", "VDE-SAT fixed")
+FIX5 = ("VDE-SAT fixed",)                                 # run_bler: the est5 search branch ("RCS2-13 wide" keeps the est4
+                                                          # branch of RCS2-13: only its window differs)
+PARENT.update({"RCS2-13 wide": "RCS2-13", "VDE-SAT fixed": "VDE-SAT"})
+WIN_HALF = {"RCS2-13 wide": 1e-2}                         # run_bler window M >= ceil(half / STEP) (1e-2: M = 134; the pre/post fringes continue at ~60/116 height across the range, 2026-11-17)
+SRC_LOBES["VDE-SAT fixed"] = (float(VDE_DP + 1), 2)       # syncword errors > 3/54 land on |m| = 2 (VDE-SAT keeps 1)
+ALIAS_WIN = {"VDE-SAT fixed": 1.7}                        # run_bler window of the |m| > 0 hypotheses: the CRB window x 1.7
+                                                          # (the alias peak is 0.59 of the true one: ~1.7 x the rms error)
+SOURCES["VDE-SAT scan"] = ("vde27", "vdef", "const")      # F2b (2026-11-17): VDE-SAT with the full-range CRC scan of the DVB-S2
+SCAN = SCAN + ("VDE-SAT scan",)                           # header (k STEP over +-MAX_CFO, no lobes): the smoke showed "VDE-SAT
+SRC_LOBES["VDE-SAT scan"] = (0.0, 0)                      # fixed" still misses 0.2 % (in-search 0.9979 at 0.15 -3.5 dB)
+FIX = FIX + ("VDE-SAT scan",)
+FIX5 = FIX5 + ("VDE-SAT scan",)
+PARENT["VDE-SAT scan"] = "VDE-SAT"
 
 
 def _segments(name):

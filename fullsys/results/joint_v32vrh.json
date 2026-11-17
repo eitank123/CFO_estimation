@@ -1,0 +1,155 @@
+{
+ "meta": {
+  "args": {
+   "calib": [],
+   "test": [
+    "fs-flv32tam62",
+    "fs-flv32tam58",
+    "fs-flv32tbm54",
+    "fs-flv32tbm50",
+    "fs-flv32tcm46"
+   ],
+   "name": "v32vrh",
+   "setting": "{\"cores\": 32, \"ck_min\": 4, \"win\": 4.5, \"final\": 8, \"ck_keep\": 0.01}",
+   "grid": null,
+   "rel": 0.02,
+   "restarts": 2,
+   "seed": 1,
+   "workers": 8,
+   "no_honest_kc": false,
+   "objective": "rel",
+   "check_only": false,
+   "no_strict": false
+  },
+  "approx": "unlogged decodes counted failed (n_unl per setting)"
+ },
+ "chosen": {
+  "cores": 32,
+  "ck_min": 4,
+  "win": 4.5,
+  "final": 8,
+  "ck_keep": 0.01
+ },
+ "test": {
+  "parts": [
+   "fs-flv32tam62",
+   "fs-flv32tam58",
+   "fs-flv32tbm54",
+   "fs-flv32tbm50",
+   "fs-flv32tcm46"
+  ],
+  "selfcheck": {
+   "ok": true,
+   "mismatch": {
+    "passed": 0,
+    "right": 0,
+    "stage": 0
+   },
+   "max_rel_cost_err": {
+    "macs": 0.0,
+    "cpar": 0.0,
+    "c_d4a": 0.0,
+    "c_hd4a": 0.0
+   },
+   "unlogged": 0,
+   "side_vs_own_mismatch": 0,
+   "packets": 50000,
+   "errors": 1538
+  },
+  "rows": [
+   {
+    "part": "fs-flv32tam62",
+    "esn0": -6.2,
+    "n": 2000,
+    "err_base": 772,
+    "err": 752,
+    "lost": 0,
+    "gained": 20,
+    "mean_base": 2379465.893828125,
+    "mean": 1729729.328140625,
+    "p99_base": 5173310.25,
+    "p99": 3739550.75,
+    "max_base": 5173820.875,
+    "max": 3740061.375,
+    "unl_near": 4116,
+    "unl_far": 2412
+   },
+   {
+    "part": "fs-flv32tam58",
+    "esn0": -5.8,
+    "n": 4000,
+    "err_base": 512,
+    "err": 502,
+    "lost": 0,
+    "gained": 10,
+    "mean_base": 1070920.158,
+    "mean": 822207.05653125,
+    "p99_base": 5173310.25,
+    "p99": 3739550.75,
+    "max_base": 5173310.25,
+    "max": 3739550.75,
+    "unl_near": 2592,
+    "unl_far": 1722
+   },
+   {
+    "part": "fs-flv32tbm54",
+    "esn0": -5.4,
+    "n": 8000,
+    "err_base": 191,
+    "err": 187,
+    "lost": 0,
+    "gained": 4,
+    "mean_base": 480974.3245390625,
+    "mean": 422624.526453125,
+    "p99_base": 5173310.25,
+    "p99": 3739550.75,
+    "max_base": 5173310.25,
+    "max": 3739550.75,
+    "unl_near": 936,
+    "unl_far": 602
+   },
+   {
+    "part": "fs-flv32tbm50",
+    "esn0": -5.0,
+    "n": 16000,
+    "err_base": 62,
+    "err": 58,
+    "lost": 0,
+    "gained": 4,
+    "mean_base": 338343.45131445315,
+    "mean": 330543.44707617187,
+    "p99_base": 672717.78125,
+    "p99": 493497.84375,
+    "max_base": 5173310.25,
+    "max": 3739550.75,
+    "unl_near": 282,
+    "unl_far": 180
+   },
+   {
+    "part": "fs-flv32tcm46",
+    "esn0": -4.6,
+    "n": 20000,
+    "err_base": 1,
+    "err": 1,
+    "lost": 0,
+    "gained": 0,
+    "mean_base": 310993.9633078125,
+    "mean": 313979.2430578125,
+    "p99_base": 314277.90625,
+    "p99": 314277.90625,
+    "max_base": 5173310.25,
+    "max": 3739550.75,
+    "unl_near": 0,
+    "unl_far": 4
+   }
+  ]
+ },
+ "log": [
+  "TEST self-check OK: {'mismatch': {'passed': 0, 'right': 0, 'stage': 0}, 'max_rel_cost_err': {'macs': 0.0, 'cpar': 0.0, 'c_d4a': 0.0, 'c_hd4a': 0.0}, 'unlogged': 0, 'side_vs_own_mismatch': 0, 'packets': 50000, 'errors': 1538}",
+  "   fs-flv32tam62  -6.20 n   2000 err   772 ->   752 (lost 0, gained 20) mean 2.3795 -> 1.7297 M max 5.174 -> 3.740 M unl 4116/2412",
+  "   fs-flv32tam58  -5.80 n   4000 err   512 ->   502 (lost 0, gained 10) mean 1.0709 -> 0.8222 M max 5.173 -> 3.740 M unl 2592/1722",
+  "   fs-flv32tbm54  -5.40 n   8000 err   191 ->   187 (lost 0, gained 4) mean 0.4810 -> 0.4226 M max 5.173 -> 3.740 M unl 936/602",
+  "   fs-flv32tbm50  -5.00 n  16000 err    62 ->    58 (lost 0, gained 4) mean 0.3383 -> 0.3305 M max 5.173 -> 3.740 M unl 282/180",
+  "   fs-flv32tcm46  -4.60 n  20000 err     1 ->     1 (lost 0, gained 0) mean 0.3110 -> 0.3140 M max 5.173 -> 3.740 M unl 0/4"
+ ]
+}

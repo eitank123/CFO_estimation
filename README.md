@@ -22,7 +22,8 @@ Part A, so the switch back is instant. Those AWGN runs are reported in Part A an
   [BLIND_IMPLEMENTATION/README.md](BLIND_IMPLEMENTATION/README.md)** (architecture, formulas, current numbers). With
   the pilot energy charged, the adopted testing receiver (0 known symbols) needs -4.78 dB at R = 1/10 (BLER 1e-4),
   -3.60 / -2.93 dB at 0.15 (1e-3 / 1e-4), 0.58 dB at 2/5 and 1.73 dB at 1/2 (1e-3). Against 31 receivers of 12
-  deployed preamble / pilot systems it is the best or tied everywhere except R = 0.15 at 1e-4 (0.14-0.31 dB behind
+  deployed preamble / pilot systems it is the best or tied everywhere except R = 0.15 at 1e-4 (at 1/10 the 128 preamble
+  ML ties it, +0.06 dB, and DVB-RCS2 with a corrected CFO search is 0.20 dB behind) (0.14-0.31 dB behind
   the DVB-S2 header, DVB-RCS2, 128 ML, CCSDS-inspired; the DVB-S2 90-symbol header at 1/10 is still open), at 2-7x the MACs per core of the cheap pilot receivers
   ([scoreboard](BLIND_IMPLEMENTATION/testing/results/scoreboard.md)). A.16-A.17 below are the history of that study.
 * **AWGN, full Tx/Rx chain (A.1–A.5, verified).** A CFO of up to 0.2 Rs before the matched filter costs every

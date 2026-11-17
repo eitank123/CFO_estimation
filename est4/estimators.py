@@ -22,7 +22,10 @@ CFO estimators
   f_c +- 1 / (2 D_lobe) and |f| <= MAX_CFO (+ 1 bin), parabolic interpolation, as rb)
     vde     VDE-SAT: ML (ml, 1 candidate) on the 27-symbol syncword -> f_c, then rb over all 66 known in its lobe
             (D_lobe = 27)
-    mmml    DVB-S2 style: M&M (Mengali-Morelli 1997, est3's weights, M = N / 2, numpy) on the 90-symbol PL header -> f_c,
+    vdef    "VDE-SAT fixed" (code review 2026-11-17): vde with the window f_c +- 1 / (2 D_lobe) NOT clipped to
+            |f| <= MAX_CFO (one full alias period 1/27 everywhere, so it always holds f or an alias; f_hat may leave the
+            range: run_bler's range-filtered alias lobes bring it back)
+    mmml   DVB-S2 style: M&M (Mengali-Morelli 1997, est3's weights, M = N / 2, numpy) on the 90-symbol PL header -> f_c,
             then joint ML over header + pilot block (zero-filled FFT on the span, nfft_for(span)) in its lobe
             (D_lobe = 575), ML_ITERS Newton steps
     nda4uw  ViaSat (US 7653150 + US 8243859): FFT (nfft_for(K)) of r^4 over the burst, the UW_TOP largest local maxima
@@ -139,9 +142,12 @@ def _parab(X, k):
     return np.clip(np.where(den < 0, 0.5 * (a - c) / np.where(den < 0, den, -1.0), 0.0), -0.5, 0.5)
 
 
-def _win_mask(nfft, fc, half):
-    """Bins (B, nfft) inside fc +- (half + 1/nfft) and |nu| <= MAX_CFO + 1/nfft (fc (B,) clipped to the range first)."""
+def _win_mask(nfft, fc, half, clip=True):
+    """Bins (B, nfft) inside fc +- (half + 1/nfft) and |nu| <= MAX_CFO + 1/nfft (fc (B,) clipped to the range first);
+    clip=False: fc +- (half + 1/nfft) only (no range clip: the full window, e.g. one alias period, everywhere)."""
     nu = np.fft.fftfreq(nfft)
+    if not clip:
+        return np.abs(nu[None] - fc[:, None]) <= half + 1.0 / nfft
     fc = np.clip(fc, -C.MAX_CFO, C.MAX_CFO)
     return (np.abs(nu[None] - fc[:, None]) <= half + 1.0 / nfft) & (np.abs(nu) <= C.MAX_CFO + 1.0 / nfft)[None]
 
@@ -158,13 +164,13 @@ def _top_in(X, mask, n):
     return np.argsort(-np.where(loc, X, -np.inf), 1, kind="stable")[:, :n]
 
 
-def _rb_win(r, ks, kidx, fc, half, nfft=None):
+def _rb_win(r, ks, kidx, fc, half, nfft=None, clip=True):
     """rb restricted to the lobe fc +- half: |FFT| of z placed at the known burst positions, peak in _win_mask."""
     K = r.shape[1]
     nfft = nfft or nfft_for(K)
     x = np.zeros((len(r), K), complex)
     x[:, kidx] = r[:, kidx] * np.conj(ks)
-    return _peak_in(np.abs(np.fft.fft(x, nfft, axis=1)), _win_mask(nfft, fc, half))
+    return _peak_in(np.abs(np.fft.fft(x, nfft, axis=1)), _win_mask(nfft, fc, half, clip))
 
 
 # =====================================================================
@@ -222,10 +228,10 @@ def nda4(r, ks, L, nfft=None, win=NDA_WIN, grid=NDA_GRID, iters=NDA_ITERS):
     return np.clip(f1, f0 - W, f0 + W)
 
 
-def vde(r, ks, L):
+def vde(r, ks, L, clip=True):
     kidx, ns = L["known_idx"], L["fsize"][0]                         # field 0 = the syncword
     f0 = ml_known(r, ks[:, :ns], kidx[:ns], cand=1)
-    return _rb_win(r, ks, kidx, f0, 0.5 / C.lobe_D(L["name"]))
+    return _rb_win(r, ks, kidx, f0, 0.5 / C.lobe_D(L["name"]), clip=clip)   # vdef: clip=False
 
 
 def mm_known(z):
@@ -333,6 +339,8 @@ def estimate(est, r, ks, L, snr_db, f):
         return f.copy()
     if est == "vde":
         return vde(r, ks, L)
+    if est == "vdef":
+        return vde(r, ks, L, clip=False)
     if est == "mmml":
         return mmml(r, ks, L)
     if est == "nda4uw":
@@ -390,7 +398,7 @@ def est_macs(est, L):
     nda4   8 K (r^4: 2 complex squarings) + FFT(nfft) + 2 nfft + 10 + 4 Nk (z) + 8 Nk (twiddles at f0; the grid offsets
            e^{-j 2 pi delta_g n_k} are fixed) + G (4 Nk + 2) (grid) + iters x 20 Nk
     vde    4 Nk (z, once) + syncword ml with 1 candidate: FFT(nfft_for(Ns)) + 2 nfft + ML_ITERS x 20 Ns + 12 Ns
-           + rb over all known: FFT(nfft_for(K)) + 2 nfft + 10                       (Ns = 27)
+           + rb over all known: FFT(nfft_for(K)) + 2 nfft + 10                       (Ns = 27; vdef the same)
     mmml   4 Nk + M&M on the Nh-symbol header: 4 sum_{m=1..M} (Nh - m) (lags) + 4 M (R(m) R*(m-1)), as est3's
            MM_MACS = 24,704 at N = 128 + joint ML: FFT(nfft_for(span)) + 2 nfft + ML_ITERS x 20 Nk   (Nh = 90, M = 45)
     nda4uw 8 K (r^4) + FFT(nfft) + 2 nfft (|X|^2) + nb (floor mean over the nb in-range bins) + UW_TOP x 10 (parabolic)
@@ -411,7 +419,7 @@ def est_macs(est, L):
     nb = lambda n, fmax: 2 * int(np.ceil(fmax * n)) + 3                # in-range bins (+ 1 bin each side)
     if est == "genie":
         return 0
-    if est == "vde":
+    if est in ("vde", "vdef"):                                         # vdef: the same work (only the window mask differs)
         ns, n, n1 = L["fsize"][0], nfft_for(L["fsize"][0]), nfft_for(K)
         return 4 * nk + FFT_MACS(n) + 2 * n + ML_ITERS * 20 * ns + 12 * ns + FFT_MACS(n1) + 2 * n1 + 10
     if est == "mmml":

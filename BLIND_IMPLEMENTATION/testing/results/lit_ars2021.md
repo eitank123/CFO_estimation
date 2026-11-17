@@ -180,7 +180,9 @@ Measured (8.2a, expected_est4.md): RCS2-13 estimation loss d = required - (genie
 DA-KS keeps 0.12-0.15 dB [fig]. The difference comes from our 116 vs 64-80 known symbols spread over a longer burst,
 the 8192 FFT, the exact LS phase and, most of all, the CRC search around the estimate. So `RCS2-13` is a
 **strengthened** DVB-RCS2 receiver; a "faithful Griebel" version can only be equal or worse in BLER (but cheaper).
-The one place where RCS2-13 loses is 1/10: d = -4.09 - (-5.19 + 0.47) = **0.63 dB**, caused by alias picks at f +- 1/20
+(CORRECTED 2026-11-17, code review + expected_fx.md: the 1/10 loss below is mostly side-peak jumps of the pre/postamble
+interferometer pattern (+-9.7e-4, +-1.8e-3, ... across the range), not aliases at +-1/20; with a +-1e-2 CRC search
+`RCS2-13 wide` reaches -4.58 dB at 1/10, d = 0.14 dB.) The one place where RCS2-13 loses is 1/10: d = -4.09 - (-5.19 + 0.47) = **0.63 dB**, caused by alias picks at f +- 1/20
 (881 / 480k packets at -5 dB; 25 / 64k in the pn runs). Neither the paper nor DVB-RCS2 addresses this (their CFO is
 <= 1.5 %, where with a +-0.015 window no alias falls inside).
 

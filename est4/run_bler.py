@@ -36,6 +36,11 @@ layouts; Wiener phase noise) with est3's back-end, BLIND_IMPLEMENTATION/testing/
        decode stays at f_hat), valid if |c + k STEP| <= MAX_CFO + STEP (no holes, no duplicates); their
        in_search = some valid hypothesis within STEP / 2 of f. "split64 ML L4" stays on the est4 branch (split64 ML
        with C.SRC_LOBES 4 lobes)
+    -> fixed searches (C.FIX, code review 2026-11-17): "RCS2-13 wide" on the est4 branch with M = max(M of RCS2-13,
+       ceil(C.WIN_HALF / STEP)) = 40 (covers the +-2.73e-3 pre/post fringes); "VDE-SAT fixed" (C.FIX5) on the est5 branch:
+       estimator vdef (unclipped alias-period window), C.SRC_LOBES 2 lobes each side, |k| <= alias_window (CRB window x
+       C.ALIAS_WIN = 1.7) around the |m| > 0 lobes, |k| <= M around f_hat; json window_alias; in_search with the alias
+       lobes' own window
 Measurement only (no effect on decisions or MACs): in_window / in_search = packets with |f_hat - f| <= M STEP / with
 some lobe hypothesis f_hat + m / D_lobe within M STEP of f; for 2-field layouts lobe_err (|f_hat - f| > 1 / (2 D_lobe)),
 nc_lobe_err (the per-block noncoherent estimate off by more than half a lobe) and nc_pick_err (the lobe of the
@@ -106,11 +111,28 @@ def mac_coef(rate, src, track, pn):
 
 
 def window(src, snr):
-    """CRC-search half-width M (steps) of a source: from the CRB of its own known positions, at least 1; genie 0."""
+    """CRC-search half-width M (steps) of a source: from the CRB of its own known positions, at least 1; genie 0;
+    C.WIN_HALF sources at least ceil(half / STEP)."""
     lay, est, _ = C.SOURCES[src]
     if lay == "none" or src in C.NO_SEARCH:
         return 0
-    if src in C.WIN_MAX:                                   # hyb3-pre48 wide: the wider of the 4th-power / DA bounds
+    if src in C.WIN_HALF:                                  # RCS2-13 wide: the fringes of the known-symbol spectrum
+        return max(window(C.PARENT[src], snr), int(np.ceil(C.WIN_HALF[src] / SEARCH_STEP - 1e-9)))
+    return max(1, int(np.ceil(4.0 * 1.3 * np.sqrt(_crb(src, snr)) / SEARCH_STEP)))
+
+
+def alias_window(src, snr):
+    """Half-width (steps) around the |m| > 0 lobe hypotheses: window(src, snr), C.ALIAS_WIN sources from the CRB x
+    C.ALIAS_WIN (VDE-SAT fixed: the alias peak is 0.59 of the true one, ~1.7 x the rms error)."""
+    if src not in C.ALIAS_WIN:
+        return window(src, snr)
+    return max(1, int(np.ceil(4.0 * 1.3 * C.ALIAS_WIN[src] * np.sqrt(_crb(src, snr)) / SEARCH_STEP)))
+
+
+def _crb(src, snr):
+    """The bound behind window(): the own known positions' CRB, or the 4th-power / lag bounds (module docstring)."""
+    lay, est, _ = C.SOURCES[src]
+    if src in C.WIN_MAX:                                  # hyb3-pre48 wide: the wider of the 4th-power / DA bounds
         crb = max(C.crb_nda4(snr, C.layout(lay)["K"]), C.crb_known(snr, C.layout(lay)["known_idx"]))
     elif est in ("nda4uw", "nda4pk") or src in C.NDA4_WIN:   # ViaSat, hyb3-pre48: the 4th-power bound over the burst
         crb = C.crb_nda4(snr, C.layout(lay)["K"])
@@ -118,7 +140,7 @@ def window(src, snr):
         crb = C.var_lag(snr)
     else:
         crb = C.crb_known(snr, C.layout(lay)["known_idx"])
-    return max(1, int(np.ceil(4.0 * 1.3 * np.sqrt(crb) / SEARCH_STEP)))
+    return crb
 
 
 def _hyp(src, snr, lobes):
@@ -127,7 +149,8 @@ def _hyp(src, snr, lobes):
     ms = range(-nl, nl + 1) if D else (0,)
     K = SCAN_K if src in C.SCAN else M                     # C.SCAN: k STEP over the whole range (M = the CRB window,
                                                            # kept for in_window and the json, measurement only)
-    hyp = sorted([(m, k) for m in ms for k in range(-K, K + 1) if (m, k) != (0, 0)],
+    Ka = alias_window(src, snr) if src in C.ALIAS_WIN else K   # |m| > 0: C.ALIAS_WIN's wider window (else K)
+    hyp = sorted([(m, k) for m in ms for k in range(-(Ka if m else K), (Ka if m else K) + 1) if (m, k) != (0, 0)],
                  key=lambda t: (abs(t[0]), t[0], abs(t[1]), t[1]))
     return hyp, M, D
 
@@ -234,13 +257,17 @@ def work(task):
             off, M, D = hypotheses(src, snr, lobes)
             tol = M * SEARCH_STEP + 1e-12                  # measurement only from here to attempt()
             S["in_window"] += int(np.sum(np.abs(fh - f) <= tol))
-            e5 = src in C.EST5 or src in C.ARS or src in C.VARS
+            e5 = src in C.EST5 or src in C.ARS or src in C.VARS or src in C.FIX5
             if e5:                                         # est5: per-packet hypotheses (range-filtered lobes, hyb3)
                 O5, C5, V5, _, _ = hyp_matrix(src, snr, lobes, fh, cand)
                 sc = src in C.SCAN                         # range scan: a hypothesis within STEP / 2 of f
                 cc = np.concatenate([np.zeros((B, 1)), np.where(V5, O5 if sc else C5, np.inf)], 1)
-                S["in_search"] += int(np.sum(np.min(np.abs(fh[:, None] + cc - f[:, None]), 1)
-                                             <= (SEARCH_STEP / 2 + 1e-12 if sc else tol)))
+                if src in C.ALIAS_WIN:                     # the alias lobes' own (wider) window
+                    tl = np.where(cc == 0, tol, alias_window(src, snr) * SEARCH_STEP + 1e-12)
+                    S["in_search"] += int(np.sum((np.abs(fh[:, None] + cc - f[:, None]) <= tl).any(1)))
+                else:
+                    S["in_search"] += int(np.sum(np.min(np.abs(fh[:, None] + cc - f[:, None]), 1)
+                                                 <= (SEARCH_STEP / 2 + 1e-12 if sc else tol)))
                 if D:
                     S["lobe_err"] += int(np.sum(np.abs(fh - f) > 0.5 / D))
             else:
@@ -413,6 +440,7 @@ def main():
                         snr_plot=snr + L["energy_db"], window=window(src, snr), track=a.track, track_w=a.track_w,
                         lobes=(C.src_lobes(src, a.lobes)[1] if src in C.SRC_LOBES else
                                C.lobe_n(lay, a.lobes) if C.lobe_D(lay) else 0), n_hyp=len(hypotheses(src, snr, a.lobes)[0]),
+                        **({"window_alias": alias_window(src, snr)} if src in C.ALIAS_WIN else {}),
                         seed=a.seed, mcnemar_ref=mcnemar_src(src, a.sources), bler=v["frame_err"] / v["frames"], undetected_bler=v["undetected"] / v["frames"],
                         frac_in_window=v["in_window"] / v["frames"], frac_in_search=v["in_search"] / v["frames"],
                         rmse_first=float(np.sqrt(v["se_first"] / v["frames"])),

@@ -20,7 +20,8 @@ CRC_POLYS = {               # exponents of the generator polynomial (5G NR, TS 3
     11: (11, 10, 9, 5, 0),
     16: (16, 12, 5, 0),
     24: (24, 23, 21, 20, 17, 15, 13, 12, 8, 4, 2, 1, 0),   # CRC24C
-}
+    32: (32, 26, 23, 22, 16, 12, 11, 10, 8, 7, 5, 4, 2, 1, 0),   # 0x04C11DB7 (fullsys: the competitors' CRC-32;
+}                                                              # here init 0, no reflection, no final XOR)
 
 
 def pw_reliability(N, beta=2 ** 0.25):
@@ -45,18 +46,30 @@ def crc_remainder(bits, crc_len):
 
 class PolarCode:
 
-    def __init__(self, N, A, crc_len=11, list_size=8):
-        """N code length, A data bits, crc_len CRC bits, K = A + crc_len info bits."""
+    def __init__(self, N, A, crc_len=11, list_size=8, info_pos=None, crc_G=None):
+        """N code length, A data bits, crc_len CRC bits, K = A + crc_len info bits. info_pos (optional, K indices):
+        an explicit information set (fullsys/polar_rm.py rate matching); None = the top K of the PW order. crc_G
+        (optional, (A, crc_len)): the CRC generator matrix precomputed (fullsys/polar_rm.crc_matrix, the same
+        matrix, fast); None = computed here as before."""
         self.N, self.A, self.C, self.list_size = N, A, crc_len, list_size
         self.K = A + crc_len
         self.n = int(np.log2(N))
         assert 2 ** self.n == N and self.K <= N
-        self.info_pos = np.sort(pw_reliability(N)[-self.K:])
+        if info_pos is None:
+            self.info_pos = np.sort(pw_reliability(N)[-self.K:])
+        else:
+            self.info_pos = np.sort(np.asarray(info_pos, dtype=np.int64))
+            assert len(self.info_pos) == self.K and len(np.unique(self.info_pos)) == self.K \
+                and self.info_pos[0] >= 0 and self.info_pos[-1] < N
         self.frozen = np.ones(N, dtype=bool)
         self.frozen[self.info_pos] = False
         # CRC is linear (zero initial state): crc(d) = d @ G mod 2
-        self.crc_G = np.stack([crc_remainder(np.eye(A, dtype=np.uint8)[i], crc_len) for i in range(A)]) \
-            if crc_len else np.zeros((A, 0), dtype=np.uint8)
+        if crc_G is not None:
+            self.crc_G = np.asarray(crc_G, dtype=np.uint8)
+            assert self.crc_G.shape == (A, crc_len)
+        else:
+            self.crc_G = np.stack([crc_remainder(np.eye(A, dtype=np.uint8)[i], crc_len) for i in range(A)]) \
+                if crc_len else np.zeros((A, 0), dtype=np.uint8)
 
     @property
     def rate(self):
@@ -121,10 +134,18 @@ class PolarCode:
                     # (fzs_stop (B,), fzs_pos the check's leaf end, fzs_nb information bits decided); the decode itself
                     # runs on unchanged (the caller treats a stopped row as a CRC failure and charges the work up to
                     # fzs_pos); the fz_diag `ps` checkpoint rule
+    fz_mask = None  # (fullsys/blind_fmt.py) None = every frozen leaf counts (the baseline); bool (N,): only the frozen
+                    # leaves in the mask enter the fz_stop sums / count and the fz_q `ps` / cnt_s rule (rate matching:
+                    # the pre-frozen rm / extra leaves carry no CFO information); a rate-0 node with m of its n leaves
+                    # in the mask adds m leaves and m / n of its increment
+
+    def _fzm(self, lo, n):
+        """(fz_mask) leaves of [lo, lo + n) in the mask."""
+        return int(self.fz_mask[lo:lo + n].sum())
 
     def _fzs_start(self, shape):
         """(fz_stop) a decode starts: per path (B, Ls) the frozen PM increment sum, the check's frozen-leaf count."""
-        F = int(self.frozen.sum())
+        F = int(self.frozen.sum()) if self.fz_mask is None else int((self.frozen & self.fz_mask).sum())
         self._fzs_t = max(int(np.ceil(float(self.fz_stop[0]) * F - 1e-9)), 1)
         self._fzs_n, self._fzs_ps, self._fzs_done = 0, np.zeros(shape), False
         self.fzs_stop, self.fzs_pos, self.fzs_nb = np.zeros(shape[0], bool), -1, -1
@@ -151,6 +172,9 @@ class PolarCode:
         t = np.maximum(np.ceil(np.asarray(self.fz_q, float) * F - 1e-9).astype(int), 1)
         C = len(t)
         self._fz_t, self._fz_c, self._fz_cs, self._fz_n = t, 0, 0, 0
+        if self.fz_mask is not None:                            # (fz_mask) the ps rule on the masked leaves only
+            Fm = int((self.frozen & self.fz_mask).sum())
+            self._fz_tm, self._fz_nm = np.maximum(np.ceil(np.asarray(self.fz_q, float) * Fm - 1e-9).astype(int), 1), 0
         self._fz_s = np.zeros(shape + (3,))
         z = lambda: np.zeros(C, int)
         self.fz_rec = dict(pen=np.full(shape + (C,), np.nan, np.float32), mag=np.full(shape + (C,), np.nan, np.float32),
@@ -172,6 +196,19 @@ class PolarCode:
             self._fz_c += 1
         self._fz_s[..., 0] += pen.sum(2)
         self._fz_s[..., 1] += mag.sum(2)
+        if self.fz_mask is not None:                            # (fz_mask) masked leaves, m / n of the increment
+            m = self._fzm(lo, n)
+            self._fz_n += n
+            if not m:
+                return
+            self._fz_s[..., 2] += np.logaddexp(np.float32(0), -node).sum(axis=2) * (m / n)
+            self._fz_nm += m
+            while self._fz_cs < len(self._fz_tm) and self._fz_tm[self._fz_cs] <= self._fz_nm:
+                c = self._fz_cs
+                R["ps"][..., c], R["alive_s"][..., c] = self._fz_s[..., 2], np.isfinite(self._pm)
+                R["cnt_s"][c], R["pos_s"][c], R["nb_s"][c] = self._fz_nm, lo + n, len(self._bits)
+                self._fz_cs += 1
+            return
         self._fz_s[..., 2] += np.logaddexp(np.float32(0), -node).sum(axis=2)   # = the _pm term, computed apart
         self._fz_n += n
         while self._fz_cs < len(self._fz_t) and self._fz_t[self._fz_cs] <= self._fz_n:   # node boundary checkpoints
@@ -205,7 +242,11 @@ class PolarCode:
             else:                                               # (fz_stop) the same increment, also summed apart
                 inc = np.logaddexp(np.float32(0), -alpha).sum(axis=2)
                 self._pm += inc
-                self._fzs_add(inc, n, hi)
+                if self.fz_mask is None:
+                    self._fzs_add(inc, n, hi)
+                elif self._fzm(lo, n):                          # (fz_mask) m of the n leaves, m / n of the increment
+                    m = self._fzm(lo, n)
+                    self._fzs_add(inc * (m / n), m, hi)
             if self._ends is not None:
                 self._mark(hi)
             if self.fz_q is not None:                           # (measurement) its leaves' LLRs, as SC would see them
@@ -230,7 +271,8 @@ class PolarCode:
             else:                                               # (fz_stop) the same increment, also summed apart
                 inc = np.logaddexp(np.float32(0), -llr)
                 self._pm += inc
-                self._fzs_add(inc, 1, i + 1)
+                if self.fz_mask is None or self.fz_mask[i]:     # (fz_mask) a masked-out leaf is not counted
+                    self._fzs_add(inc, 1, i + 1)
             if self.fz_q is not None:                           # (measurement) frozen-only metrics
                 self._fz_add(llr[..., None], i, llr[..., None])
             return np.zeros(llr.shape + (1,), dtype=np.uint8), None

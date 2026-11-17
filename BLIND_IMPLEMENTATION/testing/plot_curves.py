@@ -28,6 +28,7 @@ RATES = ("1/10", "0.15", "2/5", "1/2")
 FAMILIES = OrderedDict([
     ("DVB-RCS2 and Griebel 2021", OrderedDict([
         ("RCS2-13", "DVB-RCS2 ID 13 (116 known)"), ("RCS2-13 lobes", "DVB-RCS2 ID 13 + lobes"),
+        ("RCS2-13 wide", "DVB-RCS2 ID 13, search +-1e-2"),
         ("G4096", "Griebel 2021 FFT 4096"), ("G2048", "Griebel 2021 FFT 2048"),
         ("Griebel faithful", "Griebel 2021 as published"), ("RCS2 pre/post", "DVB-RCS2 16 + 16, 4th power")])),
     ("Preambles (generic and Wi-Fi)", OrderedDict([
@@ -35,9 +36,11 @@ FAMILIES = OrderedDict([
         ("split64 ML", "64 + 64, joint ML (+-3 lobes)"), ("split64 ML L4", "64 + 64, joint ML (+-4 lobes)"),
         ("WiFi pre128", "Wi-Fi-like 128 preamble"), ("WiFi real320", "Wi-Fi 802.11 real 320"),
         ("WiFi real320 lobes", "Wi-Fi 802.11 real 320 + lobes")])),
-    ("Satellite and space standards", OrderedDict([
-        ("VDE-SAT", "VDE-SAT (66 known)"), ("DVB-S2 style", "DVB-S2-inspired (126)"),
-        ("DVB-S2 header90", "DVB-S2 PL header (90, scan)"), ("DVB-S2 SOF26", "DVB-S2 SOF (26, scan)"),
+    ("Satellite: VDE-SAT and DVB-S2", OrderedDict([
+        ("VDE-SAT", "VDE-SAT (66 known)"), ("VDE-SAT fixed", "VDE-SAT, fixed search (66)"),
+        ("VDE-SAT scan", "VDE-SAT, full-range scan (66)"), ("DVB-S2 style", "DVB-S2-inspired (126)"),
+        ("DVB-S2 header90", "DVB-S2 PL header (90, scan)"), ("DVB-S2 SOF26", "DVB-S2 SOF (26, scan)")])),
+    ("Space: CCSDS", OrderedDict([
         ("CCSDS style", "CCSDS-inspired (8 x 16)"), ("CCSDS 131.2 real", "CCSDS 131.2 real (32)"),
         ("CCSDS 131.0 ASM", "CCSDS 131.0 ASM (64)")])),
     ("Terrestrial and military", OrderedDict([
@@ -94,18 +97,53 @@ def figure(rate, key, B, E):
             ax.yaxis.set_minor_formatter(fmt)
             ax.tick_params(axis="y", which="minor", labelsize=7.5)
         ax.legend(fontsize=8.5, loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=2, frameon=False)
-    axs[-1].axis("off")
-    axs[-1].text(0.02, 0.95, "\n".join([
-        f"R = {rate}. Fair axis: SNR = data Es/N0 + 10 log10((1024 + Nk) / 1024).",
-        "Same code (polar N = 2048, CRC-16), CA-SCL-8, re-encoding",
-        "check and metric-ordered CRC search for every receiver.",
-        "0-error points are not drawn (see results/curves.md).",
-        "Blind (black) is the same curve in every panel.",
-        "MACs per core = scheduled 32-core count."]), va="top", fontsize=10.5, color="#3d3d3a", transform=axs[-1].transAxes)
+    f.text(0.5, -0.01, f"R = {rate}. Fair axis: SNR = data Es/N0 + 10 log10((1024 + Nk) / 1024). Same code (polar N = 2048, "
+           "CRC-16), CA-SCL-8, re-encoding check and metric-ordered CRC search for every receiver. 0-error points are not "
+           "drawn (results/curves.md). Blind (black) is the same curve in every panel. MACs per core = scheduled 32-core "
+           "count.", ha="center", va="top", fontsize=10, color="#3d3d3a", wrap=True)
     what = "BLER" if key == "bler" else "MACs per core"
     f.suptitle(f"{what} vs SNR, R = {rate}  (blind vs every compared receiver, by system family)", fontsize=15)
     f.tight_layout(rect=(0, 0, 1, 0.97))
     p = os.path.join(P.OUT, f"curves_{'bler' if key == 'bler' else 'macs'}_R{P.tag(rate)}.png")
+    f.savefig(p, dpi=130, bbox_inches="tight")
+    plt.close(f)
+    print(p)
+
+
+FX = [("pre128 ML", "128 preamble, ML (control, unchanged)", SLOTS[0], "o", "-"),
+      ("RCS2-13", "DVB-RCS2 ID 13, old search (+-3 steps)", SLOTS[1], "s", "--"),
+      ("RCS2-13 wide", "DVB-RCS2 ID 13, fixed search (+-1e-2)", SLOTS[1], "s", "-"),
+      ("VDE-SAT", "VDE-SAT, old search", SLOTS[2], "^", "--"),
+      ("VDE-SAT fixed", "VDE-SAT, fixed search (unclipped, +-2 aliases)", SLOTS[2], "^", "-"),
+      ("VDE-SAT scan", "VDE-SAT, full-range scan", SLOTS[6], "X", "-")]
+
+
+def fx_figure(rate, B, E):
+    """The three key competitors before / after the search fix (expected_fx.md), BLER and MACs per core vs SNR."""
+    f, axs = plt.subplots(1, 2, figsize=(16, 6.6))
+    allx = [s for s in B] + [s for k, *_ in FX if k in E for s in E[k]]
+    lo, hi = max(min(allx) - 0.2, -5.0), max(allx) + 0.2
+    for ax, key in zip(axs, ("bler", "core")):
+        draw(ax, {s: v for s, v in B.items() if lo <= s <= hi}, key, **BLIND_STYLE)
+        for src, lab, c, m, ls in FX:
+            if src in E:
+                draw(ax, E[src], key, color=c, marker=m, ls=ls, lw=1.9, ms=7, label=lab,
+                     markeredgecolor="white", markeredgewidth=0.8)
+        ax.set_yscale("log")
+        ax.set_xlim(lo, hi)
+        ax.set_xlabel("SNR (Es/N0) [dB]  (pilot energy charged)", fontsize=11)
+        ax.set_ylabel("BLER" if key == "bler" else "MACs per core per packet [M]", fontsize=11)
+        ax.set_title(("BLER" if key == "bler" else "MACs per core") + f" vs SNR, R = {rate}", fontsize=12.5)
+        ax.grid(True, which="both", ls=":", color="#c3c2b7", alpha=0.7)
+        if key == "core":
+            fmt = matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:.2f}" if v >= 0.1 else f"{v:.3f}")
+            ax.yaxis.set_major_formatter(fmt)
+            ax.yaxis.set_minor_formatter(fmt)
+    h, l = axs[0].get_legend_handles_labels()
+    f.legend(h, l, loc="lower center", ncol=3, frameon=False, fontsize=10, bbox_to_anchor=(0.5, -0.1))
+    f.suptitle(f"Three key competitors before / after the search fix, R = {rate} (dashed = old search)", fontsize=14)
+    f.tight_layout(rect=(0, 0.02, 1, 0.95))
+    p = os.path.join(P.OUT, f"fx_R{P.tag(rate)}.png")
     f.savefig(p, dpi=130, bbox_inches="tight")
     plt.close(f)
     print(p)
@@ -146,6 +184,7 @@ if __name__ == "__main__":
         B, E = data(r)
         figure(r, "bler", B, E)
         figure(r, "core", B, E)
+        fx_figure(r, B, E)
         md += tables(r, B, E)
     open(OUT_MD, "w", encoding="utf-8", newline="\n").write("\n".join(md) + "\n")
     print(OUT_MD)

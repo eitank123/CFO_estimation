@@ -1,0 +1,136 @@
+{
+ "meta": {
+  "args": {
+   "calib": [
+    "fs-flv32smkm58"
+   ],
+   "test": [],
+   "name": "v32smk",
+   "setting": null,
+   "grid": null,
+   "rel": 0.02,
+   "restarts": 2,
+   "seed": 1,
+   "workers": 16,
+   "no_honest_kc": false,
+   "check_only": true,
+   "no_strict": false
+  },
+  "approx": "unlogged decodes counted failed (n_unl per setting)"
+ },
+ "selfcheck": {
+  "ok": true,
+  "mismatch": {
+   "passed": 0,
+   "right": 0,
+   "stage": 0
+  },
+  "max_rel_cost_err": {
+   "macs": 0.0,
+   "cpar": 0.0,
+   "c_d4a": 0.0,
+   "c_hd4a": 0.0
+  },
+  "unlogged": 0,
+  "side_vs_own_mismatch": 0,
+  "packets": 200,
+  "errors": 24
+ },
+ "calib": {
+  "parts": [
+   "fs-flv32smkm58"
+  ],
+  "points": [
+   [
+    "fs-flv32smkm58",
+    -5.8
+   ]
+  ],
+  "frames": [
+   200
+  ],
+  "err_base": [
+   24
+  ],
+  "allowed": [
+   0
+  ],
+  "base_logged": {
+   "err": [
+    24
+   ],
+   "err_tot": 24,
+   "mean": 1018708.7028125,
+   "mean_pooled": 1018708.7028125,
+   "p99": 5173310.25,
+   "max": 5173310.25,
+   "mean_pt": [
+    1018708.7028125
+   ],
+   "unl_near": 0,
+   "unl_far": 0,
+   "unl_retry": 0
+  },
+  "base_replay": {
+   "err": [
+    24
+   ],
+   "err_tot": 24,
+   "mean": 1018708.7028125,
+   "mean_pooled": 1018708.7028125,
+   "p99": 5173310.25,
+   "max": 5173310.25,
+   "mean_pt": [
+    1018708.7028125
+   ],
+   "unl_near": 0,
+   "unl_far": 0,
+   "unl_retry": 0
+  },
+  "receiver": {
+   "ck": [
+    0.5,
+    0.75
+   ],
+   "ck_keep": 0.001,
+   "ck_min": 8,
+   "ck_win": null,
+   "tau": -0.5,
+   "kmin": 16,
+   "win": 6.0,
+   "final": 16,
+   "batch": null,
+   "first_k": null,
+   "phase_keep": [
+    0.5,
+    2
+   ],
+   "ncand": 4,
+   "z0": 4.0,
+   "T": 2,
+   "T_fine": 6,
+   "final_post": 256,
+   "fine_last": 4,
+   "cores": 32,
+   "ck_charge_all": true,
+   "old_acct": false,
+   "ca_retry": true,
+   "premf_dec": true,
+   "reencode": true,
+   "bpsk_sq": true,
+   "nopi": false,
+   "equiv": false,
+   "q_fix": true,
+   "cost": "tree",
+   "ck_useful": true,
+   "rate": "1/10",
+   "code_rate": "0.15"
+  }
+ },
+ "chosen": null,
+ "log": [
+  "calibration: 4 chunks, 200 packets, 1 points, std c_hd4a, logged Kc {32}, numpy (log) {'2.4.6'} / here 2.4.6, side rows 928, far-cell CRC passes in the search's own rows 0 (0 s)",
+  "SELF-CHECK OK: {'mismatch': {'passed': 0, 'right': 0, 'stage': 0}, 'max_rel_cost_err': {'macs': 0.0, 'cpar': 0.0, 'c_d4a': 0.0, 'c_hd4a': 0.0}, 'unlogged': 0, 'side_vs_own_mismatch': 0, 'packets': 200, 'errors': 24}",
+  "baseline (logged settings, cores 32): errors [24] mean 1.0187 M (logged cores 1.0187 M) max 5.173 M; allowed extra [0]"
+ ]
+}

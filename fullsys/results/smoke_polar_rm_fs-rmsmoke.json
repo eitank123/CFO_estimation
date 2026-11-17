@@ -1,0 +1,100 @@
+{
+ "format": "RCS2 ID 14",
+ "A": 1472,
+ "K": 1504,
+ "E": 3008,
+ "N": 4096,
+ "mode": "shorten",
+ "crc": 32,
+ "L": 8,
+ "seed": 1,
+ "points": [
+  {
+   "snr": 0.5,
+   "packets": 300,
+   "bler": {
+    "big": 0.9666666666666667,
+    "zero": 1.0,
+    "neg": 1.0
+   },
+   "crc_pass": {
+    "big": 10,
+    "zero": 0,
+    "neg": 0
+   },
+   "false_accept": {
+    "big": 0,
+    "zero": 0,
+    "neg": 0
+   },
+   "mcnemar_big_zero": {
+    "n10": 10,
+    "n01": 0,
+    "p": 0.001953125
+   },
+   "mcnemar_big_neg": {
+    "n10": 10,
+    "n01": 0,
+    "p": 0.001953125
+   }
+  },
+  {
+   "snr": 1.0,
+   "packets": 300,
+   "bler": {
+    "big": 0.51,
+    "zero": 1.0,
+    "neg": 1.0
+   },
+   "crc_pass": {
+    "big": 147,
+    "zero": 0,
+    "neg": 0
+   },
+   "false_accept": {
+    "big": 0,
+    "zero": 0,
+    "neg": 0
+   },
+   "mcnemar_big_zero": {
+    "n10": 147,
+    "n01": 0,
+    "p": 1.1210387714598537e-44
+   },
+   "mcnemar_big_neg": {
+    "n10": 147,
+    "n01": 0,
+    "p": 1.1210387714598537e-44
+   }
+  },
+  {
+   "snr": 1.5,
+   "packets": 300,
+   "bler": {
+    "big": 0.053333333333333344,
+    "zero": 1.0,
+    "neg": 1.0
+   },
+   "crc_pass": {
+    "big": 284,
+    "zero": 0,
+    "neg": 0
+   },
+   "false_accept": {
+    "big": 0,
+    "zero": 0,
+    "neg": 0
+   },
+   "mcnemar_big_zero": {
+    "n10": 284,
+    "n01": 0,
+    "p": 6.434446986835036e-86
+   },
+   "mcnemar_big_neg": {
+    "n10": 284,
+    "n01": 0,
+    "p": 6.434446986835036e-86
+   }
+  }
+ ]
+}

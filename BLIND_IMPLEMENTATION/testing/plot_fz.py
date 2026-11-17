@@ -13,7 +13,7 @@ from scipy.stats import beta  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RES = os.path.join(HERE, "results")
-OUT = os.path.join(RES, "plots")
+OUT = os.path.join(RES, "plots", "original_study")
 SHOW = ("0.15 -4 dB", "2/5 0.5 dB")
 LBL = {"psn": "free (decoder's frozen PM)", "pn": "hard penalty / frozen bits", "pl": "hard penalty / sum |LLR|"}
 

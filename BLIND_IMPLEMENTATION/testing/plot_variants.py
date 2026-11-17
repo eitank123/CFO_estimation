@@ -7,7 +7,7 @@ import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE); import agg_variants as agg
-OUT = os.path.join(HERE, "results", "plots")
+OUT = os.path.join(HERE, "results", "plots", "original_study")
 os.makedirs(OUT, exist_ok=True)
 STY = {"base": ("#d62728", "o", "-", 3.0), "dd": ("#1f77b4", "s", "--", 2), "win4": ("#2ca02c", "^", "--", 2),
        "dd_win4": ("#9467bd", "D", "--", 2), "dd_k": ("#7f7f7f", "v", ":", 2), "nph4": ("#1f77b4", "s", "--", 2)}

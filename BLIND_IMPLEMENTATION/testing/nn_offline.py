@@ -8,7 +8,7 @@ new decode dumps (run.py dec_dump variants)."""
 Reads the decode dumps (small_rx.py dec_dump: d_* one row per decode attempt, p_* one row per packet) in
 small_cfo/blind/dumps/{t-deca, t-decb25, t-decb2, t-decbn} and writes
     results/nn_offline.json           every number of the report (tables P0..P3)
-    results/plots/nn_auc_head{A,B,C}.png, results/plots/nn_pm_vs_rho.png
+    results/plots/nn_auc_head{A,B,C}.png, results/plots/original_study/nn_pm_vs_rho.png
 No receiver simulation: only numpy / sklearn fits on the logged rows.
 
 Labels (truth only in the labels, never in the features):
@@ -42,7 +42,7 @@ sys.path.insert(0, ROOT)
 DUMPS = os.path.join(ROOT, "small_cfo", "blind", "dumps")
 RES = os.path.join(ROOT, "small_cfo", "blind", "results")
 OUT = os.path.join(HERE, "results")
-PLOTS = os.path.join(OUT, "plots")
+PLOTS = os.path.join(OUT, "plots", "original_study")
 
 POINTS = [  # name, code rate key, SNR, part, glob
     ("1/10 -5", "1/10", -5.0, "t-deca", "*R1_10_-5.0_*"),

@@ -8,7 +8,7 @@ This folder explains the final blind (zero-pilot) receiver of the small-CFO stud
 | [02_fast_path.md](02_fast_path.md) | Stage 1: 4th-power CFO, pre-MF correction, carrier phase, the π ambiguity (PiCode), one decode |
 | [03_path_metric.md](03_path_metric.md) | The decoder as a CFO detector: the list-1 Fast-SSC path metric, why it separates right from wrong hypotheses |
 | [04_search.md](04_search.md) | Stage 2: the CFO × phase grid, checkpoints and the robust z-test, coarse start, batches on 32 cores, the checkpoint NN |
-| [05_decoding.md](05_decoding.md) | Stage 3: refinement, CA-SCL-8, joint list decoding, code-aided retry, rescue |
+| [05_decoding.md](05_decoding.md) | Stage 3: refinement, CA-SCL-8, joint list decoding, code-aided retry, rescue, F5 frozen-bit early stop (5.8) |
 | [06_acceptance.md](06_acceptance.md) | CRC-16 with PiCode, the re-encoding check, false-alarm maths |
 | [07_complexity.md](07_complexity.md) | MAC model, MACs per core (the standard 32-core model), measured MACs, where they go, the 128-pilot comparison, a hard MAC cap |
 | [08_parameters_results.md](08_parameters_results.md) | Every parameter per rate; BLER of blind, the genie and the 128-pilot receivers per rate; undetected errors; throughput |
@@ -42,6 +42,12 @@ At high SNR that estimate is good enough and a single decode succeeds. Below abo
 3. fully decodes only the few best;
 4. accepts a packet only if CRC-16 **and** a re-encoding correlation check both pass.
 
+**The bit interleaver is essential.** The coded bits are permuted (fixed random permutation) before QPSK mapping.
+Without it a π/2 rotation of the QPSK symbols turns every polar codeword into another codeword, the receiver cannot
+tell the π/2 phase branches apart, and about a third of the packets fail at any SNR (measured 37 % on the
+rate-matched full-system format, 2026-11-17). Why, and the proof: [01_signal_model.md](01_signal_model.md), "Why the
+bit interleaver is required".
+
 Code: [small_rx.py](../small_rx.py) (receiver), [blind_fast.py](../blind_fast.py) (path metric, pre-MF correction, re-encoding check), [blind_cfo.py](../blind_cfo.py) (chain, 4th power, PiCode), [blind_ber.py](../blind_ber.py) (final receiver settings `S blind final v2`, `S blind final 2/5, 1/2, best-first 32`, `S blind final 2/5, 1/2`).
 
 ## Current state (2026-11-17)
@@ -53,8 +59,8 @@ the **testing receiver**, which is now the blind receiver in every comparison an
 | Rate | Presentation receiver (blind_ber.py) | Adopted testing receiver (testing/run.py) | Changes vs presentation |
 |---|---|---|---|
 | 1/10, 0.15 | `S blind final v2` | `testing_s11g` | fast path off at SNR <= 0 dB (`s0_snr = 0.5`); 0.15: 4 phase hypotheses below 0.5 dB (`nph`); phase-index fix (`q_fix`); speculative decode `spec11` below 1/10 -3.5 dB, 0.15 -2.5 dB |
-| 2/5 | `S blind final 2/5, 1/2, best-first 32` | `base25_qfix_fzs` | `q_fix` + early stop of the Stage 3 search (F5, adopted 2026-11-15) |
-| 1/2 | `S blind final 2/5, 1/2` | `base2_qfix_fzs` | `q_fix` + early stop (F5) |
+| 2/5 | `S blind final 2/5, 1/2, best-first 32` | `base25_qfix_fzs` | `q_fix` + F5: frozen-bit early stop inside each CA-SCL-8 decode (adopted 2026-11-15, [05_decoding.md 5.8](05_decoding.md)) |
+| 1/2 | `S blind final 2/5, 1/2` | `base2_qfix_fzs` | `q_fix` + F5 frozen-bit early stop (as 2/5) |
 
 **Improvement over the presentation receiver** (fair axis, all runs of each receiver pooled; MACs per core = the
 standard scheduled count, interpolated at each receiver's own crossing):
@@ -79,19 +85,19 @@ core) is tabulated in **[testing/results/curves.md](testing/results/curves.md)**
 
 | Rate | BLER vs SNR | MACs per core vs SNR |
 |---|---|---|
-| 1/10 | [curves_bler_R10.png](testing/results/plots/curves_bler_R10.png) | [curves_macs_R10.png](testing/results/plots/curves_macs_R10.png) |
-| 0.15 | [curves_bler_R15.png](testing/results/plots/curves_bler_R15.png) | [curves_macs_R15.png](testing/results/plots/curves_macs_R15.png) |
-| 2/5 | [curves_bler_R25.png](testing/results/plots/curves_bler_R25.png) | [curves_macs_R25.png](testing/results/plots/curves_macs_R25.png) |
-| 1/2 | [curves_bler_R2.png](testing/results/plots/curves_bler_R2.png) | [curves_macs_R2.png](testing/results/plots/curves_macs_R2.png) |
+| 1/10 | [curves_bler_R10.png](testing/results/plots/original_study/curves_bler_R10.png) | [curves_macs_R10.png](testing/results/plots/original_study/curves_macs_R10.png) |
+| 0.15 | [curves_bler_R15.png](testing/results/plots/original_study/curves_bler_R15.png) | [curves_macs_R15.png](testing/results/plots/original_study/curves_macs_R15.png) |
+| 2/5 | [curves_bler_R25.png](testing/results/plots/original_study/curves_bler_R25.png) | [curves_macs_R25.png](testing/results/plots/original_study/curves_macs_R25.png) |
+| 1/2 | [curves_bler_R2.png](testing/results/plots/original_study/curves_bler_R2.png) | [curves_macs_R2.png](testing/results/plots/original_study/curves_macs_R2.png) |
 
-![BLER vs SNR, R = 1/10](testing/results/plots/curves_bler_R10.png)
-![MACs per core vs SNR, R = 1/10](testing/results/plots/curves_macs_R10.png)
-![BLER vs SNR, R = 0.15](testing/results/plots/curves_bler_R15.png)
-![MACs per core vs SNR, R = 0.15](testing/results/plots/curves_macs_R15.png)
-![BLER vs SNR, R = 2/5](testing/results/plots/curves_bler_R25.png)
-![MACs per core vs SNR, R = 2/5](testing/results/plots/curves_macs_R25.png)
-![BLER vs SNR, R = 1/2](testing/results/plots/curves_bler_R2.png)
-![MACs per core vs SNR, R = 1/2](testing/results/plots/curves_macs_R2.png)
+![BLER vs SNR, R = 1/10](testing/results/plots/original_study/curves_bler_R10.png)
+![MACs per core vs SNR, R = 1/10](testing/results/plots/original_study/curves_macs_R10.png)
+![BLER vs SNR, R = 0.15](testing/results/plots/original_study/curves_bler_R15.png)
+![MACs per core vs SNR, R = 0.15](testing/results/plots/original_study/curves_macs_R15.png)
+![BLER vs SNR, R = 2/5](testing/results/plots/original_study/curves_bler_R25.png)
+![MACs per core vs SNR, R = 2/5](testing/results/plots/original_study/curves_macs_R25.png)
+![BLER vs SNR, R = 1/2](testing/results/plots/original_study/curves_bler_R2.png)
+![MACs per core vs SNR, R = 1/2](testing/results/plots/original_study/curves_macs_R2.png)
 
 What the MACs curves show: blind's cost falls with SNR (0.21 -> 0.09 M per core at 1/10 from -5 to 0 dB) because more
 packets finish in the early stages; the cheap pilot receivers stay at 0.03-0.10 M (one decode plus a few CRC-search
@@ -107,7 +113,7 @@ DMRS, sparse pilots, Wi-Fi 802.11, MIL-STD-188-110 and the Advantech hybrid prea
 
 | Rate, BLER | Blind [dB] | Closest competitors (gap [dB]) | Blind loses to | Fails the target |
 |---|---|---|---|---|
-| 1/10, 1e-4 | -4.78 | 128 preamble ML +0.10, CCSDS-inspired +0.13, DMRS 1/7 +0.20, 64 + 64 L4 ~+0.18 (not bracketed); DVB-RCS2 +0.69 | none measured; DVB-S2 90-symbol header is open (below 1e-4 at -4.63, crossing ~-4.95 ... -4.65) | 10 of 31 (VDE-SAT, ViaSat x3, Advantech x3, sparse 1/32, Wi-Fi 320 without lobes, 4th-power pre/post) |
+| 1/10, 1e-4 | -4.78 | **128 preamble ML +0.06 (tie)**, CCSDS-inspired +0.13, 64 + 64 L4 ~+0.18 (not bracketed), DMRS 1/7 +0.20, **DVB-RCS2 with the fixed search +0.20** (was +0.69 with the old search) | none measured; DVB-S2 90-symbol header is open (below 1e-4 at -4.63, crossing ~-4.95 ... -4.65) | 10 of 31 (VDE-SAT, ViaSat x3, Advantech x3, sparse 1/32, Wi-Fi 320 without lobes, 4th-power pre/post) |
 | 0.15, 1e-3 | -3.60 | Advantech 48 wide -0.03, DVB-S2 header +0.03 (ties), DVB-RCS2 +0.15, 128 ML +0.16, CCSDS 131.0 ASM +0.16 | none (the tie) | 7 |
 | 0.15, 1e-4 | -2.93 | - | **DVB-S2 90-symbol header -0.31 (at 0.69 M MACs per core, 3.8x blind), DVB-RCS2 -0.19, 128 ML -0.20, Griebel 4096 -0.18, 64 + 64 L4 -0.17, CCSDS-inspired -0.14** (CIs do not overlap); 128 M&M -0.07, ASM -0.05, DMRS +0.01, Wi-Fi 128 +0.07: ties | 9 |
 | 2/5, 1e-3 | 0.58 | Advantech 48 wide +0.33, VDE-SAT +0.34, CCSDS 131.0 ASM +0.38, DVB-S2 header +0.44, DVB-RCS2 +0.52 | none | 5 |
@@ -120,9 +126,16 @@ DMRS, sparse pilots, Wi-Fi 802.11, MIL-STD-188-110 and the Advantech hybrid prea
   Wi-Fi 320 wrap floor ~1e-2 at 1/10) and shallow waterfalls with few pilots (CCSDS 131.2 real).
 - Blind and the competitors run on different packets: gaps under ~0.1 dB are ties. Timing / burst detection is
   assumed known for everyone (it favours blind: a preamble also does detection).
+- **Fixed-search check (2026-11-17, `testing/results/expected_fx.md`):** three code reviews found search holes in several
+  competitors. Re-run of the three key ones: DVB-RCS2 with a +-1e-2 search (covers its pre/post side peaks) gains
+  0.49 dB at 1/10 (gap +0.69 -> +0.20), unchanged elsewhere; the 128-preamble control reproduces its old numbers;
+  VDE-SAT with an unclipped window still misses 0.6-2 % of packets at 1/10 (full-range scan running). Other flagged
+  competitors (Advantech 48 wide, sparse 1/32, 64 + 64, DVB-S2-inspired, Wi-Fi) are not re-run yet: their gaps to blind
+  are likely overstated (blind's lead too large).
 - Still running (2026-11-17): DVB-S2 SOF26 at every rate, DVB-S2 header at 1/2, and the 1/10 -5.3 dB point for the
   DVB-S2 header (v-10hla/hlb, 960k packets). Per-job results with
   predictions: `testing/results/expected_variants.md` §9, news in [NEWS.md](NEWS.md).
+- **Full systems (their own FEC, burst, pilots and DA sync, equal payload; DVB-RCS2 IDs 3/13/14/42, VDE-SAT Link 32):** [fullsys/README.md](../fullsys/README.md).
 
 ### Real-world checks
 Wiener phase noise (linewidth x Ts): 1e-5 harmless; 1e-4 x3 BLER at 1/10, 0.15 and x36 BLER, x10 MACs per core at 2/5;

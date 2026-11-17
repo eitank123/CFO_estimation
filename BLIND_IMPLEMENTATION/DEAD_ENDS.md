@@ -13,7 +13,7 @@ Rates: R = 1/10, 0.15, 2/5, 1/2; N = 2048, CRC-16. BLER statements are paired (s
 | `dd` + early win at z > 4 (`dd_win4`) | As dd; per core +6 ... +9 % at 1/10, 0.15 | same | - |
 | Coarser CFO grid (6 STEP at 1/10 / 0.15, 3 STEP at 2/5 / 1/2), with or without dd | BLER x5 ... x70 wherever errors occur, and MORE MACs (rescue / extra decodes) | testing README R2 | - |
 | Early win at z > 4 alone (`win4`) | BLER unchanged, total -3 ... -13 %, but per core +5 ... +6 % at 1/10 -4 and 0.15 -3 dB | testing README R3 | per-core counting changes |
-| Fast path off at R = 2/5 and 1/2 | Worse: per core +15 ... +300 %, 0 fixed / 24 broken | `expected_cnf.md` (Measured), `plots/thresholds/thr_fastpath_R2_5_R1_2.png` | - |
+| Fast path off at R = 2/5 and 1/2 | Worse: per core +15 ... +300 %, 0 fixed / 24 broken | `expected_cnf.md` (Measured), `plots/original_study/thresholds/thr_fastpath_R2_5_R1_2.png` | - |
 | Fast path on at R = 1/10, 0.15 below +0.5 dB | 15-38 % more MACs per core than off (the testing receiver turns it off at <= 0 dB) | `thr_fastpath_R1_10.png`, `thr_fastpath_R0.15.png` | - |
 | 2 phase hypotheses per cell at R = 0.15 from -1 to 0 dB | Error bump: 143 / 880k at -1 dB (vs 0 / 400k with 4 phases); q_fix does not remove it | `expected_cnf.md`, `report_qfix_ddq.md` | - |
 | Frozen-bit-only cell ranking (Giard et al.: rate-0 + REP nodes, or no SPC) | Same rank of the true cell as the full metric (P(rank <= 4) 0.9725 vs 0.9735 at 0.15 -4 dB) | `testing/results/lit_checks_results.md` | higher code rates (more rate-1 / SPC nodes) |
@@ -29,8 +29,8 @@ Rates: R = 1/10, 0.15, 2/5, 1/2; N = 2048, CRC-16. BLER statements are paired (s
 
 | Idea | Result | Evidence |
 |---|---|---|
-| Path metric (PM) instead of the re-encoding check | Accepts 12 / 47 wrong CRC passes at 0.15 -4 dB and 1046 / 1046 noise-only CRC passes; acceptance stays CRC + rho | `report_nn_offline.md` (P1), `plots/nn_pm_vs_rho.png` |
-| Speculative decode accepted at the normal threshold (`nofast_spec`) | 1-2 undetected errors per 400k (wrong passes with rho / thr in 1.0-1.1); use spec_rho = 1.1 | `expected_spec.md`, `plots/thresholds/thr_spec_rho.png` |
+| Path metric (PM) instead of the re-encoding check | Accepts 12 / 47 wrong CRC passes at 0.15 -4 dB and 1046 / 1046 noise-only CRC passes; acceptance stays CRC + rho | `report_nn_offline.md` (P1), `plots/original_study/nn_pm_vs_rho.png` |
+| Speculative decode accepted at the normal threshold (`nofast_spec`) | 1-2 undetected errors per 400k (wrong passes with rho / thr in 1.0-1.1); use spec_rho = 1.1 | `expected_spec.md`, `plots/original_study/thresholds/thr_spec_rho.png` |
 | Pilot check at 3 sigma (24 pilots) | Rejects ~0.13 % of right decodes, misses the false passes; replaced by rho_n | README A.16.4 |
 | "Verified" re-decode at the decision-directed CFO | Identical BLER: a wrong codeword re-converges to itself | README A.16.4 |
 | Lag-1 residual phase, false-pass NN | Does not separate right and false passes; rho_n does | README A.16.4 |

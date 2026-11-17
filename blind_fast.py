@@ -251,6 +251,8 @@ SPS_DEFAULT = dict(w4=1 / 3, wc=0.0, z0=4.0, rounds=(8, 8, 16, 32, 64, 128, 256,
 def sps_receive(r, rx, snr, code, sigma2, st, spec):
     """Posterior-ordered sequential search. Returns decoded data (B, A), CRC passed (B,), final CFO (B,), the top
     posterior cell's CFO (B,)."""
+    assert bc.FMT is None, ("sps_receive: native 1024-symbol packet only (LLRs placed by N_BITS / INTERLEAVER; "
+                            "blind_fmt formats run small_rx)")
     p = {**SPS_DEFAULT, **spec.get("sps", {})}
     B = len(r)
     fast = fast_sc(code.A, p["exact"])
@@ -468,6 +470,8 @@ SPS2_DEFAULT = dict(z0=4.0, rounds=(8, 8, 16, 32, 64, 128, 256, 512, 1024, 2048)
 
 def sps2_receive(r, rx, snr, code, sigma2, st, spec):
     """Best-first search v2. Returns decoded data (B, A), CRC passed (B,), final CFO (B,), top posterior CFO (B,)."""
+    assert bc.FMT is None, ("sps2_receive: native 1024-symbol packet only (LLRs placed by N_BITS / INTERLEAVER; "
+                            "blind_fmt formats run small_rx)")
     p = {**SPS2_DEFAULT, **spec.get("sps", {})}
     k = p["step"] or grid_step(p["rate"], snr)
     g = grid(k)["f"]
@@ -649,6 +653,8 @@ def premf(r, rx, fs):
     rx2 = rx * np.exp(-2j * np.pi * fs[:, None] * m[None] / bc.SPS)
     D = bc.SPAN * bc.SPS
     r2 = fftconvolve(rx2, _h[None], axes=1)[:, D:D + bc.N_SYM * bc.SPS:bc.SPS]
+    if bc.FMT is not None and bc.FMT.derot is not None:     # (blind_fmt) (pi/2-)BPSK: the known per-symbol rotation
+        r2 = r2 * bc.FMT.derot[None]                         # off, as on the chain's MF output (virtual QPSK)
     return r2 * np.exp(2j * np.pi * fs[:, None] * (np.arange(bc.N_SYM)[None] + bc.DELAY_SYM))
 
 
@@ -743,6 +749,8 @@ def sps3_receive(r, rx, snr, code, sigma2, st, spec, sym=None):
         enough to resolve the 4th-power ambiguity, +-1/8), then premf2 = the pre-MF correction redone at the resolved
         4th-power estimate; nfft4 / newton = FFT size / Newton steps of the 4th-power estimate; pi2 "left" = the pi/2
         branch chosen by the left-half metric. A wrong fast-path decision only fails CRC and goes to the search."""
+    assert bc.FMT is None, ("sps3_receive: native 1024-symbol packet only (LLRs placed by N_BITS / INTERLEAVER; "
+                            "blind_fmt formats run small_rx)")
     import blind_vp as vp
     p = {**SPS2_DEFAULT, "verify": True, "premf": True, "hard": False, "adaptive": False, "z_adapt": 2.0,
          "abort": False, "z_screen": 2.5, "posterior": "analytic", "lite": False,

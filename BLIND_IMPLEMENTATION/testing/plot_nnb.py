@@ -29,5 +29,5 @@ ax.set_title("Retry gate: MACs per core saved (offline replay, 8000 test packets
 ax.grid(axis="y", alpha=0.3)
 ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.16), ncol=3, frameon=False)
 fig.tight_layout()
-out = os.path.join(HERE, "results", "plots", "nn_b_gate_saving.png")
+out = os.path.join(HERE, "results", "plots", "original_study", "nn_b_gate_saving.png")
 fig.savefig(out, dpi=130); print(out)

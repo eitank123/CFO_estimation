@@ -23,7 +23,7 @@ sys.path.insert(0, HERE)
 import agg_cmp as C                     # noqa: E402
 import agg_S as A                       # noqa: E402
 
-OUT = os.path.join(HERE, "results", "plots")
+OUT = os.path.join(HERE, "results", "plots", "original_study")
 os.makedirs(OUT, exist_ok=True)
 SNR_MIN = -5.5                          # as est3/plots.BLER_SNR_MIN
 TEST = ("testing model", "#1f77b4", "s")
