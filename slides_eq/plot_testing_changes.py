@@ -53,9 +53,7 @@ def f5_thr():
     q = [c["q"] for c in ck]
     a.plot(q, [c["med_wrong"] for c in ck], "s-", color=RED, lw=3, ms=8, label="decodes at a wrong hypothesis (median ψ)")
     a.plot(q, [c["med_right"] for c in ck], "o-", color=NAVY, lw=3, ms=8, label="decodes at the right hypothesis (median ψ)")
-    c7 = [c for c in ck if abs(c["q"] - 0.7) < 1e-9][0]
-    a.plot([0.7], [c7["th"][0]["t"]], "*", color=ORANGE, ms=22, label="chosen: q = 0.7, t = 0.774 (run.py FZS_T)")
-    a.axvline(0.7, color=ORANGE, ls=":", lw=2)
+    a.axvline(0.7, color=ORANGE, ls="--", lw=2.5, label="the check: after 70 % of the frozen bits")
     a.set_xlabel("share q of the frozen bits seen when ψ is checked")
     a.set_ylabel("ψ: mean frozen-bit penalty")
     a.set_title("R = 2/5, 0.5 dB (decode dumps)", fontweight="bold")
