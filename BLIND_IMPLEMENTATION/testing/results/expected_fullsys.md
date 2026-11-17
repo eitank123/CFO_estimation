@@ -182,7 +182,7 @@ roughly 2x from the broken smoke (median 3.5 M).
 Cap smoke (fs-b13cap, 300 paired packets at -0.6 and -0.2): predicted 0 packets lost by the 5 M cap at -0.2,
 0-2 at -0.6 (if > 0 the cap is not adopted as is).
 
-## Measured: BLIND vs DVB-RCS2, ID 13 (2026-11-17 ~14:00) — plot testing/results/plots/DVB-RCS2/superseded/fs_id13_blind.png
+## Measured: BLIND vs DVB-RCS2, ID 13 (2026-11-17 ~14:00) — plot fs_id13_blind.png (first version, removed 2026-11-18; see git history)
 Blind = fixed receiver (channel interleaver, GA CA-SCL-8, CRC-32, CFO +-0.03, early stops off). No-cap errors =
 err - right-before-cap (the 5 M cap was applied after the receive, so this is exact).
 | Es/N0 | Eb/N0 (blind axis) | blind errors / packets | blind BLER | blind MACs/core (mean) |

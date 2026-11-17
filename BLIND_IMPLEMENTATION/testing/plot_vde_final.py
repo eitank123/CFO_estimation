@@ -36,12 +36,11 @@ f, ax = plt.subplots(2, 2, figsize=(15, 10))
 for (a, xl, ov, ob) in ((ax[0, 0], "Eb/N0 per payload bit [dB] (syncword + pilots charged)", OV, OB), (ax[0, 1], "SNR (Es/N0 per symbol) [dB]", 0, 0)):
     a.semilogy(np.array(vi["es"]) + ov, vi["p"], "--o", color=C["vi"], ms=4, lw=1.5, label=L["vi"])
     a.semilogy(np.array(vd["es"]) + ov, vd["p"], "-o", color=C["vd"], ms=5, lw=2, label=L["vd"])
-    a.semilogy(np.array(b0["es"]) + ob, b0["p"], "-s", color=C["b0"], ms=5, lw=1.5, label=L["b0"])
     a.semilogy(np.array(b1["es"]) + ob, b1["p"], "--s", color=C["b1"], ms=5, lw=1.5, label=L["b1"])
     a.semilogy(np.array(b2["es"]) + ob, b2["p"], "-D", color=C["b2"], ms=6, lw=2, label=L["b2"])
     a.set_xlabel(xl); a.set_ylabel("BLER"); a.set_ylim(1e-6, 1.1); a.grid(True, which="both", ls=":", color="#c3c2b7"); a.legend(fontsize=7.5, loc="lower left")
 for (a, xl, ov, ob) in ((ax[1, 0], "Eb/N0 per payload bit [dB] (syncword + pilots charged)", OV, OB), (ax[1, 1], "SNR (Es/N0 per symbol) [dB]", 0, 0)):
-    for k, d in (("vd", vd), ("b0", b0), ("b1", b1), ("b2", b2)):
+    for k, d in (("vd", vd), ("b1", b1), ("b2", b2)):
         x = np.array(d["es"]) + (ov if k == "vd" else ob)
         a.semilogy(x, d["m"], "-o" if k == "vd" else "-s", color=C[k], lw=2, ms=5, label=L[k])
         for xx, v in zip(x, d["m"]): a.annotate(f"{v:.3g}", (xx, v), textcoords="offset points", xytext=(4, 4), fontsize=7, color=C[k])

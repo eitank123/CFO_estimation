@@ -50,7 +50,7 @@ Newest first. One item per research result. Details in the linked files; sources
   packets, validated by replay on the test packets).
 - Two fixes were needed: a rate-matching-aware polar construction (GA, +0.35-0.4 dB) and a random channel interleaver
   (without it a pi/2 QPSK rotation maps codewords to codewords and 37 % of packets fail; see 01_signal_model.md).
-- Plot: [fs_id13_blind.png](testing/results/plots/DVB-RCS2/superseded/fs_id13_blind.png). Next: ID 42, then ID 3.
+- Plot: fs_id13_blind.png (first version, removed 2026-11-18; in git history before commit of 2026-11-18). Next: ID 42, then ID 3.
 
 ## 2026-11-17 11:40 (full-system build) — DVB-RCS2 and polar rate matching coded; their published curves collected
 - `fullsys/turbo_db.py` + `rcs2.py`: DVB-RCS2 TC-LM (IDs 3, 13, 14, 42), self-test 36/36; `fullsys/polar_rm.py`: NR-style

@@ -65,7 +65,7 @@ k4 final 16, k5 first_k null (DVB) / batch null (VDE). Result 2026-11-17:
 ## VDE-SAT MAC cuts (started 2026-11-17, CFO range stays +-0.03 by user decision)
 Where the MACs go (fs-gv32m46, -4.6 dB, per core h+d4a): 0.423 M with the NN = CFO grid ~0.23 M (248 cells x 2 phases,
 fixed per packet) + NN checkpoint cells (charge-all) + decodes; no NN 0.242 M (grid ~0.2 M). The "stage 1" 15k is the
-squared-signal FFT coarse estimate (fast path already off: s0_snr 0.5), not waste. MAC caps: no use (VDE-SAT/MACs/fs_vde_capped.png:
+squared-signal FFT coarse estimate (fast path already off: s0_snr 0.5), not waste. MAC caps: no use (fs_vde_capped.png, receiver before tuning, removed 2026-11-18; tuned receiver: VDE-SAT/MACs/fs_vde_tuned_capped.png:
 cap 1 M -> BLER 3e-4 -> 2.9e-3 at -4.6 dB; the ~0.4 M floor is paid by every packet).
 
 Candidates, all on calibration packets (seed 8032 --calib, -5.4 / -5.0 / -4.6 dB, paired with fs-ztv32k0):
