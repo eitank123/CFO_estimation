@@ -40,12 +40,10 @@ BLER vs SNR and MACs per core vs SNR of blind and all 31 compared receivers, one
 ## Earlier figures (2026-11-12, presentation receiver)
 
 Made by [est3/plots.py](../../est3/plots.py). The pilot curves in these have the 128 pilots INSIDE the packet and their
-energy is NOT charged, so for the blind-vs-pilot comparison use the `*_fair` figures above.
+energy is NOT charged, so for the blind-vs-pilot comparison use the `*_fair` figures above. The superseded
+`bler_best`, `bler_more` and `macs` figures were deleted on 2026-11-17 (recoverable from git commit 0e0eee8).
 | Files | What it shows |
 |---|---|
-| `bler_best_R*.png` | BLER: blind, ML direct (128 pilots), Mengali-Morelli. Superseded by `bler_fair_R*.png` |
-| `bler_more_R*.png` | BLER: the above plus joint CFO / channel ML and the CNN estimator. Superseded by `bler_fair_R*.png` |
-| `macs_R*.png` | MACs of blind vs the 128-pilot receivers (the receiver of 2026-11-12; the testing receiver is 25-45 % cheaper per core at 1/10, 0.15) |
 | `bler_vs_cap_R*.png` | BLER of blind vs a hard cap on the MACs of each packet (still valid) |
 | `stages_R*.png` | Share of packets not yet decoded after each stage of the blind receiver (still valid) |
 | `stage_pass_R*.png` | Probability that a packet reaching a stage is not decoded there (still valid) |

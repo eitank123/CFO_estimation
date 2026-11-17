@@ -282,9 +282,8 @@ point, so the different "first decode" delivery rule under nofast changed nothin
 ## The plots (`results/plots/`, kept 2026-11-13; superseded plots removed, their numbers stay in the reports)
 | Plots | What they show | Script |
 |---|---|---|
-| `cmp_bler_R*.png` | BLER vs SNR per rate: testing model, presentation model, + q_fix, the 128-pilot receivers, the genies | `plot_cmp.py` |
-| `cmp_macs_R*.png` | MACs per core vs SNR, the STANDARD count (see below), with the earlier count dotted for this round | `plot_cmp.py` |
-| `cmp_macs_total_R*.png` | total MACs per packet vs SNR | `plot_cmp.py` |
+| `curves_bler_R*.png`, `curves_macs_R*.png` | BLER and MACs per core vs SNR: blind (adopted testing receiver) vs every compared receiver, one panel per system family | `plot_curves.py` |
+| (`cmp_*`, `e4_*`, `pres_bler_*`, `ars_*`, `arsf_*`: deleted 2026-11-17, superseded by `curves_*`; `plot_cmp.py`, `plot_e4.py`, `plot_ars.py` regenerate them) | | |
 | `cap/cap_<C>_R*.png` | BLER vs SNR under a hard cap C = 0.5 / 1 / 2 / 5 / 10 M MACs per core, with and without the cap, vs the pilot receivers | `plot_cap_snr.py` |
 | `thresholds/thr_gate_*.png` | retry gate: MAC saving and BLER vs the share of retries skipped, the chosen settings | `plot_thresholds.py` |
 | `thresholds/thr_spec_rho.png` | speculative decode: why the acceptance factor is 1.1 | `plot_thresholds.py` |
