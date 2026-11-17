@@ -134,7 +134,7 @@ EQ.update({
     "vde1": r"$f_c=\arg\max_{f}\ \left|\sum_{n=0}^{26} z_n\,e^{-j2\pi fn}\right|^2$",
     "vde2": r"$\hat f=\arg\max_{|\nu-f_c|\,\leq\,1/54}\ X(\nu),\qquad X(\nu)=\left|\sum_{k=1}^{66} z_k\,e^{-j2\pi\nu n_k}\right|$",
     # F5 frozen-bit early stop
-    "f5a": r"$\psi_\ell=\dfrac{1}{n_F}\ \sum_{\mathrm{frozen}\ i\ \mathrm{decided}}\ \ln\!\left(1+e^{-\lambda_i^{(\ell)}}\right)$",
+    "f5a": r"$\psi_\ell=\dfrac{1}{n_F}\ \sum_{\mathrm{frozen}\ i\ \mathrm{decided}}\ \Delta M_\ell(i)$",
     "f5b": r"$\mathrm{stop\ the\ decode\ if}\ \ \min_{\ell}\ \psi_\ell>t,\qquad\mathrm{checked\ once,\ at}\ n_F=0.7\,F$",
 })
 
