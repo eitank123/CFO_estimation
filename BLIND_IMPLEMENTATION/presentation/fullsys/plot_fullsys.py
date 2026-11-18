@@ -84,7 +84,7 @@ for a, fmt in zip(ax, DVB):
     hc, = a.semilogy(*nz(ce, cp), "--s", color=ORANGE, lw=2, ms=7)
     a.set_title(f"{d['name']} ({d['desc'].replace('pi/2', 'π/2')})", fontweight="bold")
     style(a, XL, "BLER" if a is ax[0] else None)
-legend_below(f, [hb, hc], ["blind, 0 known symbols (jointly tuned)", "DVB-RCS2, known symbols + own data-aided CFO estimate"], 2)
+legend_below(f, [hb, hc], ["blind, 0 known symbols", "DVB-RCS2, known symbols + own data-aided CFO estimate"], 2)
 f.tight_layout(rect=(0, 0.1, 1, 1)); f.savefig(os.path.join(HERE, "fs_dvb_bler.png"), dpi=200); plt.close(f)
 
 # 2) DVB-RCS2 MACs
@@ -96,7 +96,7 @@ for a, fmt in zip(ax, DVB):
     mticks(a, list(np.array(tm) / 1e6) + list(np.array(cm) / 1e6))
     a.set_title(f"{d['name']} ({d['desc'].replace('pi/2', 'π/2')})", fontweight="bold")
     style(a, XL, "mean MACs per core [M] (32 cores)" if a is ax[0] else None)
-legend_below(f, [hb, hc], ["blind, 0 known symbols (jointly tuned)", "DVB-RCS2 (synchroniser + turbo decoder)"], 2)
+legend_below(f, [hb, hc], ["blind, 0 known symbols", "DVB-RCS2 (synchroniser + turbo decoder)"], 2)
 f.tight_layout(rect=(0, 0.1, 1, 1)); f.savefig(os.path.join(HERE, "fs_dvb_macs.png"), dpi=200); plt.close(f)
 
 # 3) VDE-SAT: BLER and MACs vs Eb/N0
@@ -113,7 +113,7 @@ ax[1].plot(fe, np.array(fm) / 1e6, "-o", color=NAVY, lw=3, ms=8)
 ax[1].plot(ce, np.array(cm) / 1e6, "--P", color=BROWN, lw=2, ms=8)
 mticks(ax[1], list(np.array(fm) / 1e6) + list(np.array(cm) / 1e6))
 ax[1].set_title("mean MACs per core [M] (32 cores)", fontweight="bold"); style(ax[1], XL)
-legend_below(f, [hb, hc], ["blind, 0 known symbols (jointly tuned)",
+legend_below(f, [hb, hc], ["blind, 0 known symbols",
                            f"VDE-SAT ({V['known']} known: syncwords + pilots)"], 2)
 f.tight_layout(rect=(0, 0.1, 1, 1)); f.savefig(os.path.join(HERE, "fs_vde.png"), dpi=200); plt.close(f)
 

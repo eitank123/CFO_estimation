@@ -24,7 +24,7 @@ RES = os.path.join(HERE, "..", "..", "..", "fullsys", "results")
 D = json.load(open(os.path.join(HERE, "data", "fullsys_6350b72.json")))
 NAVY, ORANGE, BROWN = "#003366", "#E07B39", "#8c564b"
 plt.rcParams.update({"font.size": 13, "font.family": "DejaVu Sans"})
-XL = "SNR [dB], known-symbol energy charged"
+XL = "SNR [dB] (perfect sync, code only)"
 SYS = [("id3", "DVB-RCS2 ID 3", ["rcs2_fs-q3ti"], ["polar_genie_fs-q3pg8"], ORANGE),
        ("id13", "DVB-RCS2 ID 13", ["rcs2_fs-rcs2v13"], ["polar_genie_fs-pgga-13"], ORANGE),
        ("id14s", "DVB-RCS2 ID 14", ["rcs2_fs-rcs2v14"], ["polar_genie_fs-pgga-14s"], ORANGE),
@@ -61,28 +61,21 @@ for key, name, tu, po, col in SYS:
     snap[key] = dict(name=name, turbo_genie=pool(tu), polar_genie=pool(po), real=real, blind=blind, shift_db=sh)
 json.dump(snap, open(os.path.join(HERE, "data", "genie_fullsys.json"), "w"), indent=1)
 
-f, ax = plt.subplots(1, 5, figsize=(22, 5.6))
+f, ax = plt.subplots(1, 5, figsize=(22, 5.4))
 for a, (key, name, tu, po, col) in zip(ax, SYS):
     s = snap[key]
-    for k, sty, c, lw, mfc in (("turbo_genie", "--s", col, 2, "white"), ("polar_genie", "--o", NAVY, 2, "white"),
-                               ("real", "-s" if key != "vde" else "-P", col, 2.5, col), ("blind", "-o", NAVY, 3, NAVY)):
+    for k, sty, c in (("turbo_genie", "-s", col), ("polar_genie", "-o", NAVY)):
         x = [p["es"] for p in s[k] if p["err"] > 0]; y = [p["err"] / p["n"] for p in s[k] if p["err"] > 0]
-        a.semilogy(x, y, sty, color=c, lw=lw, ms=7, mfc=mfc, mew=1.8)
+        a.semilogy(x, y, sty, color=c, lw=3, ms=8)
     xt, xp, xr, xb = (cross(s[k]) for k in ("turbo_genie", "polar_genie", "real", "blind"))
     s["x1e-3"] = dict(turbo_genie=xt, polar_genie=xp, real=xr, blind=xb)
-    a.text(0.5, 1.015, f"perfect sync: turbo ahead {xp - xt:.2f} dB\nreal systems: blind ahead {xr - xb:.2f} dB",
-           transform=a.transAxes, ha="center", va="bottom", fontsize=12.5, color="#222222")
-    lo = min(xt, xb) - 0.7; a.set_xlim(lo, max(xr, xp) + 0.5); a.set_ylim(1e-5, 1)
-    a.set_title(name, fontweight="bold", pad=48); a.grid(True, which="both", ls=":", color="#cccccc"); a.set_xlabel(XL)
+    a.set_xlim(min(xt, xp) - 0.7, max(xt, xp) + 0.6); a.set_ylim(1e-5, 1)
+    a.set_title(name, fontweight="bold"); a.grid(True, which="both", ls=":", color="#cccccc"); a.set_xlabel(XL)
     if a is ax[0]:
         a.set_ylabel("BLER")
-H = [plt.Line2D([], [], ls="--", marker="s", color=ORANGE, mfc="white", lw=2, ms=7),
-     plt.Line2D([], [], ls="--", marker="o", color=NAVY, mfc="white", lw=2, ms=7),
-     plt.Line2D([], [], ls="-", marker="s", color=ORANGE, lw=2.5, ms=7),
-     plt.Line2D([], [], ls="-", marker="o", color=NAVY, lw=3, ms=7)]
-f.legend(H, ["turbo code, perfect sync (code only)", "our polar code, perfect sync (CA-SCL-8)",
-             "real system: known symbols + own CFO estimate (VDE-SAT: brown)", "blind: 0 known symbols"],
-         loc="lower center", ncol=4, frameon=False, fontsize=13)
+H = [plt.Line2D([], [], ls="-", marker="s", color=ORANGE, lw=3, ms=8), plt.Line2D([], [], ls="-", marker="o", color=NAVY, lw=3, ms=8)]
+f.legend(H, ["turbo code of the real system (VDE-SAT: brown)", "our polar code, CA-SCL-8"], loc="lower center", ncol=2,
+         frameon=False, fontsize=14)
 f.tight_layout(rect=(0, 0.09, 1, 1)); f.savefig(os.path.join(HERE, "fs_genie.png"), dpi=200); plt.close(f)
 json.dump(snap, open(os.path.join(HERE, "data", "genie_fullsys.json"), "w"), indent=1)
 for k, s in snap.items():
