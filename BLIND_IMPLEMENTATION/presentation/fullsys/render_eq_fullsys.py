@@ -27,6 +27,7 @@ EQ = {
     "grid": r"$f_c=-0.03+c\,k\,\Delta,\quad c=0,\ldots,C-1,\qquad \Delta=1.5\cdot 10^{-4}\cdot\dfrac{512}{n_{\mathrm{sym}}}$",
     "gridq": r"$\theta_{c,q}=\theta_c+q\,\dfrac{\pi}{4}:\quad q\in\{0,2\}\ (\mathrm{IDs\ 3,\,13,\,42}),\ \ \{0,2,4,6\}\ (\mathrm{ID\ 14}),\ \ q=0\ (\mathrm{VDE{-}SAT})$",
     "f5b": r"$\mathrm{stop\ the\ decode\ if}\ \ \min_{\ell}\ \psi_\ell>t,\qquad\mathrm{checked\ once,\ at}\ n_F=q\,F$",
+    "gap": r"$\mathrm{E}[M_{\mathrm{wrong}}]-\mathrm{E}[M_{\mathrm{right}}]\ \approx\ (N-K)\,\ln 2$",
     "re0": r"$y^{\prime}_n\,\tilde s_n^{\,*}\,e^{-j2\pi\hat f n_c}\ \approx\ e^{\,j\theta}+\tilde w_n\quad(\tilde s=s),\qquad N_s=n_{\mathrm{sym}}$",
 }
 
