@@ -91,14 +91,12 @@ f.tight_layout(rect=(0, 0.1, 1, 1)); f.savefig(os.path.join(HERE, "fs_dvb_bler.p
 f, ax = plt.subplots(1, 4, figsize=(17, 5.2))
 for a, fmt in zip(ax, DVB):
     d, ce, cp, cm, te, tp, tm = dvb_series(fmt)
-    bf = d["before"]; bm_ = np.array(bf["mean"])
-    h0, = a.plot(bf["es"], bm_, "--o", color=LIGHT, lw=2, ms=6)
     hb, = a.plot(te, np.array(tm) / 1e6, "-o", color=NAVY, lw=3, ms=8)
     hc, = a.plot(ce, np.array(cm) / 1e6, "--s", color=ORANGE, lw=2, ms=7)
-    mticks(a, list(np.array(tm) / 1e6) + list(np.array(cm) / 1e6) + list(bm_))
+    mticks(a, list(np.array(tm) / 1e6) + list(np.array(cm) / 1e6))
     a.set_title(f"{d['name']} ({d['desc'].replace('pi/2', 'π/2')})", fontweight="bold")
     style(a, XL, "mean MACs per core [M] (32 cores)" if a is ax[0] else None)
-legend_below(f, [hb, h0, hc], ["blind (jointly tuned)", "blind before joint tuning", "DVB-RCS2 (synchroniser + turbo decoder)"], 3)
+legend_below(f, [hb, hc], ["blind, 0 known symbols (jointly tuned)", "DVB-RCS2 (synchroniser + turbo decoder)"], 2)
 f.tight_layout(rect=(0, 0.1, 1, 1)); f.savefig(os.path.join(HERE, "fs_dvb_macs.png"), dpi=200); plt.close(f)
 
 # 3) VDE-SAT: BLER and MACs vs Eb/N0
@@ -111,13 +109,12 @@ hb, = ax[0].semilogy(*nz(fe, fp), "-o", color=NAVY, lw=3, ms=8)
 hc, = ax[0].semilogy(*nz(ce, cp), "--P", color=BROWN, lw=2, ms=8)
 xb, xc = cross(fe, fp), cross(ce, cp)
 ax[0].set_title("BLER", fontweight="bold"); style(ax[0], XL, "BLER")
-h0, = ax[1].plot(be, np.array(bm) / 1e6, "--o", color=LIGHT, lw=2, ms=6)
 ax[1].plot(fe, np.array(fm) / 1e6, "-o", color=NAVY, lw=3, ms=8)
 ax[1].plot(ce, np.array(cm) / 1e6, "--P", color=BROWN, lw=2, ms=8)
-mticks(ax[1], list(np.array(bm) / 1e6) + list(np.array(fm) / 1e6) + list(np.array(cm) / 1e6))
+mticks(ax[1], list(np.array(fm) / 1e6) + list(np.array(cm) / 1e6))
 ax[1].set_title("mean MACs per core [M] (32 cores)", fontweight="bold"); style(ax[1], XL)
-legend_below(f, [hb, h0, hc], ["blind (jointly tuned)", "blind before joint tuning",
-                               f"VDE-SAT ({V['known']} known: syncwords + pilots)"], 3)
+legend_below(f, [hb, hc], ["blind, 0 known symbols (jointly tuned)",
+                           f"VDE-SAT ({V['known']} known: syncwords + pilots)"], 2)
 f.tight_layout(rect=(0, 0.1, 1, 1)); f.savefig(os.path.join(HERE, "fs_vde.png"), dpi=200); plt.close(f)
 
 # 4) VDE-SAT, final blind with a MAC cap
