@@ -68,7 +68,6 @@ for a, (key, name, tu, po, col) in zip(ax, SYS):
                                ("real", "-s" if key != "vde" else "-P", col, 2.5, col), ("blind", "-o", NAVY, 3, NAVY)):
         x = [p["es"] for p in s[k] if p["err"] > 0]; y = [p["err"] / p["n"] for p in s[k] if p["err"] > 0]
         a.semilogy(x, y, sty, color=c, lw=lw, ms=7, mfc=mfc, mew=1.8)
-    a.axhline(1e-3, color="#999999", lw=0.8, ls=":")
     xt, xp, xr, xb = (cross(s[k]) for k in ("turbo_genie", "polar_genie", "real", "blind"))
     s["x1e-3"] = dict(turbo_genie=xt, polar_genie=xp, real=xr, blind=xb)
     a.text(0.5, 1.015, f"perfect sync: turbo ahead {xp - xt:.2f} dB\nreal systems: blind ahead {xr - xb:.2f} dB",

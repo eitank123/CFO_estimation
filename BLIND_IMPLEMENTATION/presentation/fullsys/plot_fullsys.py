@@ -82,12 +82,6 @@ for a, fmt in zip(ax, DVB):
     d, ce, cp, cm, te, tp, tm = dvb_series(fmt)
     hb, = a.semilogy(*nz(te, tp), "-o", color=NAVY, lw=3, ms=8)
     hc, = a.semilogy(*nz(ce, cp), "--s", color=ORANGE, lw=2, ms=7)
-    xb, xc = cross(te, tp), cross(ce, cp)
-    if xb is not None and xc is not None:
-        a.axhline(1e-3, color="#999999", lw=0.8, ls=":")
-        a.annotate("", xy=(xb, 1e-3), xytext=(xc, 1e-3), arrowprops=dict(arrowstyle="->", color=NAVY, lw=2))
-        a.text(0.97, 0.95, f"blind {xc - xb:+.2f} dB at 10$^{{-3}}$", transform=a.transAxes, ha="right", va="top", fontsize=13,
-               color=NAVY, fontweight="bold")
     a.set_title(f"{d['name']} ({d['desc'].replace('pi/2', 'π/2')})", fontweight="bold")
     style(a, XL, "BLER" if a is ax[0] else None)
 legend_below(f, [hb, hc], ["blind, 0 known symbols (jointly tuned)", "DVB-RCS2, known symbols + own data-aided CFO estimate"], 2)
@@ -101,13 +95,10 @@ for a, fmt in zip(ax, DVB):
     h0, = a.plot(bf["es"], bm_, "--o", color=LIGHT, lw=2, ms=6)
     hb, = a.plot(te, np.array(tm) / 1e6, "-o", color=NAVY, lw=3, ms=8)
     hc, = a.plot(ce, np.array(cm) / 1e6, "--s", color=ORANGE, lw=2, ms=7)
-    xb, xc = cross(te, tp), cross(ce, cp)
-    ho, = a.plot([xb, xc], [np.interp(xb, te, tm) / 1e6, np.interp(xc, ce, cm) / 1e6], "D", ms=13, mfc="none", mec="#c8423b", mew=2.5, ls="none")
     mticks(a, list(np.array(tm) / 1e6) + list(np.array(cm) / 1e6) + list(bm_))
     a.set_title(f"{d['name']} ({d['desc'].replace('pi/2', 'π/2')})", fontweight="bold")
     style(a, XL, "mean MACs per core [M] (32 cores)" if a is ax[0] else None)
-legend_below(f, [hb, h0, hc, ho], ["blind (jointly tuned)", "blind before joint tuning", "DVB-RCS2 (synchroniser + turbo decoder)",
-                                    "at BLER 10$^{-3}$"], 4)
+legend_below(f, [hb, h0, hc], ["blind (jointly tuned)", "blind before joint tuning", "DVB-RCS2 (synchroniser + turbo decoder)"], 3)
 f.tight_layout(rect=(0, 0.1, 1, 1)); f.savefig(os.path.join(HERE, "fs_dvb_macs.png"), dpi=200); plt.close(f)
 
 # 3) VDE-SAT: BLER and MACs vs Eb/N0
@@ -119,18 +110,14 @@ f, ax = plt.subplots(1, 2, figsize=(14, 5.4))
 hb, = ax[0].semilogy(*nz(fe, fp), "-o", color=NAVY, lw=3, ms=8)
 hc, = ax[0].semilogy(*nz(ce, cp), "--P", color=BROWN, lw=2, ms=8)
 xb, xc = cross(fe, fp), cross(ce, cp)
-ax[0].axhline(1e-3, color="#999999", lw=0.8, ls=":")
-ax[0].annotate("", xy=(xb, 1e-3), xytext=(xc, 1e-3), arrowprops=dict(arrowstyle="->", color=NAVY, lw=2.5))
-ax[0].text(0.97, 0.95, f"blind {xc - xb:+.2f} dB at 10$^{{-3}}$", transform=ax[0].transAxes, ha="right", va="top", fontsize=14, color=NAVY, fontweight="bold")
 ax[0].set_title("BLER", fontweight="bold"); style(ax[0], XL, "BLER")
 h0, = ax[1].plot(be, np.array(bm) / 1e6, "--o", color=LIGHT, lw=2, ms=6)
 ax[1].plot(fe, np.array(fm) / 1e6, "-o", color=NAVY, lw=3, ms=8)
 ax[1].plot(ce, np.array(cm) / 1e6, "--P", color=BROWN, lw=2, ms=8)
-ho, = ax[1].plot([xb, xc], [np.interp(xb, fe, fm) / 1e6, np.interp(xc, ce, cm) / 1e6], "D", ms=13, mfc="none", mec="#c8423b", mew=2.5, ls="none")
 mticks(ax[1], list(np.array(bm) / 1e6) + list(np.array(fm) / 1e6) + list(np.array(cm) / 1e6))
 ax[1].set_title("mean MACs per core [M] (32 cores)", fontweight="bold"); style(ax[1], XL)
-legend_below(f, [hb, h0, hc, ho], ["blind (jointly tuned)", "blind before joint tuning",
-                                   f"VDE-SAT ({V['known']} known: syncwords + pilots)", "at BLER 10$^{-3}$"], 4)
+legend_below(f, [hb, h0, hc], ["blind (jointly tuned)", "blind before joint tuning",
+                               f"VDE-SAT ({V['known']} known: syncwords + pilots)"], 3)
 f.tight_layout(rect=(0, 0.1, 1, 1)); f.savefig(os.path.join(HERE, "fs_vde.png"), dpi=200); plt.close(f)
 
 # 4) VDE-SAT, final blind with a MAC cap

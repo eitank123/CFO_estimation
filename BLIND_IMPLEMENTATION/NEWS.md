@@ -4,6 +4,16 @@ Newest first. One item per research result. Details in the linked files; sources
 
 ---
 
+## 2026-11-18 02:20 (full system) — The turbo code is the stronger code, blind wins anyway
+- With perfect sync (code only), the deployed turbo codes beat our rate-matched polar code (CA-SCL-8) at BLER 1e-3 by
+  0.12 / 0.36 / 0.27 / 0.37 dB (DVB-RCS2 ID 3 / 13 / 14 / 42) and 0.15 dB (VDE-SAT; new runs fs-pgv2a/b, 1.2 M packets).
+- So none of blind's lead comes from the code: the lead (+0.24 ... +0.58 dB DVB-RCS2, +1.17 dB VDE-SAT) is the
+  known-symbol energy the real systems spend (7-23 %, 0.32-1.12 dB) plus their own sync loss (0.03-0.14 dB), minus the
+  code penalty.
+- Blind even beats its own perfect-sync list-8 curve by 0.09-0.22 dB on IDs 13, 14, 42 and VDE-SAT: decoding several
+  neighbouring hypotheses acts like a bigger list. List 32 with perfect sync is within 0.05-0.12 dB of turbo.
+- Figure: presentation/fullsys/fs_genie.png (deck slide 28). Table: fullsys/README.md 6.2.
+
 ## 2026-11-18 01:05 (full system, VDE-SAT) — One phase guess: the VDE MAC floor drops from 0.31 to 0.21 M per core
 - The floor (~0.31 M per core at every SNR above -5 dB) was 58 % CFO-grid work: 513 frequency x phase hypotheses per
   packet, each partly decoded. For BPSK the squared signal already fixes the phase mod pi, so the second phase guess per
