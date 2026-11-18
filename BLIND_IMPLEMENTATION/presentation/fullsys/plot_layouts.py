@@ -48,7 +48,7 @@ def strip(a, L, kinds, y=0, h=0.6, thin=False):
 
 # DVB-RCS2
 INFO = {3: "ID 3: QPSK 1/3, 272-bit payload", 13: "ID 13: QPSK 1/3, 952-bit payload",
-        14: "ID 14: QPSK 1/2, 1472-bit payload", 42: "ID 42: pi/2-BPSK 1/3, 952-bit payload"}
+        14: "ID 14: QPSK 1/2, 1472-bit payload", 42: "ID 42: π/2-BPSK 1/3, 952-bit payload"}
 f, ax = plt.subplots(1, 2, figsize=(17, 5.2), gridspec_kw=dict(width_ratios=[3, 1.2]))
 for i, k in enumerate((3, 13, 14, 42)):
     d = lay[f"rcs2_{k}"]; y = 3 - i
@@ -67,9 +67,9 @@ f.tight_layout(rect=(0, 0.08, 1, 1)); f.savefig(os.path.join(HERE, "fs_rcs2_layo
 
 # VDE-SAT Link 32
 d = lay["vde32"]
-f, ax = plt.subplots(2, 1, figsize=(15, 4.4))
+f, ax = plt.subplots(2, 1, figsize=(15, 4.9))
 strip(ax[0], d["L"], [(d["pilot"], KNOWN), (d["sync"], SYNC)], h=0.8, thin=True)
-ax[0].set_xlim(-10, d["L"] + 10); ax[0].set_ylim(0, 1); ax[0].set_yticks([])
+ax[0].set_xlim(-10, d["L"] + 10); ax[0].set_ylim(0, 1); ax[0].set_yticks([]); ax[0].set_xlabel("symbol index in the burst")
 ax[0].set_title(f"VDE-SAT Link 32: {d['L']} symbols = 1269 data + {len(d['sync'])} syncword + {len(d['pilot'])} pilot "
                 f"({100 * (len(d['sync']) + len(d['pilot'])) / d['L']:.0f} % known)", fontweight="bold")
 strip(ax[1], 140, [([p for p in d["pilot"] if p < 140], KNOWN), ([p for p in d["sync"] if p < 140], SYNC)], h=0.8)

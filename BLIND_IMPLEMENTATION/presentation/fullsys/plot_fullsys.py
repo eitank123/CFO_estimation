@@ -27,8 +27,8 @@ D = json.load(open(os.path.join(HERE, "data", "fullsys_6350b72.json")))
 NAVY, LIGHT, ORANGE, BROWN = "#003366", "#7f9fbf", "#E07B39", "#8c564b"
 CAPC = {"2.0": "#4a6f99", "1.0": "#7f9fbf", "0.5": "#b8c9db"}
 plt.rcParams.update({"font.size": 13, "font.family": "DejaVu Sans"})
-DVB = ("id13", "id42b", "id3", "id14s")
-XL = "SNR [dB], pilot energy charged"   # blind Es/N0; competitor Es/N0 + its known-symbol energy (same Eb/N0 per payload bit)
+DVB = ("id3", "id13", "id14s", "id42b")              # by burst length (536, 1616, 1616, 3236 symbols)
+XL = "SNR [dB], known-symbol energy charged"   # blind Es/N0; competitor Es/N0 + its known-symbol energy (same Eb/N0 per payload bit)
 MT = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5]
 
 
@@ -85,9 +85,10 @@ for a, fmt in zip(ax, DVB):
     xb, xc = cross(te, tp), cross(ce, cp)
     if xb is not None and xc is not None:
         a.axhline(1e-3, color="#999999", lw=0.8, ls=":")
-        a.text(0.97, 0.95, f"blind {xc - xb:+.2f} dB", transform=a.transAxes, ha="right", va="top", fontsize=13,
+        a.annotate("", xy=(xb, 1e-3), xytext=(xc, 1e-3), arrowprops=dict(arrowstyle="->", color=NAVY, lw=2))
+        a.text(0.97, 0.95, f"blind {xc - xb:+.2f} dB at 10$^{{-3}}$", transform=a.transAxes, ha="right", va="top", fontsize=13,
                color=NAVY, fontweight="bold")
-    a.set_title(f"{d['name']} ({d['desc']})", fontweight="bold")
+    a.set_title(f"{d['name']} ({d['desc'].replace('pi/2', 'π/2')})", fontweight="bold")
     style(a, XL, "BLER" if a is ax[0] else None)
 legend_below(f, [hb, hc], ["blind, 0 known symbols (jointly tuned)", "DVB-RCS2, known symbols + own data-aided CFO estimate"], 2)
 f.tight_layout(rect=(0, 0.1, 1, 1)); f.savefig(os.path.join(HERE, "fs_dvb_bler.png"), dpi=200); plt.close(f)
@@ -96,12 +97,17 @@ f.tight_layout(rect=(0, 0.1, 1, 1)); f.savefig(os.path.join(HERE, "fs_dvb_bler.p
 f, ax = plt.subplots(1, 4, figsize=(17, 5.2))
 for a, fmt in zip(ax, DVB):
     d, ce, cp, cm, te, tp, tm = dvb_series(fmt)
+    bf = d["before"]; bm_ = np.array(bf["mean"])
+    h0, = a.plot(bf["es"], bm_, "--o", color=LIGHT, lw=2, ms=6)
     hb, = a.plot(te, np.array(tm) / 1e6, "-o", color=NAVY, lw=3, ms=8)
     hc, = a.plot(ce, np.array(cm) / 1e6, "--s", color=ORANGE, lw=2, ms=7)
-    mticks(a, list(np.array(tm) / 1e6) + list(np.array(cm) / 1e6))
-    a.set_title(f"{d['name']} ({d['desc']})", fontweight="bold")
-    style(a, XL, "MACs per core [M] (32 cores)" if a is ax[0] else None)
-legend_below(f, [hb, hc], ["blind, 0 known symbols (jointly tuned)", "DVB-RCS2 (synchroniser + turbo decoder)"], 2)
+    xb, xc = cross(te, tp), cross(ce, cp)
+    ho, = a.plot([xb, xc], [np.interp(xb, te, tm) / 1e6, np.interp(xc, ce, cm) / 1e6], "D", ms=13, mfc="none", mec="#c8423b", mew=2.5, ls="none")
+    mticks(a, list(np.array(tm) / 1e6) + list(np.array(cm) / 1e6) + list(bm_))
+    a.set_title(f"{d['name']} ({d['desc'].replace('pi/2', 'π/2')})", fontweight="bold")
+    style(a, XL, "mean MACs per core [M] (32 cores)" if a is ax[0] else None)
+legend_below(f, [hb, h0, hc, ho], ["blind (jointly tuned)", "blind before joint tuning", "DVB-RCS2 (synchroniser + turbo decoder)",
+                                    "at BLER 10$^{-3}$"], 4)
 f.tight_layout(rect=(0, 0.1, 1, 1)); f.savefig(os.path.join(HERE, "fs_dvb_macs.png"), dpi=200); plt.close(f)
 
 # 3) VDE-SAT: BLER and MACs vs Eb/N0
@@ -114,15 +120,17 @@ hb, = ax[0].semilogy(*nz(fe, fp), "-o", color=NAVY, lw=3, ms=8)
 hc, = ax[0].semilogy(*nz(ce, cp), "--P", color=BROWN, lw=2, ms=8)
 xb, xc = cross(fe, fp), cross(ce, cp)
 ax[0].axhline(1e-3, color="#999999", lw=0.8, ls=":")
-ax[0].text(0.97, 0.95, f"blind {xc - xb:+.2f} dB", transform=ax[0].transAxes, ha="right", va="top", fontsize=14, color=NAVY, fontweight="bold")
+ax[0].annotate("", xy=(xb, 1e-3), xytext=(xc, 1e-3), arrowprops=dict(arrowstyle="->", color=NAVY, lw=2.5))
+ax[0].text(0.97, 0.95, f"blind {xc - xb:+.2f} dB at 10$^{{-3}}$", transform=ax[0].transAxes, ha="right", va="top", fontsize=14, color=NAVY, fontweight="bold")
 ax[0].set_title("BLER", fontweight="bold"); style(ax[0], XL, "BLER")
 h0, = ax[1].plot(be, np.array(bm) / 1e6, "--o", color=LIGHT, lw=2, ms=6)
 ax[1].plot(fe, np.array(fm) / 1e6, "-o", color=NAVY, lw=3, ms=8)
 ax[1].plot(ce, np.array(cm) / 1e6, "--P", color=BROWN, lw=2, ms=8)
+ho, = ax[1].plot([xb, xc], [np.interp(xb, fe, fm) / 1e6, np.interp(xc, ce, cm) / 1e6], "D", ms=13, mfc="none", mec="#c8423b", mew=2.5, ls="none")
 mticks(ax[1], list(np.array(bm) / 1e6) + list(np.array(fm) / 1e6) + list(np.array(cm) / 1e6))
-ax[1].set_title("MACs per core [M] (32 cores)", fontweight="bold"); style(ax[1], XL)
-legend_below(f, [hb, h0, hc], ["blind, 0 known symbols (jointly tuned)", "blind before joint tuning",
-                               f"VDE-SAT ({V['known']} known: sync word + pilots)"], 3)
+ax[1].set_title("mean MACs per core [M] (32 cores)", fontweight="bold"); style(ax[1], XL)
+legend_below(f, [hb, h0, hc, ho], ["blind (jointly tuned)", "blind before joint tuning",
+                                   f"VDE-SAT ({V['known']} known: syncwords + pilots)", "at BLER 10$^{-3}$"], 4)
 f.tight_layout(rect=(0, 0.1, 1, 1)); f.savefig(os.path.join(HERE, "fs_vde.png"), dpi=200); plt.close(f)
 
 # 4) VDE-SAT, final blind with a MAC cap
@@ -137,7 +145,7 @@ for c, col, lab in (("None", NAVY, "blind, no cap"), ("2.0", CAPC["2.0"], "cap 2
 hc, = ax[0].semilogy(*nz(ce, cp), "--P", color=BROWN, lw=2, ms=8); H.append((hc, "VDE-SAT"))
 ax[1].plot(ce, np.array(cm) / 1e6, "--P", color=BROWN, lw=2, ms=8); mticks(ax[1], MV + list(np.array(cm) / 1e6))
 ax[0].set_title("BLER", fontweight="bold"); style(ax[0], XL, "BLER")
-ax[1].set_title("MACs per core [M] (32 cores)", fontweight="bold"); style(ax[1], XL)
+ax[1].set_title("mean MACs per core [M] (32 cores)", fontweight="bold"); style(ax[1], XL)
 legend_below(f, [h for h, _ in H], [l for _, l in H], 5)
 f.tight_layout(rect=(0, 0.1, 1, 1)); f.savefig(os.path.join(HERE, "fs_vde_cap.png"), dpi=200); plt.close(f)
 
@@ -153,13 +161,13 @@ f, ax = plt.subplots(1, 2, figsize=(14, 5.4))
 b = ax[0].bar(names, lead, color=NAVY)
 for r, v in zip(b, lead):
     ax[0].text(r.get_x() + r.get_width() / 2, v + 0.02, f"+{v:.2f} dB", ha="center", fontsize=13, fontweight="bold")
-ax[0].set_ylabel("blind lead at BLER 1e-3 [dB]"); ax[0].set_ylim(0, max(lead) * 1.2)
+ax[0].set_ylabel("blind lead at BLER 10$^{-3}$ [dB]"); ax[0].set_ylim(0, max(lead) * 1.2)
 ax[0].set_title("SNR saved by sending no known symbols", fontweight="bold"); ax[0].grid(True, axis="y", ls=":", color="#cccccc")
 b = ax[1].bar(names, ratio, color=[NAVY if r > 1 else "#3a7d44" for r in ratio])
 for r, v in zip(b, ratio):
     ax[1].text(r.get_x() + r.get_width() / 2, v * 1.08, f"{v:.1f}x", ha="center", fontsize=13, fontweight="bold")
 ax[1].axhline(1, color="#555555", lw=1); ax[1].set_yscale("log"); ax[1].set_ylim(0.3, max(ratio) * 2.5)
-ax[1].set_ylabel("MACs per core: blind / competitor"); ax[1].set_title("compute at BLER 1e-3 (< 1: blind cheaper)", fontweight="bold")
+ax[1].set_ylabel("MACs per core: blind / real system"); ax[1].set_title("compute, each at its own BLER 10$^{-3}$ SNR\n(< 1: blind cheaper)", fontweight="bold")
 ax[1].grid(True, axis="y", which="both", ls=":", color="#cccccc")
 f.tight_layout(); f.savefig(os.path.join(HERE, "fs_scoreboard.png"), dpi=200); plt.close(f)
 print("leads", [round(x, 2) for x in lead], "ratios", [round(x, 2) for x in ratio])

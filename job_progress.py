@@ -922,6 +922,11 @@ def render(keys):
     return "\n".join(out), all_done
 
 
+# VDE-SAT code-only polar reference, genie vs genie with turbo (2026-11-18)
+for _p in ("fs-pgv2a", "fs-pgv2b"):
+    JOBS[_p] = (f"fullsys polar genie VDE {_p[-1]}", "count", (f"run_{_p}.out", os.path.join(_FS, f"polar_genie_{_p}.prog")))
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--interval", type=int, default=10)
