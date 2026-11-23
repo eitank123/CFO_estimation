@@ -1,14 +1,19 @@
 """Full-system slides (2026-11-18): the blind receiver (jointly tuned, no known symbols) vs the deployed systems
-DVB-RCS2 (waveform IDs 13, 42, 3, 14; own data-aided CFO estimate, turbo max-log 8 it.) and VDE-SAT Link 32 (own
+DVB-RCS2 (waveform IDs 13, 42, 3, 14; own data-aided CFO estimate, turbo max-log 8 it., CRC early stop) and VDE-SAT Link 32 (own
 data-aided CFO estimate, turbo log-MAP 8 it., CRC early stop), same payload, CFO range +-0.03. Data:
-slides_eq/data/fullsys_6350b72.json (full-chain-cfo 6350b72, BLIND_IMPLEMENTATION/testing/export_fullsys_slides.py).
+data/fullsys_fastvde_es.json (2026-11-23: as fullsys_fastvde.json but the DVB-RCS2 competitor with turbo CRC early
+stop, the da_fs-esd-* re-runs: export_fullsys_slides.py --comp-es; same decisions, only its MACs change) /
+data/fullsys_fastvde.json (2026-11-19, BLIND_IMPLEMENTATION/testing/export_fullsys_slides.py): as fullsys_6350b72.json
+(full-chain-cfo 6350b72) but VDE "final" = blind with the fast path on at every SNR (fs-i9q-m*, -5.8 ... -3.8 dB); the
+previous final (fs-gv32om*) is kept as "before_fast" and not drawn.
 
     python slides_eq/plot_fullsys.py
 
 fs_dvb_bler.png    BLER vs Eb/N0 per payload bit (known symbols charged), one panel per DVB-RCS2 ID
 fs_dvb_macs.png    mean MACs per core vs Eb/N0, same panels
 fs_vde.png         VDE-SAT: BLER vs Eb/N0 and mean MACs per core vs Eb/N0 (blind before / after joint tuning)
-fs_vde_cap.png     VDE-SAT, final blind: BLER and mean MACs per core with a per-packet MAC cap (2 / 1 / 0.5 M per core)
+fs_vde_cap.png     VDE-SAT, blind with a per-packet MAC cap (2 / 1 / 0.5 M per core); STALE receiver: the cap curves
+                   are of before_fast (fast path off), marked in the figure until a fast-path cap curve exists
 fs_scoreboard.png  lead of blind at BLER 1e-3 (dB) and the MAC ratio blind / competitor near that point, all 5 systems
 Zero-error points are not drawn; MACs = mean per core per packet on the 32-core scheduled model.
 """
@@ -23,7 +28,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-D = json.load(open(os.path.join(HERE, "data", "fullsys_6350b72.json")))
+D = json.load(open(os.path.join(HERE, "data", "fullsys_fastvde_es.json")))
 NAVY, LIGHT, ORANGE, BROWN = "#003366", "#7f9fbf", "#E07B39", "#8c564b"
 CAPC = {"2.0": "#4a6f99", "1.0": "#7f9fbf", "0.5": "#b8c9db"}
 plt.rcParams.update({"font.size": 13, "font.family": "DejaVu Sans"})
@@ -96,7 +101,7 @@ for a, fmt in zip(ax, DVB):
     mticks(a, list(np.array(tm) / 1e6) + list(np.array(cm) / 1e6))
     a.set_title(f"{d['name']} ({d['desc'].replace('pi/2', 'π/2')})", fontweight="bold")
     style(a, XL, "mean MACs per core [M] (32 cores)" if a is ax[0] else None)
-legend_below(f, [hb, hc], ["blind, 0 known symbols", "DVB-RCS2 (synchroniser + turbo decoder)"], 2)
+legend_below(f, [hb, hc], ["blind, 0 known symbols", "DVB-RCS2 (synchroniser + turbo decoder, CRC early stop)"], 2)
 f.tight_layout(rect=(0, 0.1, 1, 1)); f.savefig(os.path.join(HERE, "fs_dvb_macs.png"), dpi=200); plt.close(f)
 
 # 3) VDE-SAT: BLER and MACs vs Eb/N0
@@ -131,7 +136,10 @@ ax[1].plot(ce, np.array(cm) / 1e6, "--P", color=BROWN, lw=2, ms=8); mticks(ax[1]
 ax[0].set_title("BLER", fontweight="bold"); style(ax[0], XL, "BLER")
 ax[1].set_title("mean MACs per core [M] (32 cores)", fontweight="bold"); style(ax[1], XL)
 legend_below(f, [h for h, _ in H], [l for _, l in H], 5)
-f.tight_layout(rect=(0, 0.1, 1, 1)); f.savefig(os.path.join(HERE, "fs_vde_cap.png"), dpi=200); plt.close(f)
+if "cap_rx" in V:                                     # cap curves not of the final receiver: say so in the figure
+    f.suptitle("MAC cap on the receiver before the fast-path change (fast path off below 0.5 dB); fast-path cap curve pending",
+               fontsize=12, color=BROWN)
+f.tight_layout(rect=(0, 0.1, 1, 0.95 if "cap_rx" in V else 1)); f.savefig(os.path.join(HERE, "fs_vde_cap.png"), dpi=200); plt.close(f)
 
 # 5) scoreboard: lead at BLER 1e-3 and MAC ratio near it
 names, lead, ratio = [], [], []
