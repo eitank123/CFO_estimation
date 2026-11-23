@@ -60,8 +60,8 @@ def figure(ebn0, fname):
     ax[0].set_ylabel("mean MACs per core [M] (32 cores)")
     h = [plt.Line2D([], [], color=NAVY, marker="o", lw=3), plt.Line2D([], [], color=ORANGE, marker="s", ls="--", lw=2),
          plt.Line2D([], [], color=BROWN, marker="P", ls="--", lw=2)]
-    f.legend(h, ["blind, full receiver (0 known symbols)", "DVB-RCS2 decoder only: turbo with CRC early stop, no synchroniser",
-                 "VDE-SAT decoder only: turbo with CRC early stop, no synchroniser"], loc="lower center", ncol=3,
+    f.legend(h, ["blind, full receiver (0 known symbols)", "DVB-RCS2",
+                 "VDE-SAT"], loc="lower center", ncol=3,
              frameon=False, fontsize=12)
     f.tight_layout(rect=(0, 0.1, 1, 1))
     f.savefig(os.path.join(HERE, fname), dpi=200, facecolor="white")
